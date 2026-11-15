@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
   ============================================================
-  FRETBOARD TRAINER — v0.21 (BETA · IN TESTING) · version lives in VERSION below
+  FRETBOARD TRAINER · version lives in VERSION below
   Standalone single-file build. Drag to Netlify to deploy.
   ============================================================
 -->
@@ -9,13 +9,13 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Fretboard Trainer · v0.21 (BETA — in testing)</title>
+<title>Fretboard Trainer</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <style>
   *{box-sizing:border-box}
-  html,body{margin:0;background:#070b16;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  html,body{margin:0;background:#0D131A;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
   button{font-family:inherit;cursor:pointer;border:none;background:transparent;padding:0;color:inherit}
   .w-full{width:100%}
   .p-4{padding:1rem}.p-3{padding:.75rem}.p-2{padding:.5rem}
@@ -38,13 +38,15 @@
   .gap-1{gap:.25rem}.gap-1\.5{gap:.375rem}.gap-2{gap:.5rem}.gap-3{gap:.75rem}
   .relative{position:relative}.absolute{position:absolute}.left-0{left:0}.right-0{right:0}
   .overflow-x-auto{overflow-x:auto}
-  .text-xs{font-size:.75rem;line-height:1rem}
+  .text-xs{font-size:12.5px;line-height:1rem}
   .text-sm{font-size:.875rem;line-height:1.25rem}
   .text-xl{font-size:1.25rem;line-height:1.75rem}
   .font-medium{font-weight:500}.font-semibold{font-weight:600}.font-bold{font-weight:700}
   .underline{text-decoration:underline}
-  .text-white{color:#fff}.text-slate-200{color:#e2e8f0}.text-slate-400{color:#94a3b8}
-  .text-slate-500{color:#64748b}.text-slate-600{color:#475569}.text-amber-400{color:#fbbf24}
+  .text-body{color:#E3E9F0}.text-muted{color:#A9B6C4}.text-link{color:#9CC6EE}
+  .row{display:flex;align-items:flex-start;gap:8px}
+  .rowlab{flex:0 0 92px;min-height:34px;display:flex;align-items:center;font-size:12.5px;color:#A9B6C4;white-space:nowrap}
+  .track{display:inline-flex;flex-wrap:wrap;gap:2px;padding:2px;border-radius:8px;background:#091017;min-width:0}
   .transition-colors{transition:background-color .15s,border-color .15s,color .15s}
   .transition-all{transition:all .15s}
 </style>
@@ -53,11 +55,11 @@
 <div id="root"></div>
 <script type="text/babel" data-presets="react">
 const { useState, useMemo, useEffect } = React;
-const VERSION = "v0.21";
-document.title = `Fretboard Trainer · ${VERSION} (BETA — in testing)`;
+const VERSION = "v0.22";
+document.title = `Fretboard Trainer · ${VERSION}`;
 
-// Shell palette — PLACEHOLDERS until the NNS hexes are supplied.
-const THEME = { bg:"#070b16", panel:"#0d1626", border:"#1c2940", text:"#e2e8f0", muted:"#64748b", amber:"#fbbf24", amberText:"#3a2c00", rust:"#c2410c" };
+// ChordCharts Dark tokens (BR-01). Colour roles (BR-02): gold = the key, CAGED = position, greyscale = everything else.
+const THEME = { bg:"#0D131A", panel:"#141C25", panel2:"#1B2530", track:"#091017", ctl:"#2A3645", ctlHover:"#344253", edge:"#6C7C8E", line:"#334252", text:"#E3E9F0", muted:"#A9B6C4", sel:"#E8C66E", onSel:"#16120A", ink:"#16232F", nut:"#C5D0DC", link:"#9CC6EE" };
 const TABS = [["trainer","Trainer"],["display","Display"],["reference","Reference"],["info","Info"]];
 
 const NOTES_SHARP = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
@@ -80,16 +82,23 @@ const MONO_GREY = "#5b6679";
 // Degrees the formula names differently from the semitone default (TH-05). Keys: scale mode or chord quality.
 const DEG_OVERRIDE = { lydian: {6:"♯4"}, aug: {8:"♯5"}, aug7: {8:"♯5"}, dim7: {9:"°7"} };
 
+// Grouped as Triads, Sevenths, Added notes (UX-04); the same qualities per tonality as v0.21.
 const ARP_QUAL = {
-  major: {
-    core: [["triad","Triad"],["maj7","maj7"],["dom7","7"],["sus2","sus2"],["sus4","sus4"],["7sus4","7sus4"]],
-    extra: [["add9","2·9"],["add11","4·11"],["add13","6·13"],["aug","aug"],["aug7","aug7"],["dim","dim"],["m7b5","m7♭5"],["dim7","dim7"]],
-  },
-  minor: {
-    core: [["triad","Triad"],["min7","m7"],["sus2","sus2"],["sus4","sus4"],["7sus4","7sus4"]],
-    extra: [["madd9","2·9"],["madd11","4·11"],["m6","6·13"],["dim","dim"],["m7b5","m7♭5"],["dim7","dim7"]],
-  },
+  major: [
+    ["Triads", [["triad","Triad"],["sus2","sus2"],["sus4","sus4"],["aug","aug"],["dim","dim"]]],
+    ["Sevenths", [["maj7","maj7"],["dom7","7"],["7sus4","7sus4"],["aug7","aug7"],["m7b5","m7♭5"],["dim7","dim7"]]],
+    ["Added notes", [["add9","add9"],["add11","add11"],["add13","6"]]],
+  ],
+  minor: [
+    ["Triads", [["triad","Triad"],["sus2","sus2"],["sus4","sus4"],["dim","dim"]]],
+    ["Sevenths", [["min7","m7"],["7sus4","7sus4"],["m7b5","m7♭5"],["dim7","dim7"]]],
+    ["Added notes", [["madd9","add9"],["madd11","add11"],["m6","6"]]],
+  ],
 };
+const ARP_ALL = (t) => ARP_QUAL[t].flatMap(([, qs]) => qs);
+// Header summary names (UX-07).
+const QUAL_NAME = { maj7:"maj7", dom7:"7", min7:"m7", m7b5:"m7♭5", dim7:"dim7", aug7:"aug7", add9:"add9", add11:"add11", add13:"6", m6:"m6", madd9:"m(add9)", madd11:"m(add11)", sus2:"sus2", sus4:"sus4", "7sus4":"7sus4" };
+const MODE_NAME = { ionian:"Ionian", lydian:"Lydian", mixolydian:"Mixolydian", aeolian:"Aeolian", dorian:"Dorian", phrygian:"Phrygian", harmonic:"harmonic minor", melodic:"melodic minor" };
 
 const DIATONIC = {
   major: [["I",0,"maj"],["ii",2,"min"],["iii",4,"min"],["IV",5,"maj"],["V",7,"maj"],["vi",9,"min"],["vii°",11,"dim"]],
@@ -111,8 +120,8 @@ const MODE_IV = {
   harmonic: [0,2,3,5,7,8,11], melodic: [0,2,3,5,7,9,11],
 };
 
-const POS_COLOR = {C:"#ef4444",A:"#f97316",G:"#eab308",E:"#3b82f6",D:"#22c55e"};
-const POS_DARKTEXT = new Set(["G"]);
+// Calmer CAGED set (decision 7 = b), all with ink labels (DS-04).
+const POS_COLOR = {C:"#E5766B",A:"#E9A15C",G:"#DDD05A",E:"#7FA8E6",D:"#7CC68D"};
 const POS_MAJOR = [{num:1,letter:"C",off:4,w:3},{num:2,letter:"A",off:6,w:3},{num:3,letter:"G",off:9,w:3},{num:4,letter:"E",off:-1,w:3},{num:5,letter:"D",off:1,w:4}];
 const POS_MINOR = [{num:1,letter:"C",off:4,w:4},{num:2,letter:"A",off:7,w:3},{num:3,letter:"G",off:9,w:3},{num:4,letter:"E",off:0,w:3},{num:5,letter:"D",off:2,w:3}];
 
@@ -161,13 +170,26 @@ function keySpelling(keyRoot, keyMode) {
   return map;
 }
 
-function Seg({ active, onClick, children, color = "#3b82f6", dark = false, disabled = false }) {
+// A choice on a recessed track (BR-03, decision 4 = a). Chosen: grey thumb with a 1.5 px text ring; gold for the key and
+// Major / Minor (decision 3 = a); a position colour as an underline, filled when chosen (decision 8 = a).
+function Seg({ active, onClick, children, tone = "grey", pos = null, disabled = false, ...rest }) {
+  const T = THEME;
+  const fill = active ? (pos || (tone === "gold" ? T.sel : T.ctlHover)) : "transparent";
+  const fg = active ? (pos ? T.ink : tone === "gold" ? T.onSel : T.text) : T.muted;
+  const shadow = [active && `0 0 0 1.5px ${T.text}`, pos && !active && `inset 0 -3px 0 ${pos}`].filter(Boolean).join(", ") || "none";
   return (
-    <button onClick={onClick} disabled={disabled} aria-disabled={disabled} className="px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors"
-      style={{ opacity: disabled ? 0.5 : 1, cursor: disabled ? "default" : "pointer", backgroundColor: active ? color : "#16202e", color: active ? (dark ? "#3a2c00" : "#0a0f1c") : "#94a3b8", border: `1px solid ${active ? color : "#27364a"}`, fontWeight: active ? 700 : 500 }}>
+    <button onClick={onClick} disabled={disabled} aria-disabled={disabled} className="text-sm transition-colors" {...rest}
+      style={{ height: 30, padding: "0 12px", borderRadius: 4, opacity: disabled ? 0.5 : 1, cursor: disabled ? "default" : "pointer", backgroundColor: fill, color: fg, boxShadow: shadow, fontWeight: active ? 700 : 500, whiteSpace: "nowrap" }}>
       {children}
     </button>
   );
+}
+const Track = ({ children }) => <span className="track">{children}</span>;
+// A labelled control row: one 92 px label column (UX-04). An empty label keeps the column.
+const Row = ({ label = "", children, className = "" }) => <div className={"row " + className}><span className="rowlab">{label}</span>{children}</div>;
+// A stand-alone button: tonal ctl with a 1 px edge (BR-03, decision 4 = a).
+function Btn({ onClick, children }) {
+  return <button onClick={onClick} className="text-sm transition-colors" style={{ height: 34, padding: "0 12px", borderRadius: 8, background: THEME.ctl, border: `1px solid ${THEME.edge}`, color: THEME.text, fontWeight: 500, whiteSpace: "nowrap" }}>{children}</button>;
 }
 
 function Board({ cfg, update, globals }) {
@@ -177,7 +199,7 @@ function Board({ cfg, update, globals }) {
   const root = scope === "arpeggio" ? cfg.root : keyRoot;
   const tonality = scope === "arpeggio" ? cfg.tonality : keyMode;
   // Quality kept on a key or layer change: a chosen Chord Quality if the key's list has it, else the tonic triad (UX-10, UX-11).
-  const keyArp = (km) => (arpMode === "quality" && [...ARP_QUAL[km].core, ...ARP_QUAL[km].extra].some(([k]) => k === arp) ? arp : "triad");
+  const keyArp = (km) => (arpMode === "quality" && ARP_ALL(km).some(([k]) => k === arp) ? arp : "triad");
   const scopeSet = useMemo(() => new Set(scopeIntervals(tonality, scope, arp, mode)), [tonality, scope, arp, mode]);
   // Chord tones: every tone of the chord; in a scale layer, its 1, 3, 5 and 7 (TH-04).
   const ctSet = useMemo(() => {
@@ -220,11 +242,11 @@ function Board({ cfg, update, globals }) {
   const cellH = fit ? 34 : 46;
   const dotBig = fit ? 23 : 30;
   const dotBase = fit ? 18 : 24;
-  const fontPx = fit ? 9 : 11;
+  const fontPx = 11; // nothing under 11 px (BR-05)
   const scaleColsPx = [64,60,56,53,50,47,44,41,39,37,35,33,31,29,27,25];
   const COLS = fit ? `22px ${scaleColsPx.map((n)=> n*0.62 + "px").join(" ")}` : `30px ${scaleColsPx.map((n)=> n + "px").join(" ")}`;
 
-  const dotColorNormal = (iv) => (iv === 0 ? "#fbbf24" : MONO_GREY);
+  const dotColorNormal = (iv) => (iv === 0 ? THEME.sel : MONO_GREY);
   const keyRel = scope === "arpeggio" && arpMode === "diatonic" && diaLabel === "key";
   const degLabel = (pc, iv) => {
     if (keyRel) {
@@ -268,195 +290,189 @@ function Board({ cfg, update, globals }) {
       } else {
         bg = dotColorNormal(iv);
       }
-      const LIGHT_BG = bg === "#fbbf24" || bg === "#eab308";
-      const txt = !splitB && LIGHT_BG ? "#3a2c00" : "#fff";
+      // Dark labels on gold and on every position colour, two-tone dots included (DS-04).
+      const txt = bg === MONO_GREY ? THEME.text : bg === THEME.sel ? THEME.onSel : THEME.ink;
       const sz = isRoot || isCT ? dotBig : dotBase;
       const dotBg = splitB ? `linear-gradient(135deg, ${bg} 0 50%, ${splitB} 50% 100%)` : bg;
       cells.push(
-        <div key={f} className="relative flex items-center justify-center" style={{ height: cellH, borderRight: f === 0 ? "5px solid #cbd5e1" : "2px solid #2a3850", background: f === 0 ? "#0a1322" : undefined }}>
-          <div className="absolute left-0 right-0" style={{ top: "50%", transform: "translateY(-50%)", height: STRING_GAUGE[s], background: "#566379" }} />
+        <div key={f} className="relative flex items-center justify-center" style={{ height: cellH, borderRight: f === 0 ? `5px solid ${THEME.nut}` : `2px solid ${THEME.line}`, background: f === 0 ? THEME.track : undefined }}>
+          <div className="absolute left-0 right-0" style={{ top: "50%", transform: "translateY(-50%)", height: STRING_GAUGE[s], background: THEME.edge }} />
           {inScope && (isRoot ? (
             <button disabled={interlock} onClick={() => update({ focus: toggle(activeFocus, iv) })} className="relative rounded-full flex items-center justify-center transition-all" style={{ width: sz+8, height: sz+8, background: dotBg, opacity: dim ? 0.16 : 1, zIndex: 5, cursor: interlock ? "default" : "pointer" }} title={`${noteName(pc)} · ${fdeg(iv)}`}>
-              <div className="rounded-full flex items-center justify-center" style={{ width: sz, height: sz, background: dotBg, border: "2px solid #070b16", color: txt, fontSize: fontPx, fontWeight: 800 }}>{labelOf(pc, iv)}</div>
+              <div className="rounded-full flex items-center justify-center" style={{ width: sz, height: sz, background: dotBg, border: `2px solid ${THEME.bg}`, color: txt, fontSize: fontPx, fontWeight: 800 }}>{labelOf(pc, iv)}</div>
             </button>
           ) : (
-            <button disabled={interlock} onClick={() => update({ focus: toggle(activeFocus, iv) })} className="relative rounded-full flex items-center justify-center transition-all" style={{ width: sz, height: sz, fontSize: fontPx, fontWeight: isCT ? 800 : 550, color: txt, background: dotBg, opacity: dim ? 0.16 : 1, boxShadow: "0 1px 2px rgba(0,0,0,.5)", zIndex: isCT ? 3 : 2, cursor: interlock ? "default" : "pointer" }} title={`${noteName(pc)} · ${fdeg(iv)}`}>{labelOf(pc, iv)}</button>
+            <button disabled={interlock} onClick={() => update({ focus: toggle(activeFocus, iv) })} className="relative rounded-full flex items-center justify-center transition-all" style={{ width: sz, height: sz, fontSize: fontPx, fontWeight: isCT ? 800 : 500, color: txt, background: dotBg, opacity: dim ? 0.16 : 1, zIndex: isCT ? 3 : 2, cursor: interlock ? "default" : "pointer" }} title={`${noteName(pc)} · ${fdeg(iv)}`}>{labelOf(pc, iv)}</button>
           ))}
           {!inScope && ghost && (
-            <div className="absolute rounded-full flex items-center justify-center" style={{ width: fit ? 18 : 23, height: fit ? 18 : 23, background: "#0d1726", border: "1px solid #223149", color: "#62748d", fontSize: fit ? 8 : 9.5, fontWeight: 600, opacity: dim ? 0.16 : 0.9, zIndex: 1 }} title={noteName(pc, root)}>{labelOf(pc, iv)}</div>
+            <div className="absolute rounded-full flex items-center justify-center" style={{ width: fit ? 18 : 23, height: fit ? 18 : 23, background: THEME.track, border: `1px solid ${THEME.line}`, color: THEME.muted, fontSize: 11, fontWeight: 600, opacity: dim ? 0.16 : 1, zIndex: 1 }} title={noteName(pc, root)}>{labelOf(pc, iv)}</div>
           )}
         </div>
       );
     }
     return (
       <div key={s} className="contents">
-        <div className="flex items-center justify-center text-xs font-semibold text-slate-500" style={{ height: cellH }}>{STRING_LABELS[s]}</div>
+        <div className="flex items-center justify-center text-xs font-semibold text-muted" style={{ height: cellH }}>{STRING_LABELS[s]}</div>
         {cells}
       </div>
     );
   };
 
   const degrees = [...scopeSet].sort((a,b) => a-b);
-  const arpLabel = scope === "arpeggio" ? (arp === "triad" ? "triad" : arp) : scope;
+  // One plain summary line (UX-07): "G7", "B diminished", "A minor pentatonic".
+  const rootName = noteName(root, root);
+  const summary = scope === "arpeggio"
+    ? (arp === "triad" ? `${rootName} ${tonality}` : arp === "dim" ? `${rootName} diminished` : arp === "aug" ? `${rootName} augmented` : rootName + QUAL_NAME[arp])
+    : scope === "scale" ? `${rootName} ${MODE_NAME[mode]}`
+    : scope === "blended" ? `${rootName} major and minor pentatonic`
+    : `${rootName} ${tonality} ${scope}`;
 
   return (
     <div>
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ background: "#1e293b", color: "#fbbf24" }}>ROOT</span>
-        <span className="text-sm font-semibold text-slate-200">{noteName(root, root)} {tonality} · {arpLabel}</span>
-      </div>
+      <div data-summary className="text-sm font-semibold text-body mb-2">{summary}</div>
 
-      <div className="flex flex-wrap gap-1 mb-2">
-        {NOTES_SHARP.map((n,i) => <Seg key={i} active={keyRoot === i} onClick={() => update({ root: i, keyRoot: i, tonality: keyMode, arp: keyArp(keyMode) })} color="#fbbf24" dark>{KEY_NAME[keyMode][i]}</Seg>)}
-      </div>
+      <Row label="Key" className="mb-2">
+        <Track>{NOTES_SHARP.map((n,i) => <Seg key={i} tone="gold" active={keyRoot === i} onClick={() => update({ root: i, keyRoot: i, tonality: keyMode, arp: keyArp(keyMode) })}>{KEY_NAME[keyMode][i]}</Seg>)}</Track>
+      </Row>
 
-      <div className="flex flex-wrap gap-1 mb-3 items-center">
-        <span className="text-xs text-slate-500 mr-1" style={{ width: 60 }}>Tonality</span>
-        {["major","minor"].map((t) => <Seg key={t} active={keyMode === t} onClick={() => update({ keyMode: t, tonality: t, root: keyRoot, arp: "triad", mode: t === "major" ? "ionian" : "aeolian" })}>{t}</Seg>)}
-      </div>
+      <Row className="mb-3">
+        <Track>{[["major","Major"],["minor","Minor"]].map(([t,l]) => <Seg key={t} tone="gold" active={keyMode === t} onClick={() => update({ keyMode: t, tonality: t, root: keyRoot, arp: "triad", mode: t === "major" ? "ionian" : "aeolian" })}>{l}</Seg>)}</Track>
+      </Row>
 
-      <div className="flex flex-wrap gap-1 mb-3 items-center">
-        <span className="text-xs text-slate-500 mr-1" style={{ width: 60 }}>Layer</span>
-        {[["arpeggio","Arpeggio"],["pentatonic","Pent"],["blues","Blues"],["scale","Scale"],["blended","Pent blend"]].map(([k,l]) => <Seg key={k} active={scope === k} onClick={() => update(k === "arpeggio" ? { scope: k } : { scope: k, root: keyRoot, tonality: keyMode, arp: keyArp(keyMode) })}>{l}</Seg>)}
-      </div>
+      <Row label="Show" className="mb-3">
+        <Track>{[["arpeggio","Chord"],["pentatonic","Pentatonic"],["blues","Blues"],["scale","Scale"],["blended","Major and minor"]].map(([k,l]) => <Seg key={k} active={scope === k} onClick={() => update(k === "arpeggio" ? { scope: k } : { scope: k, root: keyRoot, tonality: keyMode, arp: keyArp(keyMode) })}>{l}</Seg>)}</Track>
+      </Row>
 
       <div>
         {scope === "arpeggio" && (
-          <div className="flex flex-col gap-1 mb-3">
-            <div className="flex flex-wrap gap-1 items-center">
-              <span className="text-xs text-slate-500 mr-1" style={{ width: 60 }}>Mode</span>
-              <Seg active={arpMode === "diatonic"} onClick={() => update({ arpMode: "diatonic", arp: "triad" })} color="#8b5cf6">Diatonic</Seg>
-              <Seg active={arpMode === "quality"} onClick={() => update({ arpMode: "quality" })} color="#f97316">Chord Quality</Seg>
-            </div>
+          <div className="flex flex-col gap-2 mb-3">
+            <Row label="Chord">
+              <Track>
+                <Seg active={arpMode === "diatonic"} onClick={() => update({ arpMode: "diatonic", arp: "triad" })}>In key</Seg>
+                <Seg active={arpMode === "quality"} onClick={() => update({ arpMode: "quality" })}>Any chord</Seg>
+              </Track>
+            </Row>
             {arpMode === "diatonic" ? (
               <React.Fragment>
-                <div className="flex flex-wrap gap-1 items-center">
-                  <span className="text-xs text-slate-500 mr-1" style={{ width: 60 }}>Diatonic</span>
-                  {DIATONIC[keyMode].map(([rn,off,q]) => {
+                <Row>
+                  <Track>{DIATONIC[keyMode].map(([rn,off,q]) => {
                     const cr = (keyRoot + off) % 12;
                     const active = root === cr;
-                    return <Seg key={rn} active={active} onClick={() => update({ root: cr, tonality: q === "maj" ? "major" : "minor", arp: q === "dim" ? "dim" : "triad" })} color="#8b5cf6">{rn}</Seg>;
-                  })}
-                </div>
-                <div className="flex flex-wrap gap-1 items-center">
-                  <span className="text-xs text-slate-500 mr-1" style={{ width: 60 }}>Numbering</span>
-                  <Seg active={diaLabel === "key"} onClick={() => update({ diaLabel: "key" })} color="#8b5cf6">Key-relative</Seg>
-                  <Seg active={diaLabel === "chord"} onClick={() => update({ diaLabel: "chord" })} color="#8b5cf6">Chord-relative</Seg>
-                </div>
+                    return <Seg key={rn} active={active} onClick={() => update({ root: cr, tonality: q === "maj" ? "major" : "minor", arp: q === "dim" ? "dim" : "triad" })}>{rn}</Seg>;
+                  })}</Track>
+                </Row>
+                <Row label="Numbers from">
+                  <Track>
+                    <Seg active={diaLabel === "key"} onClick={() => update({ diaLabel: "key" })}>Key</Seg>
+                    <Seg active={diaLabel === "chord"} onClick={() => update({ diaLabel: "chord" })}>Chord</Seg>
+                  </Track>
+                </Row>
               </React.Fragment>
             ) : (
-              <React.Fragment>
-                <div className="flex flex-wrap gap-1 items-center">
-                  <span className="text-xs text-slate-500 mr-1" style={{ width: 60 }}>Triads · 7ths</span>
-                  {ARP_QUAL[tonality].core.map(([k,l]) => <Seg key={k} active={arp === k} onClick={() => update({ arp: k })} color="#f97316">{l}</Seg>)}
-                </div>
-                {ARP_QUAL[tonality].extra.length > 0 && (
-                  <div className="flex flex-wrap gap-1 items-center">
-                    <span className="text-xs text-slate-500 mr-1" style={{ width: 60 }}>Extensions</span>
-                    {ARP_QUAL[tonality].extra.map(([k,l]) => <Seg key={k} active={arp === k} onClick={() => update({ arp: k })} color="#f97316">{l}</Seg>)}
-                  </div>
-                )}
-              </React.Fragment>
+              ARP_QUAL[tonality].map(([group, qs]) => (
+                <Row key={group} label={group}>
+                  <Track>{qs.map(([k,l]) => <Seg key={k} active={arp === k} onClick={() => update({ arp: k })}>{l}</Seg>)}</Track>
+                </Row>
+              ))
             )}
           </div>
         )}
         {scope === "scale" && (
-          <div className="flex flex-wrap gap-1 mb-3 items-center">
-            <span className="text-xs text-slate-500 mr-1" style={{ width: 60 }}>Mode</span>
-            {MODES[tonality].map(([k,l]) => <Seg key={k} active={mode === k} onClick={() => update({ mode: k })} color="#22c55e">{l}</Seg>)}
-          </div>
+          <Row label="Scale" className="mb-3">
+            <Track>{MODES[tonality].map(([k,l]) => <Seg key={k} active={mode === k} onClick={() => update({ mode: k })}>{l}</Seg>)}</Track>
+          </Row>
         )}
       </div>
 
-      <div className={fit ? "rounded-xl pb-2" : "overflow-x-auto pb-2 rounded-xl"} style={{ background: "linear-gradient(#16202e,#0b121d)", border: "1px solid #243044" }}>
+      <div className={fit ? "rounded-xl pb-2" : "overflow-x-auto pb-2 rounded-xl"} style={{ background: THEME.panel2 }}>
         <div className="grid p-3" style={{ gridTemplateColumns: COLS, width: fit ? "100%" : undefined, minWidth: fit ? undefined : "fit-content" }}>
           {[0,1,2,3,4,5].map(renderRow)}
           <div />
+          {/* Fret numbers: muted; marker frets bold in text. The marker-dot row is gone (DS-07). */}
           {Array.from({ length: FRETS + 1 }, (_, f) => (
-            <div key={"m" + f} className="flex items-center justify-center gap-1" style={{ height: 18 }}>
-              {MARKERS[f] >= 1 && <div className="rounded-full" style={{ width: 7, height: 7, background: "#3f4f66" }} />}
-              {MARKERS[f] === 2 && <div className="rounded-full" style={{ width: 7, height: 7, background: "#3f4f66" }} />}
-            </div>
-          ))}
-          <div />
-          {Array.from({ length: FRETS + 1 }, (_, f) => (
-            <div key={"n" + f} className="flex items-center justify-center text-xs" style={{ color: MARKERS[f] ? "#94a3b8" : "#475569", fontWeight: MARKERS[f] ? 700 : 400 }}>{f}</div>
+            <div key={"n" + f} className="flex items-center justify-center text-xs" style={{ height: 24, color: MARKERS[f] ? THEME.text : THEME.muted, fontWeight: MARKERS[f] ? 700 : 400 }}>{f}</div>
           ))}
         </div>
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-1.5 mb-2 items-center">
-        <span className="text-xs text-slate-500 mr-1">Positions</span>
-        <Seg active={pos === null} onClick={() => update({ pos: null })}>Off</Seg>
-        {posList.map((p) => <Seg key={p.num} active={pos === p.num} onClick={() => update({ pos: p.num })} color={POS_COLOR[p.letter]} dark={POS_DARKTEXT.has(p.letter)}>{p.num} {p.letter}</Seg>)}
-        <Seg active={interlock} onClick={() => update({ pos: "all" })} color="#a855f7">Interlock</Seg>
-      </div>
+      <Row label="Position" className="mt-3 mb-2">
+        <Track>
+          <Seg active={pos === null} onClick={() => update({ pos: null })}>Off</Seg>
+          {posList.map((p) => <Seg key={p.num} active={pos === p.num} onClick={() => update({ pos: p.num })} pos={POS_COLOR[p.letter]}>{p.num} {p.letter}</Seg>)}
+          <Seg active={interlock} onClick={() => update({ pos: "all" })}>All</Seg>
+        </Track>
+      </Row>
 
-      <div className="flex flex-wrap gap-1.5 mb-2 items-center">
-        <span className="text-xs text-slate-500 mr-1">Strings</span>
-        <Seg active={strGroup === null} onClick={() => update({ strGroup: null })} color="#14b8a6">All</Seg>
-        {[[0,"1–3 · e B G"],[1,"2–4 · B G D"],[2,"3–5 · G D A"],[3,"4–6 · D A E"]].map(([g,l]) => (
-          <Seg key={g} active={strGroup === g} onClick={() => update({ strGroup: g })} color="#14b8a6">{l}</Seg>
-        ))}
-      </div>
+      <Row label="Strings" className="mb-2">
+        <Track>
+          <Seg active={strGroup === null} onClick={() => update({ strGroup: null })}>All</Seg>
+          {[[0,"1–3"],[1,"2–4"],[2,"3–5"],[3,"4–6"]].map(([g,l]) => (
+            <Seg key={g} active={strGroup === g} onClick={() => update({ strGroup: g })}>{l}</Seg>
+          ))}
+        </Track>
+      </Row>
 
       {interlock ? (
-        <div className="mt-3 flex flex-wrap gap-1.5 items-center">
-          <span className="text-xs text-slate-500 mr-1">Boxes</span>
-          {posList.slice().sort((a,b) => a.num - b.num).map((p) => (
-            <div key={p.num} className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-semibold" style={{ background: "#16202e", border: "1px solid #27364a" }}>
-              <span className="rounded-full" style={{ width: 12, height: 12, background: POS_COLOR[p.letter] }} />
-              <span style={{ color: "#e2e8f0" }}>{p.num} · {p.letter}</span>
-            </div>
-          ))}
-          <span className="text-xs text-slate-600 ml-1">Two-tone notes are shared by both neighbouring boxes.</span>
-        </div>
+        <Row className="mt-3">
+          <div className="flex flex-wrap gap-2 items-center" style={{ minHeight: 34 }}>
+            {posList.slice().sort((a,b) => a.num - b.num).map((p) => (
+              <div key={p.num} className="flex items-center gap-2 px-2 py-1 rounded-lg text-xs font-semibold" style={{ background: THEME.track }}>
+                <span className="rounded-full" style={{ width: 12, height: 12, background: POS_COLOR[p.letter] }} />
+                <span className="text-body">{p.num} {p.letter}</span>
+              </div>
+            ))}
+          </div>
+        </Row>
       ) : (
-        <React.Fragment>
-          <div className="mt-3 flex flex-wrap gap-1.5 items-center">
+        <Row label="Focus" className="mt-3">
+          <div className="flex flex-wrap gap-2 items-center" style={{ minHeight: 34 }}>
             {degrees.map((iv) => {
               const focused = focusSet.has(iv);
               const ct = ctSet.has(iv);
               const off = !litSet.has(iv);
+              const quiet = anyFocus && !focused;
               return (
-                <button key={iv} disabled={off} aria-disabled={off} onClick={() => update({ focus: toggle(activeFocus, iv) })} className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs" style={{ border: `1px solid ${focused ? dotColorNormal(iv) : "#27364a"}`, background: !anyFocus || focused ? "#16202e" : "#0d1626", opacity: !off && (!anyFocus || focused) ? 1 : 0.5, cursor: off ? "default" : "pointer", fontWeight: ct ? 800 : 500 }}>
-                  <span className="rounded-full" style={{ width: 12, height: 12, background: dotColorNormal(iv), boxShadow: iv === 0 ? "0 0 0 1.5px #fde047" : "none" }} />
-                  <span style={{ color: "#e2e8f0" }}>{degLabel((root + iv) % 12, iv)}</span>
-                  <span className="text-slate-500">{noteName((root + iv) % 12, root)}</span>
+                <button key={iv} disabled={off} aria-disabled={off} onClick={() => update({ focus: toggle(activeFocus, iv) })} className="flex items-center gap-2 px-2 rounded-lg text-xs" style={{ height: 30, border: `1px solid ${focused ? "transparent" : THEME.edge}`, background: focused ? THEME.ctlHover : quiet ? "transparent" : THEME.ctl, boxShadow: focused ? `0 0 0 1.5px ${THEME.text}` : "none", opacity: off ? 0.5 : 1, cursor: off ? "default" : "pointer", fontWeight: ct ? 800 : 500 }}>
+                  <span className="rounded-full" style={{ width: 12, height: 12, background: dotColorNormal(iv), boxShadow: iv === 0 ? `0 0 0 1.5px ${THEME.text}` : "none" }} />
+                  <span className="text-body">{degLabel((root + iv) % 12, iv)}</span>
+                  <span className="text-muted">{noteName((root + iv) % 12, root)}</span>
                 </button>
               );
             })}
-            {anyFocus && <button onClick={() => update({ focus: [] })} className="ml-1 text-xs text-amber-400 underline">clear focus</button>}
+            {anyFocus && <button onClick={() => update({ focus: [] })} className="text-xs text-link underline" style={{ minHeight: 30, padding: "0 4px" }}>Clear</button>}
           </div>
-          <p className="mt-1.5 text-xs text-slate-600">Tap a chip or note to <b className="text-slate-500">focus</b> degrees (dims the rest). Chord tones are bold; the root is circled.</p>
-        </React.Fragment>
+        </Row>
       )}
     </div>
   );
 }
 
 function InfoTab() {
-  const H = ({ children }) => <h3 className="text-sm font-bold" style={{ color: THEME.amber, margin: "14px 0 4px" }}>{children}</h3>;
-  const P = ({ children }) => <p className="text-sm" style={{ color: "#cbd5e1", margin: "0 0 6px", lineHeight: 1.5 }}>{children}</p>;
+  const H = ({ children }) => <h3 className="text-sm font-bold text-body" style={{ margin: "16px 0 4px" }}>{children}</h3>;
+  const P = ({ children }) => <p className="text-sm text-body" style={{ margin: "0 0 8px", lineHeight: 1.5 }}>{children}</p>;
+  // Written from the v0.22 build (CP-01, CP-04): thing-first, no second person.
   return (
-    <div className="p-3 rounded-lg" style={{ background: THEME.panel, border: `1px solid ${THEME.border}`, maxWidth: 760 }}>
-      <P>Fretboard Trainer maps scales, arpeggios and CAGED positions across a standard-tuned (EADGBE) neck, frets 0–15. Every note is labelled relative to the selected root, so you see each shape as degrees rather than fret numbers.</P>
-      <H>Trainer tab</H>
-      <P><b>Key and Tonality.</b> Pick any of the 12 roots, then major or minor. Flat keys spell with flats.</P>
-      <P><b>Layer.</b> Arpeggio shows chord tones only. Pent is the major or minor pentatonic. Blues adds the blue note (♭3 in major, ♭5 in minor). Scale is the full mode. Pent blend overlays major and minor pentatonic (R 2 ♭3 3 4 5 6 ♭7).</P>
-      <P><b>Arpeggio · Diatonic.</b> Walk I–vii° (or i–vii° in minor) of the current key. Key-relative numbering labels every note by its degree in the key. Chord-relative labels it against the chord's own root.</P>
-      <P><b>Arpeggio · Chord Quality.</b> Any quality on the current root: triad, 7ths, sus, add-tones, aug, dim, m7♭5, dim7.</P>
-      <P><b>Scale modes.</b> Major: Ionian, Lydian, Mixolydian. Minor: Aeolian, Dorian, Phrygian, harmonic and melodic minor.</P>
-      <P><b>Positions.</b> The five CAGED boxes, numbered 1·C 2·A 3·G 4·E 5·D. Selecting one dims everything outside it. Interlock colours all five at once; notes shared by two neighbouring boxes are split two-tone.</P>
-      <P><b>Strings.</b> Restricts the view to a three-string group (1–3 through 4–6).</P>
-      <P><b>Focus.</b> Tap any note or degree chip to dim every other degree; tap more to add them. Chord tones are bold; the root is gold and ringed. Focus is off in Interlock.</P>
-      <P><b>Quick start.</b> One-tap setups: the interlocking boxes, chord tones isolated inside the scale, the ♭7 on a dom7, and the diatonic walk.</P>
-      <H>Display tab</H>
-      <P><b>Labels.</b> Degrees, note names, or plain dots.</P>
-      <P><b>View.</b> Scroll keeps full-size frets and scrolls sideways. Fit squeezes the whole neck into the screen width.</P>
-      <P><b>Isolate chord tones.</b> Dims everything except R, ♭3/3, ♭5/5 and ♭7/7. <b>Show chromatic</b> adds faint markers for the notes outside the current layer.</P>
-      <H>Reference tab</H>
-      <P>The current key's diatonic chords with names and Nashville numbers, plus the seven modes with their degree formulas.</P>
+    <div className="p-3 rounded-lg" style={{ background: THEME.panel, maxWidth: 760 }}>
+      <P>Scales, chords and the five CAGED positions on a standard-tuned (EADGBE) neck, frets 0–15.</P>
+      <H>Trainer</H>
+      <P><b>Key.</b> The 12 roots with Major or Minor. Note names follow the key signature; notes outside the key are spelled from the chord or scale formula (C dim7: C Eb Gb Bbb).</P>
+      <P><b>Show.</b> Chord: the chord tones only. Pentatonic: the major or minor pentatonic. Blues: the pentatonic with the blue note (♭3 in major, ♭5 in minor). Scale: seven-note scales. Major and minor: both pentatonics together (1 2 ♭3 3 4 5 6 ♭7).</P>
+      <P><b>Chord → In key.</b> The seven chords of the key: I ii iii IV V vi vii° in major; i ii° III iv v VI ♭VII in minor (natural minor). Numbers count from the key or from the chord. Key numbers in a minor key are 1 2 ♭3 4 5 ♭6 ♭7.</P>
+      <P><b>Chord → Any chord.</b> Triads, sevenths and added-note chords on the current chord root. The list follows whether that chord is major or minor.</P>
+      <P><b>Scale.</b> Major keys: Ionian, Lydian, Mixolydian. Minor keys: Aeolian, Dorian, Phrygian, harmonic minor, melodic minor.</P>
+      <P><b>Position.</b> The five CAGED positions, 1 C to 5 D. One position dims the notes outside it. All shows the five together; a note shared by two neighbouring positions is split two-tone. In All, dots cannot be tapped and Focus and Notes: Chord tones are unavailable.</P>
+      <P><b>Strings.</b> Limits the board to one three-string set, 1–3 to 4–6.</P>
+      <P><b>Focus.</b> A tap on a dot or a Focus chip keeps that degree and dims the rest. More taps add degrees; a second tap releases one; Clear releases all. A degree that cannot be lit under the current position, strings or Notes setting is unavailable.</P>
+      <P><b>Dots.</b> Chord tones are larger and bold. The root is ringed: gold with no position, the position colour in a position or in All.</P>
+      <P><b>Quick start.</b> Four set-ups: all five positions, chord tones in the scale, the ♭7 of a dominant 7th, and chords in the key. Each also sets the Display options.</P>
+      <H>Display</H>
+      <P><b>Labels.</b> Degrees, note names or none.</P>
+      <P><b>View.</b> Scroll keeps full-size frets and scrolls sideways. Fit narrows the frets.</P>
+      <P><b>Notes.</b> Chord tones dims every other note. In Chord, every tone of the chord counts; in Scale, its 1, 3, 5 and 7; in Pentatonic, Blues and Major and minor, the 1, 3, 5 and 7 of the key's scale where present.</P>
+      <P><b>Other notes.</b> Shown adds faint markers for the notes outside the current set.</P>
+      <H>Reference</H>
+      <P>Not built yet.</P>
+      <p className="text-xs text-muted" style={{ margin: "16px 0 0" }}>Fretboard Trainer {VERSION}</p>
     </div>
   );
 }
@@ -488,62 +504,56 @@ function FretboardTrainer() {
   };
 
   return (
-    <div className="w-full rounded-2xl" style={{ background: THEME.bg, color: THEME.text, overflow: "hidden" }}>
-      <div style={{ height: 4, background: THEME.rust }} />
+    <div className="w-full" style={{ background: THEME.bg, color: THEME.text }}>
       <div className="p-4">
-      <div className="mb-3">
-        <div className="flex items-center gap-2">
-          <h1 className="text-xl font-bold text-white" style={{ margin: 0 }}>Fretboard Trainer</h1>
-          <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: "#7c2d12", color: "#fdba74", letterSpacing: ".04em" }}>{VERSION} · BETA — in testing</span>
-        </div>
-        <p className="text-sm text-slate-400" style={{ margin: "4px 0 0" }}>Standard tuning · diatonic chords, positions, interlock.</p>
-      </div>
+      {/* Plain text title (decision 15 = a); the rust bar, badge and subtitle are gone (BR-01, BR-08, CP-02). */}
+      <h1 className="text-xl font-bold text-body" style={{ margin: "0 0 12px" }}>Fretboard Trainer</h1>
 
-      <div className="flex gap-1 mb-4" role="tablist" style={{ borderBottom: `1px solid ${THEME.border}` }}>
-        {TABS.map(([k,l]) => {
-          const on = tab === k;
-          return (
-            <button key={k} role="tab" aria-selected={on} onClick={() => setTab(k)} className="text-sm transition-colors"
-              style={{ padding: "6px 14px", marginBottom: -1, borderRadius: "6px 6px 0 0", background: on ? THEME.amber : "transparent", color: on ? THEME.amberText : THEME.muted, fontWeight: on ? 700 : 500, border: `1px solid ${on ? THEME.amber : "transparent"}` }}>
-              {l}
-            </button>
-          );
-        })}
+      <div className="mb-4" role="tablist">
+        <Track>
+          {TABS.map(([k,l]) => <Seg key={k} role="tab" aria-selected={tab === k} active={tab === k} onClick={() => setTab(k)}>{l}</Seg>)}
+        </Track>
       </div>
 
       {tab === "trainer" && (<React.Fragment>
-      <div className="flex flex-wrap gap-1 mb-3 items-center p-2 rounded-lg" style={{ background: "#0d1626", border: "1px solid #1c2940" }}>
-        <span className="text-xs text-slate-500 mr-1">Quick start</span>
-        <Seg onClick={() => applyPreset("interlock")} color="#a855f7">See the 5 boxes interlock</Seg>
-        <Seg onClick={() => applyPreset("chordtones")} color="#3b82f6">Isolate the chord tones</Seg>
-        <Seg onClick={() => applyPreset("dom7")} color="#f97316">Target the ♭7 on a dom7</Seg>
-        <Seg onClick={() => applyPreset("walk")} color="#8b5cf6">Walk the diatonic chords</Seg>
+      <div className="flex flex-wrap gap-2 mb-3 items-center p-2 rounded-lg" style={{ background: THEME.panel }}>
+        <span className="text-xs text-muted mr-1">Quick start</span>
+        <Btn onClick={() => applyPreset("interlock")}>All five positions</Btn>
+        <Btn onClick={() => applyPreset("chordtones")}>Chord tones in the scale</Btn>
+        <Btn onClick={() => applyPreset("dom7")}>♭7 of a dominant 7th</Btn>
+        <Btn onClick={() => applyPreset("walk")}>Chords in the key</Btn>
       </div>
 
       <Board cfg={cfg} update={up} globals={globals} />
-
-      <p className="mt-3 text-xs text-slate-600" style={{ borderTop: `1px solid ${THEME.border}`, paddingTop: "10px" }}>
-        Select the Arpeggio layer, then walk the diatonic chords (I–vii°) to see chord movement across the neck without the controls shifting. Positions are C·A·G·E·D = 1–5; Interlock shows all five with shared notes split two-tone. {VERSION} · testing build.
-      </p>
       </React.Fragment>)}
 
       {tab === "display" && (
-      <div className="flex flex-col gap-1.5 p-2 rounded-lg" style={{ background: THEME.panel, border: `1px solid ${THEME.border}` }}>
-        <div className="flex gap-1 items-center flex-wrap"><span className="text-xs text-slate-500 mr-1" style={{ width: 76 }}>Labels</span>
-          {[["degree","Degree"],["name","Notes"],["none","Dots"]].map(([k,l]) => <Seg key={k} active={labelMode === k} onClick={() => setLabelMode(k)}>{l}</Seg>)}
-        </div>
-        <div className="flex gap-1 items-center flex-wrap"><span className="text-xs text-slate-500 mr-1" style={{ width: 76 }}>View</span>
-          {[["scroll","Scroll"],["fit","Fit"]].map(([k,l]) => <Seg key={k} active={view === k} onClick={() => setView(k)} color="#22c55e">{l}</Seg>)}
-        </div>
-        <div className="flex gap-1 items-center flex-wrap"><span className="text-xs text-slate-500 mr-1" style={{ width: 76 }}>Overlay</span>
-          <Seg active={isolate && cfg.pos !== "all"} disabled={cfg.pos === "all"} onClick={() => setIsolate(!isolate)} color="#3b82f6">Isolate chord tones</Seg>
-          <Seg active={ghost} onClick={() => setGhost(!ghost)} color="#475569">Show chromatic</Seg>
-        </div>
+      <div className="flex flex-col gap-2 p-2 rounded-lg" style={{ background: THEME.panel }}>
+        <Row label="Labels">
+          <Track>{[["degree","Degrees"],["name","Notes"],["none","None"]].map(([k,l]) => <Seg key={k} active={labelMode === k} onClick={() => setLabelMode(k)}>{l}</Seg>)}</Track>
+        </Row>
+        <Row label="View">
+          <Track>{[["scroll","Scroll"],["fit","Fit"]].map(([k,l]) => <Seg key={k} active={view === k} onClick={() => setView(k)}>{l}</Seg>)}</Track>
+        </Row>
+        {/* Was the Isolate chord tones toggle: same state, unavailable in All (Interlock). */}
+        <Row label="Notes">
+          <Track>
+            <Seg active={!isolate || cfg.pos === "all"} disabled={cfg.pos === "all"} onClick={() => setIsolate(false)}>All</Seg>
+            <Seg active={isolate && cfg.pos !== "all"} disabled={cfg.pos === "all"} onClick={() => setIsolate(true)}>Chord tones</Seg>
+          </Track>
+        </Row>
+        {/* Was the Show chromatic toggle. */}
+        <Row label="Other notes">
+          <Track>
+            <Seg active={!ghost} onClick={() => setGhost(false)}>Hidden</Seg>
+            <Seg active={ghost} onClick={() => setGhost(true)}>Shown</Seg>
+          </Track>
+        </Row>
       </div>
       )}
 
       {tab === "reference" && (
-        <p className="text-sm text-slate-500">Reference tab: diatonic-chord and modal breakdown, coming next.</p>
+        <p className="text-sm text-muted">Reference: not built yet.</p>
       )}
 
       {tab === "info" && <InfoTab />}
