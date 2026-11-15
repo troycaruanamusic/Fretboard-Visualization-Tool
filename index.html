@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
   ============================================================
-  FRETBOARD TRAINER — v0.12 (BETA · IN TESTING)
+  FRETBOARD TRAINER — v0.21 (BETA · IN TESTING) · version lives in VERSION below
   Standalone single-file build. Drag to Netlify to deploy.
   ============================================================
 -->
@@ -9,7 +9,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Fretboard Trainer · v0.20 (BETA — in testing)</title>
+<title>Fretboard Trainer · v0.21 (BETA — in testing)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
@@ -52,8 +52,9 @@
 <body>
 <div id="root"></div>
 <script type="text/babel" data-presets="react">
-const { useState, useMemo } = React;
-const VERSION = "v0.12";
+const { useState, useMemo, useEffect } = React;
+const VERSION = "v0.21";
+document.title = `Fretboard Trainer · ${VERSION} (BETA — in testing)`;
 
 // Shell palette — PLACEHOLDERS until the NNS hexes are supplied.
 const THEME = { bg:"#070b16", panel:"#0d1626", border:"#1c2940", text:"#e2e8f0", muted:"#64748b", amber:"#fbbf24", amberText:"#3a2c00", rust:"#c2410c" };
@@ -61,7 +62,13 @@ const TABS = [["trainer","Trainer"],["display","Display"],["reference","Referenc
 
 const NOTES_SHARP = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
 const NOTES_FLAT  = ["C","Db","D","Eb","E","F","Gb","G","Ab","A","Bb","B"];
-const FLAT_ROOTS = new Set([5,10,3,8,1]);
+// Key names per tonality; minor keys use the common spellings (C♯, G♯ minor rather than D♭, A♭ minor).
+const KEY_NAME = {
+  major: ["C","Db","D","Eb","E","F","F#","G","Ab","A","Bb","B"],
+  minor: ["C","C#","D","Eb","E","F","F#","G","G#","A","Bb","B"],
+};
+const LETTERS = ["C","D","E","F","G","A","B"];
+const LETTER_PC = [0,2,4,5,7,9,11];
 const OPEN = [4,11,7,2,9,4];
 const STRING_LABELS = ["e","B","G","D","A","E"];
 const STRING_GAUGE = [1.2,1.6,2.1,2.6,3.2,3.8];
@@ -69,12 +76,9 @@ const FRETS = 15;
 const MARKERS = {3:1,5:1,7:1,9:1,12:2,15:1};
 
 const DEG_LABEL = {0:"R",1:"♭2",2:"2",3:"♭3",4:"3",5:"4",6:"♭5",7:"5",8:"♭6",9:"6",10:"♭7",11:"7"};
-const DEG_COLOR = {0:"#ec4899",1:"#475569",2:"#64748b",3:"#a78bfa",4:"#8b5cf6",5:"#52617a",6:"#0d9488",7:"#14b8a6",8:"#64748b",9:"#7c8aa0",10:"#06b6d4",11:"#0e7490"};
-const NEUTRAL = "#64748b";
 const MONO_GREY = "#5b6679";
-const CHORD_TONES = new Set([0,3,4,6,7,10,11]);
-const PENT_MAJ = new Set([0,2,4,7,9]);
-const PENT_MIN = new Set([0,3,5,7,10]);
+// Degrees the formula names differently from the semitone default (TH-05). Keys: scale mode or chord quality.
+const DEG_OVERRIDE = { lydian: {6:"♯4"}, aug: {8:"♯5"}, aug7: {8:"♯5"}, dim7: {9:"°7"} };
 
 const ARP_QUAL = {
   major: {
@@ -89,12 +93,12 @@ const ARP_QUAL = {
 
 const DIATONIC = {
   major: [["I",0,"maj"],["ii",2,"min"],["iii",4,"min"],["IV",5,"maj"],["V",7,"maj"],["vi",9,"min"],["vii°",11,"dim"]],
-  minor: [["i",0,"min"],["ii°",2,"dim"],["III",3,"maj"],["iv",5,"min"],["v",7,"min"],["VI",8,"maj"],["vii°",11,"dim"]],
+  minor: [["i",0,"min"],["ii°",2,"dim"],["III",3,"maj"],["iv",5,"min"],["v",7,"min"],["VI",8,"maj"],["♭VII",10,"maj"]],
 };
 
 const KEY_DEG = {
   major: { 0: "1", 2: "2", 4: "3", 5: "4", 7: "5", 9: "6", 11: "7" },
-  minor: { 0: "1", 2: "2", 3: "3", 5: "4", 7: "5", 8: "6", 10: "7" },
+  minor: { 0: "1", 2: "2", 3: "♭3", 5: "4", 7: "5", 8: "♭6", 10: "♭7" },
 };
 
 const MODES = {
@@ -122,7 +126,6 @@ function scopeIntervals(t, scope, arp, mode) {
     if (arp === "dim7") return [0,3,6,9];
     if (arp === "aug") return [0,4,8];
     if (arp === "aug7") return [0,4,8,10];
-    if (arp === "6") return [0,4,7,9];
     if (arp === "add9") return [0,4,7,2];
     if (arp === "add11") return [0,4,7,5];
     if (arp === "add13") return [0,4,7,9];
@@ -139,35 +142,78 @@ function scopeIntervals(t, scope, arp, mode) {
   if (scope === "scale") return MODE_IV[mode] || (t === "major" ? [0,2,4,5,7,9,11] : [0,2,3,5,7,8,10]);
   return [0,2,3,4,5,7,9,10];
 }
-const triadOf = (t) => (t === "major" ? new Set([0,4,7]) : new Set([0,3,7]));
 const toggle = (arr, v) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
-const noteName = (pc, rootPC) => (FLAT_ROOTS.has(rootPC) ? NOTES_FLAT : NOTES_SHARP)[pc];
+// Letter index li (0 = C, wraps) plus the accidental that reaches pitch class pc.
+const spellAt = (li, pc) => {
+  const l = ((li % 7) + 7) % 7;
+  let d = (((pc - LETTER_PC[l]) % 12) + 12) % 12;
+  if (d > 6) d -= 12;
+  return LETTERS[l] + (d > 0 ? "#".repeat(d) : "b".repeat(-d));
+};
+// The seven notes of the key (Ionian or Aeolian), spelled from the key signature (TH-01).
+function keySpelling(keyRoot, keyMode) {
+  const li = LETTERS.indexOf(KEY_NAME[keyMode][keyRoot][0]);
+  const map = {};
+  MODE_IV[keyMode === "major" ? "ionian" : "aeolian"].forEach((s, k) => {
+    const pc = (keyRoot + s) % 12;
+    map[pc] = { name: spellAt(li + k, pc), letter: li + k };
+  });
+  return map;
+}
 
-function Seg({ active, onClick, children, color = "#3b82f6", dark = false }) {
+function Seg({ active, onClick, children, color = "#3b82f6", dark = false, disabled = false }) {
   return (
-    <button onClick={onClick} className="px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors"
-      style={{ backgroundColor: active ? color : "#16202e", color: active ? (dark ? "#3a2c00" : "#0a0f1c") : "#94a3b8", border: `1px solid ${active ? color : "#27364a"}`, fontWeight: active ? 700 : 500 }}>
+    <button onClick={onClick} disabled={disabled} aria-disabled={disabled} className="px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors"
+      style={{ opacity: disabled ? 0.5 : 1, cursor: disabled ? "default" : "pointer", backgroundColor: active ? color : "#16202e", color: active ? (dark ? "#3a2c00" : "#0a0f1c") : "#94a3b8", border: `1px solid ${active ? color : "#27364a"}`, fontWeight: active ? 700 : 500 }}>
       {children}
     </button>
   );
 }
 
 function Board({ cfg, update, globals }) {
-  const { root, tonality, scope, arp, pos, focus, keyRoot, keyMode, arpMode, diaLabel, strGroup, mode } = cfg;
+  const { scope, arp, pos, focus, keyRoot, keyMode, arpMode, diaLabel, strGroup, mode } = cfg;
   const { labelMode, isolate, ghost, view } = globals;
+  // Only the Arpeggio layer reads the chord root and quality; every other layer uses the key (UX-10).
+  const root = scope === "arpeggio" ? cfg.root : keyRoot;
+  const tonality = scope === "arpeggio" ? cfg.tonality : keyMode;
+  // Quality kept on a key or layer change: a chosen Chord Quality if the key's list has it, else the tonic triad (UX-10, UX-11).
+  const keyArp = (km) => (arpMode === "quality" && [...ARP_QUAL[km].core, ...ARP_QUAL[km].extra].some(([k]) => k === arp) ? arp : "triad");
   const scopeSet = useMemo(() => new Set(scopeIntervals(tonality, scope, arp, mode)), [tonality, scope, arp, mode]);
-  const triad = useMemo(() => triadOf(tonality), [tonality]);
-  const focusSet = new Set(focus);
-  const anyFocus = focus.length > 0;
+  // Chord tones: every tone of the chord; in a scale layer, its 1, 3, 5 and 7 (TH-04).
+  const ctSet = useMemo(() => {
+    if (scope === "arpeggio") return scopeSet;
+    const par = scope === "scale" ? scopeIntervals(tonality, scope, arp, mode) : MODE_IV[tonality === "major" ? "ionian" : "aeolian"];
+    return new Set([par[0], par[2], par[4], par[6]].filter((iv) => scopeSet.has(iv)));
+  }, [scope, scopeSet, tonality, arp, mode]);
   const posList = tonality === "major" ? POS_MAJOR : POS_MINOR;
   const interlock = pos === "all";
   const activePos = typeof pos === "number" ? posList.find((p) => p.num === pos) : null;
-  const isAug = scope === "arpeggio" && (arp === "aug" || arp === "aug7");
+  // Focus keeps only degrees that can be lit in the current position, strings and Isolate; one that leaves is dropped (UX-13). Interlock ignores focus (UX-14).
+  const litSet = new Set();
+  for (let s = 0; s < 6; s++) for (let f = 0; f <= FRETS; f++) {
+    const iv = (((OPEN[s] + f - root) % 12) + 12) % 12;
+    if (scopeSet.has(iv) && (interlock || !isolate || ctSet.has(iv)) && (strGroup === null || (s >= strGroup && s <= strGroup + 2)) && (!activePos || inPos(f, activePos))) litSet.add(iv);
+  }
+  const activeFocus = interlock ? [] : focus.filter((iv) => litSet.has(iv));
+  useEffect(() => { if (!interlock && activeFocus.length !== focus.length) update({ focus: activeFocus }); });
+  const focusSet = new Set(activeFocus);
+  const anyFocus = activeFocus.length > 0;
+  // Degree names follow the scale or chord formula (TH-05); note names follow the key signature (TH-01).
+  const degKey = scope === "scale" ? mode : scope === "arpeggio" ? arp : scope;
+  const fdeg = (iv) => (DEG_OVERRIDE[degKey] && DEG_OVERRIDE[degKey][iv]) || DEG_LABEL[iv];
+  const keySp = useMemo(() => keySpelling(keyRoot, keyMode), [keyRoot, keyMode]);
+  const rootLetter = keySp[root] ? keySp[root].letter : LETTERS.indexOf(NOTES_FLAT[root][0]);
+  const noteName = (pc) => {
+    const iv = (((pc - root) % 12) + 12) % 12;
+    if (!scopeSet.has(iv) && keySp[pc]) return keySp[pc].name;
+    const d = /(\d)$/.exec(scopeSet.has(iv) ? fdeg(iv) : DEG_LABEL[iv]);
+    return spellAt(rootLetter + (d ? +d[1] : 1) - 1, pc);
+  };
 
-  const inPos = (f, p) => {
+  function inPos(f, p) {
     const base = (((root - 4 + p.off) % 12) + 12) % 12;
     return ((((f - base) % 12) + 12) % 12) <= p.w;
-  };
+  }
   const phase = (f, p) => { const b = (((root - 4 + p.off) % 12) + 12) % 12; return ((((f - b) % 12) + 12) % 12); };
 
   const fit = view === "fit";
@@ -183,10 +229,9 @@ function Board({ cfg, update, globals }) {
   const degLabel = (pc, iv) => {
     if (keyRel) {
       const ki = (((pc - keyRoot) % 12) + 12) % 12;
-      return KEY_DEG[keyMode][ki] || DEG_LABEL[iv];
+      return KEY_DEG[keyMode][ki] || (ki === 0 ? "1" : DEG_LABEL[ki]);
     }
-    if (iv === 8 && isAug) return "♯5";
-    return DEG_LABEL[iv];
+    return fdeg(iv);
   };
   const labelOf = (pc, iv) => {
     if (labelMode === "name") return noteName(pc, root);
@@ -201,13 +246,13 @@ function Board({ cfg, update, globals }) {
       const iv = ((pc - root) % 12 + 12) % 12;
       const inScope = scopeSet.has(iv);
       const isRoot = iv === 0;
-      const isCT = CHORD_TONES.has(iv);
+      const isCT = ctSet.has(iv);
       let dim = false;
       if (strGroup !== null && (s < strGroup || s > strGroup + 2)) dim = true;
       if (!interlock) {
         if (activePos && !inPos(f, activePos)) dim = true;
         if (anyFocus && !focusSet.has(iv)) dim = true;
-        if (isolate && !CHORD_TONES.has(iv)) dim = true;
+        if (isolate && !ctSet.has(iv)) dim = true;
       }
       let bg, splitB = null;
       if (interlock) {
@@ -231,11 +276,11 @@ function Board({ cfg, update, globals }) {
         <div key={f} className="relative flex items-center justify-center" style={{ height: cellH, borderRight: f === 0 ? "5px solid #cbd5e1" : "2px solid #2a3850", background: f === 0 ? "#0a1322" : undefined }}>
           <div className="absolute left-0 right-0" style={{ top: "50%", transform: "translateY(-50%)", height: STRING_GAUGE[s], background: "#566379" }} />
           {inScope && (isRoot ? (
-            <button onClick={() => update({ focus: toggle(focus, iv) })} className="relative rounded-full flex items-center justify-center transition-all" style={{ width: sz+8, height: sz+8, background: dotBg, opacity: dim ? 0.16 : 1, zIndex: 5, cursor: "pointer" }} title={`${noteName(pc, root)} · ${DEG_LABEL[iv]}`}>
+            <button disabled={interlock} onClick={() => update({ focus: toggle(activeFocus, iv) })} className="relative rounded-full flex items-center justify-center transition-all" style={{ width: sz+8, height: sz+8, background: dotBg, opacity: dim ? 0.16 : 1, zIndex: 5, cursor: interlock ? "default" : "pointer" }} title={`${noteName(pc)} · ${fdeg(iv)}`}>
               <div className="rounded-full flex items-center justify-center" style={{ width: sz, height: sz, background: dotBg, border: "2px solid #070b16", color: txt, fontSize: fontPx, fontWeight: 800 }}>{labelOf(pc, iv)}</div>
             </button>
           ) : (
-            <button onClick={() => update({ focus: toggle(focus, iv) })} className="relative rounded-full flex items-center justify-center transition-all" style={{ width: sz, height: sz, fontSize: fontPx, fontWeight: isCT ? 800 : 550, color: txt, background: dotBg, opacity: dim ? 0.16 : 1, boxShadow: "0 1px 2px rgba(0,0,0,.5)", zIndex: isCT ? 3 : 2, cursor: "pointer" }} title={`${noteName(pc, root)} · ${DEG_LABEL[iv]}`}>{labelOf(pc, iv)}</button>
+            <button disabled={interlock} onClick={() => update({ focus: toggle(activeFocus, iv) })} className="relative rounded-full flex items-center justify-center transition-all" style={{ width: sz, height: sz, fontSize: fontPx, fontWeight: isCT ? 800 : 550, color: txt, background: dotBg, opacity: dim ? 0.16 : 1, boxShadow: "0 1px 2px rgba(0,0,0,.5)", zIndex: isCT ? 3 : 2, cursor: interlock ? "default" : "pointer" }} title={`${noteName(pc)} · ${fdeg(iv)}`}>{labelOf(pc, iv)}</button>
           ))}
           {!inScope && ghost && (
             <div className="absolute rounded-full flex items-center justify-center" style={{ width: fit ? 18 : 23, height: fit ? 18 : 23, background: "#0d1726", border: "1px solid #223149", color: "#62748d", fontSize: fit ? 8 : 9.5, fontWeight: 600, opacity: dim ? 0.16 : 0.9, zIndex: 1 }} title={noteName(pc, root)}>{labelOf(pc, iv)}</div>
@@ -262,7 +307,7 @@ function Board({ cfg, update, globals }) {
       </div>
 
       <div className="flex flex-wrap gap-1 mb-2">
-        {NOTES_SHARP.map((n,i) => <Seg key={i} active={keyRoot === i} onClick={() => update({ root: i, keyRoot: i, tonality: keyMode })} color="#fbbf24" dark>{noteName(i,i)}</Seg>)}
+        {NOTES_SHARP.map((n,i) => <Seg key={i} active={keyRoot === i} onClick={() => update({ root: i, keyRoot: i, tonality: keyMode, arp: keyArp(keyMode) })} color="#fbbf24" dark>{KEY_NAME[keyMode][i]}</Seg>)}
       </div>
 
       <div className="flex flex-wrap gap-1 mb-3 items-center">
@@ -272,7 +317,7 @@ function Board({ cfg, update, globals }) {
 
       <div className="flex flex-wrap gap-1 mb-3 items-center">
         <span className="text-xs text-slate-500 mr-1" style={{ width: 60 }}>Layer</span>
-        {[["arpeggio","Arpeggio"],["pentatonic","Pent"],["blues","Blues"],["scale","Scale"],["blended","Pent blend"]].map(([k,l]) => <Seg key={k} active={scope === k} onClick={() => update({ scope: k })}>{l}</Seg>)}
+        {[["arpeggio","Arpeggio"],["pentatonic","Pent"],["blues","Blues"],["scale","Scale"],["blended","Pent blend"]].map(([k,l]) => <Seg key={k} active={scope === k} onClick={() => update(k === "arpeggio" ? { scope: k } : { scope: k, root: keyRoot, tonality: keyMode, arp: keyArp(keyMode) })}>{l}</Seg>)}
       </div>
 
       <div>
@@ -371,9 +416,10 @@ function Board({ cfg, update, globals }) {
           <div className="mt-3 flex flex-wrap gap-1.5 items-center">
             {degrees.map((iv) => {
               const focused = focusSet.has(iv);
-              const ct = CHORD_TONES.has(iv);
+              const ct = ctSet.has(iv);
+              const off = !litSet.has(iv);
               return (
-                <button key={iv} onClick={() => update({ focus: toggle(focus, iv) })} className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs" style={{ border: `1px solid ${focused ? dotColorNormal(iv) : "#27364a"}`, background: !anyFocus || focused ? "#16202e" : "#0d1626", opacity: !anyFocus || focused ? 1 : 0.5, fontWeight: ct ? 800 : 500 }}>
+                <button key={iv} disabled={off} aria-disabled={off} onClick={() => update({ focus: toggle(activeFocus, iv) })} className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs" style={{ border: `1px solid ${focused ? dotColorNormal(iv) : "#27364a"}`, background: !anyFocus || focused ? "#16202e" : "#0d1626", opacity: !off && (!anyFocus || focused) ? 1 : 0.5, cursor: off ? "default" : "pointer", fontWeight: ct ? 800 : 500 }}>
                   <span className="rounded-full" style={{ width: 12, height: 12, background: dotColorNormal(iv), boxShadow: iv === 0 ? "0 0 0 1.5px #fde047" : "none" }} />
                   <span style={{ color: "#e2e8f0" }}>{degLabel((root + iv) % 12, iv)}</span>
                   <span className="text-slate-500">{noteName((root + iv) % 12, root)}</span>
@@ -490,7 +536,7 @@ function FretboardTrainer() {
           {[["scroll","Scroll"],["fit","Fit"]].map(([k,l]) => <Seg key={k} active={view === k} onClick={() => setView(k)} color="#22c55e">{l}</Seg>)}
         </div>
         <div className="flex gap-1 items-center flex-wrap"><span className="text-xs text-slate-500 mr-1" style={{ width: 76 }}>Overlay</span>
-          <Seg active={isolate} onClick={() => setIsolate(!isolate)} color="#3b82f6">Isolate chord tones</Seg>
+          <Seg active={isolate && cfg.pos !== "all"} disabled={cfg.pos === "all"} onClick={() => setIsolate(!isolate)} color="#3b82f6">Isolate chord tones</Seg>
           <Seg active={ghost} onClick={() => setGhost(!ghost)} color="#475569">Show chromatic</Seg>
         </div>
       </div>
