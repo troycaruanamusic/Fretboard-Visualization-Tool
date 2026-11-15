@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<!--
+  ============================================================
+  FRETBOARD TRAINER — v0.12 (BETA · IN TESTING)
+  Standalone single-file build. Drag to Netlify to deploy.
+  ============================================================
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Fretboard Trainer · v0.20 (BETA — in testing)</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#070b16;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  button{font-family:inherit;cursor:pointer;border:none;background:transparent;padding:0;color:inherit}
+  .w-full{width:100%}
+  .p-4{padding:1rem}.p-3{padding:.75rem}.p-2{padding:.5rem}
+  .pb-2{padding-bottom:.5rem}
+  .px-2{padding-left:.5rem;padding-right:.5rem}
+  .px-2\.5{padding-left:.625rem;padding-right:.625rem}
+  .py-1{padding-top:.25rem;padding-bottom:.25rem}
+  .py-1\.5{padding-top:.375rem;padding-bottom:.375rem}
+  .py-0\.5{padding-top:.125rem;padding-bottom:.125rem}
+  .mb-2{margin-bottom:.5rem}.mb-3{margin-bottom:.75rem}.mb-4{margin-bottom:1rem}
+  .mt-1\.5{margin-top:.375rem}.mt-3{margin-top:.75rem}
+  .ml-1{margin-left:.25rem}
+  .mr-1{margin-right:.25rem}
+  .rounded{border-radius:.25rem}.rounded-md{border-radius:.375rem}.rounded-lg{border-radius:.5rem}
+  .rounded-xl{border-radius:.75rem}.rounded-2xl{border-radius:1rem}.rounded-full{border-radius:9999px}
+  .flex{display:flex}.grid{display:grid}.contents{display:contents}
+  .flex-wrap{flex-wrap:wrap}.flex-col{flex-direction:column}
+  .items-center{align-items:center}.items-end{align-items:flex-end}
+  .justify-center{justify-content:center}
+  .gap-1{gap:.25rem}.gap-1\.5{gap:.375rem}.gap-2{gap:.5rem}.gap-3{gap:.75rem}
+  .relative{position:relative}.absolute{position:absolute}.left-0{left:0}.right-0{right:0}
+  .overflow-x-auto{overflow-x:auto}
+  .text-xs{font-size:.75rem;line-height:1rem}
+  .text-sm{font-size:.875rem;line-height:1.25rem}
+  .text-xl{font-size:1.25rem;line-height:1.75rem}
+  .font-medium{font-weight:500}.font-semibold{font-weight:600}.font-bold{font-weight:700}
+  .underline{text-decoration:underline}
+  .text-white{color:#fff}.text-slate-200{color:#e2e8f0}.text-slate-400{color:#94a3b8}
+  .text-slate-500{color:#64748b}.text-slate-600{color:#475569}.text-amber-400{color:#fbbf24}
+  .transition-colors{transition:background-color .15s,border-color .15s,color .15s}
+  .transition-all{transition:all .15s}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+const { useState, useMemo } = React;
+const VERSION = "v0.12";
+
+// Shell palette — PLACEHOLDERS until the NNS hexes are supplied.
+const THEME = { bg:"#070b16", panel:"#0d1626", border:"#1c2940", text:"#e2e8f0", muted:"#64748b", amber:"#fbbf24", amberText:"#3a2c00", rust:"#c2410c" };
+const TABS = [["trainer","Trainer"],["display","Display"],["reference","Reference"],["info","Info"]];
+
+const NOTES_SHARP = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+const NOTES_FLAT  = ["C","Db","D","Eb","E","F","Gb","G","Ab","A","Bb","B"];
+const FLAT_ROOTS = new Set([5,10,3,8,1]);
+const OPEN = [4,11,7,2,9,4];
+const STRING_LABELS = ["e","B","G","D","A","E"];
+const STRING_GAUGE = [1.2,1.6,2.1,2.6,3.2,3.8];
+const FRETS = 15;
+const MARKERS = {3:1,5:1,7:1,9:1,12:2,15:1};
+
+const DEG_LABEL = {0:"R",1:"♭2",2:"2",3:"♭3",4:"3",5:"4",6:"♭5",7:"5",8:"♭6",9:"6",10:"♭7",11:"7"};
+const DEG_COLOR = {0:"#ec4899",1:"#475569",2:"#64748b",3:"#a78bfa",4:"#8b5cf6",5:"#52617a",6:"#0d9488",7:"#14b8a6",8:"#64748b",9:"#7c8aa0",10:"#06b6d4",11:"#0e7490"};
+const NEUTRAL = "#64748b";
+const MONO_GREY = "#5b6679";
+const CHORD_TONES = new Set([0,3,4,6,7,10,11]);
+const PENT_MAJ = new Set([0,2,4,7,9]);
+const PENT_MIN = new Set([0,3,5,7,10]);
+
+const ARP_QUAL = {
+  major: {
+    core: [["triad","Triad"],["maj7","maj7"],["dom7","7"],["sus2","sus2"],["sus4","sus4"],["7sus4","7sus4"]],
+    extra: [["add9","2·9"],["add11","4·11"],["add13","6·13"],["aug","aug"],["aug7","aug7"],["dim","dim"],["m7b5","m7♭5"],["dim7","dim7"]],
+  },
+  minor: {
+    core: [["triad","Triad"],["min7","m7"],["sus2","sus2"],["sus4","sus4"],["7sus4","7sus4"]],
+    extra: [["madd9","2·9"],["madd11","4·11"],["m6","6·13"],["dim","dim"],["m7b5","m7♭5"],["dim7","dim7"]],
+  },
+};
+
+const DIATONIC = {
+  major: [["I",0,"maj"],["ii",2,"min"],["iii",4,"min"],["IV",5,"maj"],["V",7,"maj"],["vi",9,"min"],["vii°",11,"dim"]],
+  minor: [["i",0,"min"],["ii°",2,"dim"],["III",3,"maj"],["iv",5,"min"],["v",7,"min"],["VI",8,"maj"],["vii°",11,"dim"]],
+};
+
+const KEY_DEG = {
+  major: { 0: "1", 2: "2", 4: "3", 5: "4", 7: "5", 9: "6", 11: "7" },
+  minor: { 0: "1", 2: "2", 3: "3", 5: "4", 7: "5", 8: "6", 10: "7" },
+};
+
+const MODES = {
+  major: [["ionian","Ionian"],["lydian","Lydian"],["mixolydian","Mixolydian"]],
+  minor: [["aeolian","Aeolian"],["dorian","Dorian"],["phrygian","Phrygian"],["harmonic","Harmonic"],["melodic","Melodic"]],
+};
+const MODE_IV = {
+  ionian: [0,2,4,5,7,9,11], lydian: [0,2,4,6,7,9,11], mixolydian: [0,2,4,5,7,9,10],
+  aeolian: [0,2,3,5,7,8,10], dorian: [0,2,3,5,7,9,10], phrygian: [0,1,3,5,7,8,10],
+  harmonic: [0,2,3,5,7,8,11], melodic: [0,2,3,5,7,9,11],
+};
+
+const POS_COLOR = {C:"#ef4444",A:"#f97316",G:"#eab308",E:"#3b82f6",D:"#22c55e"};
+const POS_DARKTEXT = new Set(["G"]);
+const POS_MAJOR = [{num:1,letter:"C",off:4,w:3},{num:2,letter:"A",off:6,w:3},{num:3,letter:"G",off:9,w:3},{num:4,letter:"E",off:-1,w:3},{num:5,letter:"D",off:1,w:4}];
+const POS_MINOR = [{num:1,letter:"C",off:4,w:4},{num:2,letter:"A",off:7,w:3},{num:3,letter:"G",off:9,w:3},{num:4,letter:"E",off:0,w:3},{num:5,letter:"D",off:2,w:3}];
+
+function scopeIntervals(t, scope, arp, mode) {
+  if (scope === "arpeggio") {
+    if (arp === "maj7") return [0,4,7,11];
+    if (arp === "dom7") return [0,4,7,10];
+    if (arp === "min7") return [0,3,7,10];
+    if (arp === "m7b5") return [0,3,6,10];
+    if (arp === "dim") return [0,3,6];
+    if (arp === "dim7") return [0,3,6,9];
+    if (arp === "aug") return [0,4,8];
+    if (arp === "aug7") return [0,4,8,10];
+    if (arp === "6") return [0,4,7,9];
+    if (arp === "add9") return [0,4,7,2];
+    if (arp === "add11") return [0,4,7,5];
+    if (arp === "add13") return [0,4,7,9];
+    if (arp === "m6") return [0,3,7,9];
+    if (arp === "madd9") return [0,3,7,2];
+    if (arp === "madd11") return [0,3,7,5];
+    if (arp === "sus2") return [0,2,7];
+    if (arp === "sus4") return [0,5,7];
+    if (arp === "7sus4") return [0,5,7,10];
+    return t === "major" ? [0,4,7] : [0,3,7];
+  }
+  if (scope === "pentatonic") return t === "major" ? [0,2,4,7,9] : [0,3,5,7,10];
+  if (scope === "blues") return t === "major" ? [0,2,3,4,7,9] : [0,3,5,6,7,10];
+  if (scope === "scale") return MODE_IV[mode] || (t === "major" ? [0,2,4,5,7,9,11] : [0,2,3,5,7,8,10]);
+  return [0,2,3,4,5,7,9,10];
+}
+const triadOf = (t) => (t === "major" ? new Set([0,4,7]) : new Set([0,3,7]));
+const toggle = (arr, v) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
+const noteName = (pc, rootPC) => (FLAT_ROOTS.has(rootPC) ? NOTES_FLAT : NOTES_SHARP)[pc];
+
+function Seg({ active, onClick, children, color = "#3b82f6", dark = false }) {
+  return (
+    <button onClick={onClick} className="px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors"
+      style={{ backgroundColor: active ? color : "#16202e", color: active ? (dark ? "#3a2c00" : "#0a0f1c") : "#94a3b8", border: `1px solid ${active ? color : "#27364a"}`, fontWeight: active ? 700 : 500 }}>
+      {children}
+    </button>
+  );
+}
+
+function Board({ cfg, update, globals }) {
+  const { root, tonality, scope, arp, pos, focus, keyRoot, keyMode, arpMode, diaLabel, strGroup, mode } = cfg;
+  const { labelMode, isolate, ghost, view } = globals;
+  const scopeSet = useMemo(() => new Set(scopeIntervals(tonality, scope, arp, mode)), [tonality, scope, arp, mode]);
+  const triad = useMemo(() => triadOf(tonality), [tonality]);
+  const focusSet = new Set(focus);
+  const anyFocus = focus.length > 0;
+  const posList = tonality === "major" ? POS_MAJOR : POS_MINOR;
+  const interlock = pos === "all";
+  const activePos = typeof pos === "number" ? posList.find((p) => p.num === pos) : null;
+  const isAug = scope === "arpeggio" && (arp === "aug" || arp === "aug7");
+
+  const inPos = (f, p) => {
+    const base = (((root - 4 + p.off) % 12) + 12) % 12;
+    return ((((f - base) % 12) + 12) % 12) <= p.w;
+  };
+  const phase = (f, p) => { const b = (((root - 4 + p.off) % 12) + 12) % 12; return ((((f - b) % 12) + 12) % 12); };
+
+  const fit = view === "fit";
+  const cellH = fit ? 34 : 46;
+  const dotBig = fit ? 23 : 30;
+  const dotBase = fit ? 18 : 24;
+  const fontPx = fit ? 9 : 11;
+  const scaleColsPx = [64,60,56,53,50,47,44,41,39,37,35,33,31,29,27,25];
+  const COLS = fit ? `22px ${scaleColsPx.map((n)=> n*0.62 + "px").join(" ")}` : `30px ${scaleColsPx.map((n)=> n + "px").join(" ")}`;
+
+  const dotColorNormal = (iv) => (iv === 0 ? "#fbbf24" : MONO_GREY);
+  const keyRel = scope === "arpeggio" && arpMode === "diatonic" && diaLabel === "key";
+  const degLabel = (pc, iv) => {
+    if (keyRel) {
+      const ki = (((pc - keyRoot) % 12) + 12) % 12;
+      return KEY_DEG[keyMode][ki] || DEG_LABEL[iv];
+    }
+    if (iv === 8 && isAug) return "♯5";
+    return DEG_LABEL[iv];
+  };
+  const labelOf = (pc, iv) => {
+    if (labelMode === "name") return noteName(pc, root);
+    if (labelMode !== "degree") return "";
+    return degLabel(pc, iv);
+  };
+
+  const renderRow = (s) => {
+    const cells = [];
+    for (let f = 0; f <= FRETS; f++) {
+      const pc = (OPEN[s] + f) % 12;
+      const iv = ((pc - root) % 12 + 12) % 12;
+      const inScope = scopeSet.has(iv);
+      const isRoot = iv === 0;
+      const isCT = CHORD_TONES.has(iv);
+      let dim = false;
+      if (strGroup !== null && (s < strGroup || s > strGroup + 2)) dim = true;
+      if (!interlock) {
+        if (activePos && !inPos(f, activePos)) dim = true;
+        if (anyFocus && !focusSet.has(iv)) dim = true;
+        if (isolate && !CHORD_TONES.has(iv)) dim = true;
+      }
+      let bg, splitB = null;
+      if (interlock) {
+        const hits = posList.filter((p) => inPos(f, p));
+        if (hits.length === 0) bg = MONO_GREY;
+        else if (hits.length === 1) bg = POS_COLOR[hits[0].letter];
+        else {
+          const ord = hits.slice().sort((a,b) => phase(f,b) - phase(f,a));
+          bg = POS_COLOR[ord[0].letter]; splitB = POS_COLOR[ord[1].letter];
+        }
+      } else if (activePos) {
+        bg = inPos(f, activePos) ? POS_COLOR[activePos.letter] : MONO_GREY;
+      } else {
+        bg = dotColorNormal(iv);
+      }
+      const LIGHT_BG = bg === "#fbbf24" || bg === "#eab308";
+      const txt = !splitB && LIGHT_BG ? "#3a2c00" : "#fff";
+      const sz = isRoot || isCT ? dotBig : dotBase;
+      const dotBg = splitB ? `linear-gradient(135deg, ${bg} 0 50%, ${splitB} 50% 100%)` : bg;
+      cells.push(
+        <div key={f} className="relative flex items-center justify-center" style={{ height: cellH, borderRight: f === 0 ? "5px solid #cbd5e1" : "2px solid #2a3850", background: f === 0 ? "#0a1322" : undefined }}>
+          <div className="absolute left-0 right-0" style={{ top: "50%", transform: "translateY(-50%)", height: STRING_GAUGE[s], background: "#566379" }} />
+          {inScope && (isRoot ? (
+            <button onClick={() => update({ focus: toggle(focus, iv) })} className="relative rounded-full flex items-center justify-center transition-all" style={{ width: sz+8, height: sz+8, background: dotBg, opacity: dim ? 0.16 : 1, zIndex: 5, cursor: "pointer" }} title={`${noteName(pc, root)} · ${DEG_LABEL[iv]}`}>
+              <div className="rounded-full flex items-center justify-center" style={{ width: sz, height: sz, background: dotBg, border: "2px solid #070b16", color: txt, fontSize: fontPx, fontWeight: 800 }}>{labelOf(pc, iv)}</div>
+            </button>
+          ) : (
+            <button onClick={() => update({ focus: toggle(focus, iv) })} className="relative rounded-full flex items-center justify-center transition-all" style={{ width: sz, height: sz, fontSize: fontPx, fontWeight: isCT ? 800 : 550, color: txt, background: dotBg, opacity: dim ? 0.16 : 1, boxShadow: "0 1px 2px rgba(0,0,0,.5)", zIndex: isCT ? 3 : 2, cursor: "pointer" }} title={`${noteName(pc, root)} · ${DEG_LABEL[iv]}`}>{labelOf(pc, iv)}</button>
+          ))}
+          {!inScope && ghost && (
+            <div className="absolute rounded-full flex items-center justify-center" style={{ width: fit ? 18 : 23, height: fit ? 18 : 23, background: "#0d1726", border: "1px solid #223149", color: "#62748d", fontSize: fit ? 8 : 9.5, fontWeight: 600, opacity: dim ? 0.16 : 0.9, zIndex: 1 }} title={noteName(pc, root)}>{labelOf(pc, iv)}</div>
+          )}
+        </div>
+      );
+    }
+    return (
+      <div key={s} className="contents">
+        <div className="flex items-center justify-center text-xs font-semibold text-slate-500" style={{ height: cellH }}>{STRING_LABELS[s]}</div>
+        {cells}
+      </div>
+    );
+  };
+
+  const degrees = [...scopeSet].sort((a,b) => a-b);
+  const arpLabel = scope === "arpeggio" ? (arp === "triad" ? "triad" : arp) : scope;
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ background: "#1e293b", color: "#fbbf24" }}>ROOT</span>
+        <span className="text-sm font-semibold text-slate-200">{noteName(root, root)} {tonality} · {arpLabel}</span>
+      </div>
+
+      <div className="flex flex-wrap gap-1 mb-2">
+        {NOTES_SHARP.map((n,i) => <Seg key={i} active={keyRoot === i} onClick={() => update({ root: i, keyRoot: i, tonality: keyMode })} color="#fbbf24" dark>{noteName(i,i)}</Seg>)}
+      </div>
+
+      <div className="flex flex-wrap gap-1 mb-3 items-center">
+        <span className="text-xs text-slate-500 mr-1" style={{ width: 60 }}>Tonality</span>
+        {["major","minor"].map((t) => <Seg key={t} active={keyMode === t} onClick={() => update({ keyMode: t, tonality: t, root: keyRoot, arp: "triad", mode: t === "major" ? "ionian" : "aeolian" })}>{t}</Seg>)}
+      </div>
+
+      <div className="flex flex-wrap gap-1 mb-3 items-center">
+        <span className="text-xs text-slate-500 mr-1" style={{ width: 60 }}>Layer</span>
+        {[["arpeggio","Arpeggio"],["pentatonic","Pent"],["blues","Blues"],["scale","Scale"],["blended","Pent blend"]].map(([k,l]) => <Seg key={k} active={scope === k} onClick={() => update({ scope: k })}>{l}</Seg>)}
+      </div>
+
+      <div>
+        {scope === "arpeggio" && (
+          <div className="flex flex-col gap-1 mb-3">
+            <div className="flex flex-wrap gap-1 items-center">
+              <span className="text-xs text-slate-500 mr-1" style={{ width: 60 }}>Mode</span>
+              <Seg active={arpMode === "diatonic"} onClick={() => update({ arpMode: "diatonic", arp: "triad" })} color="#8b5cf6">Diatonic</Seg>
+              <Seg active={arpMode === "quality"} onClick={() => update({ arpMode: "quality" })} color="#f97316">Chord Quality</Seg>
+            </div>
+            {arpMode === "diatonic" ? (
+              <React.Fragment>
+                <div className="flex flex-wrap gap-1 items-center">
+                  <span className="text-xs text-slate-500 mr-1" style={{ width: 60 }}>Diatonic</span>
+                  {DIATONIC[keyMode].map(([rn,off,q]) => {
+                    const cr = (keyRoot + off) % 12;
+                    const active = root === cr;
+                    return <Seg key={rn} active={active} onClick={() => update({ root: cr, tonality: q === "maj" ? "major" : "minor", arp: q === "dim" ? "dim" : "triad" })} color="#8b5cf6">{rn}</Seg>;
+                  })}
+                </div>
+                <div className="flex flex-wrap gap-1 items-center">
+                  <span className="text-xs text-slate-500 mr-1" style={{ width: 60 }}>Numbering</span>
+                  <Seg active={diaLabel === "key"} onClick={() => update({ diaLabel: "key" })} color="#8b5cf6">Key-relative</Seg>
+                  <Seg active={diaLabel === "chord"} onClick={() => update({ diaLabel: "chord" })} color="#8b5cf6">Chord-relative</Seg>
+                </div>
+              </React.Fragment>
+            ) : (
+              <React.Fragment>
+                <div className="flex flex-wrap gap-1 items-center">
+                  <span className="text-xs text-slate-500 mr-1" style={{ width: 60 }}>Triads · 7ths</span>
+                  {ARP_QUAL[tonality].core.map(([k,l]) => <Seg key={k} active={arp === k} onClick={() => update({ arp: k })} color="#f97316">{l}</Seg>)}
+                </div>
+                {ARP_QUAL[tonality].extra.length > 0 && (
+                  <div className="flex flex-wrap gap-1 items-center">
+                    <span className="text-xs text-slate-500 mr-1" style={{ width: 60 }}>Extensions</span>
+                    {ARP_QUAL[tonality].extra.map(([k,l]) => <Seg key={k} active={arp === k} onClick={() => update({ arp: k })} color="#f97316">{l}</Seg>)}
+                  </div>
+                )}
+              </React.Fragment>
+            )}
+          </div>
+        )}
+        {scope === "scale" && (
+          <div className="flex flex-wrap gap-1 mb-3 items-center">
+            <span className="text-xs text-slate-500 mr-1" style={{ width: 60 }}>Mode</span>
+            {MODES[tonality].map(([k,l]) => <Seg key={k} active={mode === k} onClick={() => update({ mode: k })} color="#22c55e">{l}</Seg>)}
+          </div>
+        )}
+      </div>
+
+      <div className={fit ? "rounded-xl pb-2" : "overflow-x-auto pb-2 rounded-xl"} style={{ background: "linear-gradient(#16202e,#0b121d)", border: "1px solid #243044" }}>
+        <div className="grid p-3" style={{ gridTemplateColumns: COLS, width: fit ? "100%" : undefined, minWidth: fit ? undefined : "fit-content" }}>
+          {[0,1,2,3,4,5].map(renderRow)}
+          <div />
+          {Array.from({ length: FRETS + 1 }, (_, f) => (
+            <div key={"m" + f} className="flex items-center justify-center gap-1" style={{ height: 18 }}>
+              {MARKERS[f] >= 1 && <div className="rounded-full" style={{ width: 7, height: 7, background: "#3f4f66" }} />}
+              {MARKERS[f] === 2 && <div className="rounded-full" style={{ width: 7, height: 7, background: "#3f4f66" }} />}
+            </div>
+          ))}
+          <div />
+          {Array.from({ length: FRETS + 1 }, (_, f) => (
+            <div key={"n" + f} className="flex items-center justify-center text-xs" style={{ color: MARKERS[f] ? "#94a3b8" : "#475569", fontWeight: MARKERS[f] ? 700 : 400 }}>{f}</div>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-1.5 mb-2 items-center">
+        <span className="text-xs text-slate-500 mr-1">Positions</span>
+        <Seg active={pos === null} onClick={() => update({ pos: null })}>Off</Seg>
+        {posList.map((p) => <Seg key={p.num} active={pos === p.num} onClick={() => update({ pos: p.num })} color={POS_COLOR[p.letter]} dark={POS_DARKTEXT.has(p.letter)}>{p.num} {p.letter}</Seg>)}
+        <Seg active={interlock} onClick={() => update({ pos: "all" })} color="#a855f7">Interlock</Seg>
+      </div>
+
+      <div className="flex flex-wrap gap-1.5 mb-2 items-center">
+        <span className="text-xs text-slate-500 mr-1">Strings</span>
+        <Seg active={strGroup === null} onClick={() => update({ strGroup: null })} color="#14b8a6">All</Seg>
+        {[[0,"1–3 · e B G"],[1,"2–4 · B G D"],[2,"3–5 · G D A"],[3,"4–6 · D A E"]].map(([g,l]) => (
+          <Seg key={g} active={strGroup === g} onClick={() => update({ strGroup: g })} color="#14b8a6">{l}</Seg>
+        ))}
+      </div>
+
+      {interlock ? (
+        <div className="mt-3 flex flex-wrap gap-1.5 items-center">
+          <span className="text-xs text-slate-500 mr-1">Boxes</span>
+          {posList.slice().sort((a,b) => a.num - b.num).map((p) => (
+            <div key={p.num} className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-semibold" style={{ background: "#16202e", border: "1px solid #27364a" }}>
+              <span className="rounded-full" style={{ width: 12, height: 12, background: POS_COLOR[p.letter] }} />
+              <span style={{ color: "#e2e8f0" }}>{p.num} · {p.letter}</span>
+            </div>
+          ))}
+          <span className="text-xs text-slate-600 ml-1">Two-tone notes are shared by both neighbouring boxes.</span>
+        </div>
+      ) : (
+        <React.Fragment>
+          <div className="mt-3 flex flex-wrap gap-1.5 items-center">
+            {degrees.map((iv) => {
+              const focused = focusSet.has(iv);
+              const ct = CHORD_TONES.has(iv);
+              return (
+                <button key={iv} onClick={() => update({ focus: toggle(focus, iv) })} className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs" style={{ border: `1px solid ${focused ? dotColorNormal(iv) : "#27364a"}`, background: !anyFocus || focused ? "#16202e" : "#0d1626", opacity: !anyFocus || focused ? 1 : 0.5, fontWeight: ct ? 800 : 500 }}>
+                  <span className="rounded-full" style={{ width: 12, height: 12, background: dotColorNormal(iv), boxShadow: iv === 0 ? "0 0 0 1.5px #fde047" : "none" }} />
+                  <span style={{ color: "#e2e8f0" }}>{degLabel((root + iv) % 12, iv)}</span>
+                  <span className="text-slate-500">{noteName((root + iv) % 12, root)}</span>
+                </button>
+              );
+            })}
+            {anyFocus && <button onClick={() => update({ focus: [] })} className="ml-1 text-xs text-amber-400 underline">clear focus</button>}
+          </div>
+          <p className="mt-1.5 text-xs text-slate-600">Tap a chip or note to <b className="text-slate-500">focus</b> degrees (dims the rest). Chord tones are bold; the root is circled.</p>
+        </React.Fragment>
+      )}
+    </div>
+  );
+}
+
+function InfoTab() {
+  const H = ({ children }) => <h3 className="text-sm font-bold" style={{ color: THEME.amber, margin: "14px 0 4px" }}>{children}</h3>;
+  const P = ({ children }) => <p className="text-sm" style={{ color: "#cbd5e1", margin: "0 0 6px", lineHeight: 1.5 }}>{children}</p>;
+  return (
+    <div className="p-3 rounded-lg" style={{ background: THEME.panel, border: `1px solid ${THEME.border}`, maxWidth: 760 }}>
+      <P>Fretboard Trainer maps scales, arpeggios and CAGED positions across a standard-tuned (EADGBE) neck, frets 0–15. Every note is labelled relative to the selected root, so you see each shape as degrees rather than fret numbers.</P>
+      <H>Trainer tab</H>
+      <P><b>Key and Tonality.</b> Pick any of the 12 roots, then major or minor. Flat keys spell with flats.</P>
+      <P><b>Layer.</b> Arpeggio shows chord tones only. Pent is the major or minor pentatonic. Blues adds the blue note (♭3 in major, ♭5 in minor). Scale is the full mode. Pent blend overlays major and minor pentatonic (R 2 ♭3 3 4 5 6 ♭7).</P>
+      <P><b>Arpeggio · Diatonic.</b> Walk I–vii° (or i–vii° in minor) of the current key. Key-relative numbering labels every note by its degree in the key. Chord-relative labels it against the chord's own root.</P>
+      <P><b>Arpeggio · Chord Quality.</b> Any quality on the current root: triad, 7ths, sus, add-tones, aug, dim, m7♭5, dim7.</P>
+      <P><b>Scale modes.</b> Major: Ionian, Lydian, Mixolydian. Minor: Aeolian, Dorian, Phrygian, harmonic and melodic minor.</P>
+      <P><b>Positions.</b> The five CAGED boxes, numbered 1·C 2·A 3·G 4·E 5·D. Selecting one dims everything outside it. Interlock colours all five at once; notes shared by two neighbouring boxes are split two-tone.</P>
+      <P><b>Strings.</b> Restricts the view to a three-string group (1–3 through 4–6).</P>
+      <P><b>Focus.</b> Tap any note or degree chip to dim every other degree; tap more to add them. Chord tones are bold; the root is gold and ringed. Focus is off in Interlock.</P>
+      <P><b>Quick start.</b> One-tap setups: the interlocking boxes, chord tones isolated inside the scale, the ♭7 on a dom7, and the diatonic walk.</P>
+      <H>Display tab</H>
+      <P><b>Labels.</b> Degrees, note names, or plain dots.</P>
+      <P><b>View.</b> Scroll keeps full-size frets and scrolls sideways. Fit squeezes the whole neck into the screen width.</P>
+      <P><b>Isolate chord tones.</b> Dims everything except R, ♭3/3, ♭5/5 and ♭7/7. <b>Show chromatic</b> adds faint markers for the notes outside the current layer.</P>
+      <H>Reference tab</H>
+      <P>The current key's diatonic chords with names and Nashville numbers, plus the seven modes with their degree formulas.</P>
+    </div>
+  );
+}
+
+function FretboardTrainer() {
+  const [labelMode, setLabelMode] = useState("degree");
+  const [isolate, setIsolate] = useState(false);
+  const [ghost, setGhost] = useState(false);
+  const [view, setView] = useState("scroll");
+  const [tab, setTab] = useState("trainer");
+  const [cfg, setCfg] = useState({ root: 0, tonality: "major", scope: "pentatonic", arp: "triad", pos: null, focus: [], keyRoot: 0, keyMode: "major", arpMode: "diatonic", diaLabel: "key", strGroup: null, mode: "ionian" });
+  const globals = { labelMode, isolate, ghost, view };
+  const up = (p) => setCfg((c) => ({ ...c, ...p }));
+
+  const applyPreset = (p) => {
+    if (p === "interlock") {
+      setCfg((c) => ({ ...c, scope: "pentatonic", pos: "all", focus: [] }));
+      setIsolate(false); setView("fit"); setGhost(false); setLabelMode("degree");
+    } else if (p === "chordtones") {
+      setCfg((c) => ({ ...c, scope: "scale", pos: null, focus: [] }));
+      setIsolate(true); setView("scroll"); setGhost(false); setLabelMode("degree");
+    } else if (p === "dom7") {
+      setCfg((c) => ({ ...c, scope: "arpeggio", arpMode: "quality", arp: "dom7", tonality: "major", keyMode: "major", root: c.keyRoot, pos: null, focus: [10] }));
+      setIsolate(false); setView("scroll"); setGhost(false); setLabelMode("degree");
+    } else if (p === "walk") {
+      setCfg((c) => ({ ...c, scope: "arpeggio", arpMode: "diatonic", diaLabel: "key", arp: "triad", tonality: c.keyMode, root: c.keyRoot, pos: null, focus: [] }));
+      setIsolate(false); setView("fit"); setGhost(false); setLabelMode("degree");
+    }
+  };
+
+  return (
+    <div className="w-full rounded-2xl" style={{ background: THEME.bg, color: THEME.text, overflow: "hidden" }}>
+      <div style={{ height: 4, background: THEME.rust }} />
+      <div className="p-4">
+      <div className="mb-3">
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-bold text-white" style={{ margin: 0 }}>Fretboard Trainer</h1>
+          <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: "#7c2d12", color: "#fdba74", letterSpacing: ".04em" }}>{VERSION} · BETA — in testing</span>
+        </div>
+        <p className="text-sm text-slate-400" style={{ margin: "4px 0 0" }}>Standard tuning · diatonic chords, positions, interlock.</p>
+      </div>
+
+      <div className="flex gap-1 mb-4" role="tablist" style={{ borderBottom: `1px solid ${THEME.border}` }}>
+        {TABS.map(([k,l]) => {
+          const on = tab === k;
+          return (
+            <button key={k} role="tab" aria-selected={on} onClick={() => setTab(k)} className="text-sm transition-colors"
+              style={{ padding: "6px 14px", marginBottom: -1, borderRadius: "6px 6px 0 0", background: on ? THEME.amber : "transparent", color: on ? THEME.amberText : THEME.muted, fontWeight: on ? 700 : 500, border: `1px solid ${on ? THEME.amber : "transparent"}` }}>
+              {l}
+            </button>
+          );
+        })}
+      </div>
+
+      {tab === "trainer" && (<React.Fragment>
+      <div className="flex flex-wrap gap-1 mb-3 items-center p-2 rounded-lg" style={{ background: "#0d1626", border: "1px solid #1c2940" }}>
+        <span className="text-xs text-slate-500 mr-1">Quick start</span>
+        <Seg onClick={() => applyPreset("interlock")} color="#a855f7">See the 5 boxes interlock</Seg>
+        <Seg onClick={() => applyPreset("chordtones")} color="#3b82f6">Isolate the chord tones</Seg>
+        <Seg onClick={() => applyPreset("dom7")} color="#f97316">Target the ♭7 on a dom7</Seg>
+        <Seg onClick={() => applyPreset("walk")} color="#8b5cf6">Walk the diatonic chords</Seg>
+      </div>
+
+      <Board cfg={cfg} update={up} globals={globals} />
+
+      <p className="mt-3 text-xs text-slate-600" style={{ borderTop: `1px solid ${THEME.border}`, paddingTop: "10px" }}>
+        Select the Arpeggio layer, then walk the diatonic chords (I–vii°) to see chord movement across the neck without the controls shifting. Positions are C·A·G·E·D = 1–5; Interlock shows all five with shared notes split two-tone. {VERSION} · testing build.
+      </p>
+      </React.Fragment>)}
+
+      {tab === "display" && (
+      <div className="flex flex-col gap-1.5 p-2 rounded-lg" style={{ background: THEME.panel, border: `1px solid ${THEME.border}` }}>
+        <div className="flex gap-1 items-center flex-wrap"><span className="text-xs text-slate-500 mr-1" style={{ width: 76 }}>Labels</span>
+          {[["degree","Degree"],["name","Notes"],["none","Dots"]].map(([k,l]) => <Seg key={k} active={labelMode === k} onClick={() => setLabelMode(k)}>{l}</Seg>)}
+        </div>
+        <div className="flex gap-1 items-center flex-wrap"><span className="text-xs text-slate-500 mr-1" style={{ width: 76 }}>View</span>
+          {[["scroll","Scroll"],["fit","Fit"]].map(([k,l]) => <Seg key={k} active={view === k} onClick={() => setView(k)} color="#22c55e">{l}</Seg>)}
+        </div>
+        <div className="flex gap-1 items-center flex-wrap"><span className="text-xs text-slate-500 mr-1" style={{ width: 76 }}>Overlay</span>
+          <Seg active={isolate} onClick={() => setIsolate(!isolate)} color="#3b82f6">Isolate chord tones</Seg>
+          <Seg active={ghost} onClick={() => setGhost(!ghost)} color="#475569">Show chromatic</Seg>
+        </div>
+      </div>
+      )}
+
+      {tab === "reference" && (
+        <p className="text-sm text-slate-500">Reference tab: diatonic-chord and modal breakdown, coming next.</p>
+      )}
+
+      {tab === "info" && <InfoTab />}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<FretboardTrainer />);
+</script>
+</body>
+</html>
