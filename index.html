@@ -55,7 +55,7 @@
 <div id="root"></div>
 <script type="text/babel" data-presets="react">
 const { useState, useMemo, useEffect } = React;
-const VERSION = "v0.22";
+const VERSION = "v0.23";
 document.title = `Fretboard Trainer · ${VERSION}`;
 
 // ChordCharts Dark tokens (BR-01). Colour roles (BR-02): gold = the key, CAGED = position, greyscale = everything else.
@@ -72,6 +72,7 @@ const KEY_NAME = {
 const LETTERS = ["C","D","E","F","G","A","B"];
 const LETTER_PC = [0,2,4,5,7,9,11];
 const OPEN = [4,11,7,2,9,4];
+const OPEN_ABS = [64,59,55,50,45,40]; // e4 B3 G3 D3 A2 E2 as MIDI numbers, for pitch order across strings
 const STRING_LABELS = ["e","B","G","D","A","E"];
 const STRING_GAUGE = [1.2,1.6,2.1,2.6,3.2,3.8];
 const FRETS = 15;
@@ -192,6 +193,38 @@ function Btn({ onClick, children }) {
   return <button onClick={onClick} className="text-sm transition-colors" style={{ height: 34, padding: "0 12px", borderRadius: 8, background: THEME.ctl, border: `1px solid ${THEME.edge}`, color: THEME.text, fontWeight: 500, whiteSpace: "nowrap" }}>{children}</button>;
 }
 
+// Window gap fill (SH-21, 22, 25 to 28, 30). In the lowest complete copy of window p, the layer's pitches run low to high;
+// each pitch missing between the lowest and highest takes the nearest on-board cell outside the window, a tie going above.
+// Returns keys s * 12 + (fret mod 12), so the fill repeats with the window 12 frets up or down, as inPos does.
+const GAP_CACHE = new Map();
+function gapCells(root, set, p) {
+  const ivs = [...set].sort((a, b) => a - b);
+  const id = `${root}|${ivs.join(",")}|${p.off}|${p.w}`;
+  if (GAP_CACHE.has(id)) return GAP_CACHE.get(id);
+  const base = (((root - 4 + p.off) % 12) + 12) % 12;
+  const top = base + p.w;
+  const inSet = (m) => set.has((((m - root) % 12) + 12) % 12);
+  const have = new Set();
+  for (let s = 0; s < 6; s++) for (let f = base; f <= top; f++) if (inSet(OPEN_ABS[s] + f)) have.add(OPEN_ABS[s] + f);
+  const out = new Set();
+  if (have.size) {
+    const lo = Math.min(...have), hi = Math.max(...have);
+    for (let m = lo + 1; m < hi; m++) {
+      if (!inSet(m) || have.has(m)) continue;
+      let best = null;
+      for (let s = 0; s < 6; s++) {
+        const f = m - OPEN_ABS[s];
+        if (f < 0 || f > FRETS || (f >= base && f <= top)) continue;
+        const d = f < base ? base - f : f - top;
+        if (!best || d < best.d || (d === best.d && f > top)) best = { s, f, d };
+      }
+      if (best) out.add(best.s * 12 + (best.f % 12));
+    }
+  }
+  GAP_CACHE.set(id, out);
+  return out;
+}
+
 function Board({ cfg, update, globals }) {
   const { scope, arp, pos, focus, keyRoot, keyMode, arpMode, diaLabel, strGroup, mode } = cfg;
   const { labelMode, isolate, ghost, view } = globals;
@@ -210,11 +243,13 @@ function Board({ cfg, update, globals }) {
   const posList = tonality === "major" ? POS_MAJOR : POS_MINOR;
   const interlock = pos === "all";
   const activePos = typeof pos === "number" ? posList.find((p) => p.num === pos) : null;
+  // Gap fill applies to the Scale and Chord layers in a single position only; Pentatonic, Blues, Major and minor and All are unchanged.
+  const gaps = useMemo(() => (activePos && (scope === "scale" || scope === "arpeggio") ? gapCells(root, scopeSet, activePos) : null), [activePos, scope, root, scopeSet]);
   // Focus keeps only degrees that can be lit in the current position, strings and Isolate; one that leaves is dropped (UX-13). Interlock ignores focus (UX-14).
   const litSet = new Set();
   for (let s = 0; s < 6; s++) for (let f = 0; f <= FRETS; f++) {
     const iv = (((OPEN[s] + f - root) % 12) + 12) % 12;
-    if (scopeSet.has(iv) && (interlock || !isolate || ctSet.has(iv)) && (strGroup === null || (s >= strGroup && s <= strGroup + 2)) && (!activePos || inPos(f, activePos))) litSet.add(iv);
+    if (scopeSet.has(iv) && (interlock || !isolate || ctSet.has(iv)) && (strGroup === null || (s >= strGroup && s <= strGroup + 2)) && (!activePos || inWin(s, f))) litSet.add(iv);
   }
   const activeFocus = interlock ? [] : focus.filter((iv) => litSet.has(iv));
   useEffect(() => { if (!interlock && activeFocus.length !== focus.length) update({ focus: activeFocus }); });
@@ -236,6 +271,8 @@ function Board({ cfg, update, globals }) {
     const base = (((root - 4 + p.off) % 12) + 12) % 12;
     return ((((f - base) % 12) + 12) % 12) <= p.w;
   }
+  // A gap-fill cell counts as inside the active position.
+  function inWin(s, f) { return inPos(f, activePos) || (gaps !== null && gaps.has(s * 12 + (f % 12))); }
   const phase = (f, p) => { const b = (((root - 4 + p.off) % 12) + 12) % 12; return ((((f - b) % 12) + 12) % 12); };
 
   const fit = view === "fit";
@@ -272,7 +309,7 @@ function Board({ cfg, update, globals }) {
       let dim = false;
       if (strGroup !== null && (s < strGroup || s > strGroup + 2)) dim = true;
       if (!interlock) {
-        if (activePos && !inPos(f, activePos)) dim = true;
+        if (activePos && !inWin(s, f)) dim = true;
         if (anyFocus && !focusSet.has(iv)) dim = true;
         if (isolate && !ctSet.has(iv)) dim = true;
       }
@@ -286,7 +323,7 @@ function Board({ cfg, update, globals }) {
           bg = POS_COLOR[ord[0].letter]; splitB = POS_COLOR[ord[1].letter];
         }
       } else if (activePos) {
-        bg = inPos(f, activePos) ? POS_COLOR[activePos.letter] : MONO_GREY;
+        bg = inWin(s, f) ? POS_COLOR[activePos.letter] : MONO_GREY;
       } else {
         bg = dotColorNormal(iv);
       }
