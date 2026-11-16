@@ -14,8 +14,10 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <style>
+  /* 𝄫 (U+1D12B) only: Noto Music subset, Copyright 2022 The Noto Project Authors, SIL Open Font License 1.1. No system font in the stack has it. */
+  @font-face{font-family:"FT Music";src:url(data:font/woff2;base64,d09GMgABAAAAAAoAABAAAAAAFEwAAAmmAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGyAcQgZgADAINAmcDBEICoFIgUoBNgIkAwgLBgAEIAWDZgcgDIEnGzITUZRtUgbgDwfcGIJ9ir0C72kLY6sGtdqxWaGbbMIUwx97BUr2ijMcowAbPc23+f+/1u77M4j4qiJi0klUbzSV0615aISylsx5X2I1VOTmqstCj+KBha8asPATbsIDubFT5YHnsP0bG8cEuU1Hh1OvorEGWBoH2PM5QROJ0rSzcC1nNpvcXZ65CODQKVS6wrVO1v/a73f3O2YPsR127kP2hITYQUx2EWsQmiUtmaERGqGQEvA82v7brLaYZOXm3xXLILYyWJ6tSi6aPMOttympKFoqTgbzlrIk++0Pa8e8IQo5//l9a6WtX93H6qLWh1g4FCZCx5i5WuzeOUCemQCgIvKo8u55oAmwInCJsLGJYutifR7iJs8YjFr86uuDANZ8+aP+8OzVxhIPgGkAAMAzO1Y889Fka5+8+3pjWF99+GAosvXu6rXIfnn/zcjBB+8tDqQBeDAfnArshAd2nmkCssL3p0WBgQhYyopaFZGeywDkTxtdmDU348s0/MH/KZgfBI8srawQvLWNApaC4Ptdcawh3xaKfdNRT9+Vu+AHvZiqnjJEb4T9Mi0+E8w7uU31hBz4754+gIDtNDGRM7+gev0MbvOZxEw7A/t5Lf3tHqLl11BKcr7QufMe7APqeIAR5hggaId1QKBefcBAlt+bxjuaOCJHyTlWaRzF2pslwqsfC3GHcFSW6NrHg2QyzJHO5Q6PcDQkmzZN7hCEGoecaRjlqGAtrWwomoxR0oDxFJi6ToocMb2ok6Xwt4amzwwDpoqTxQQ3nTxG7fKzScDj+gfLRVfr2RjLWMAGFvZNKrSWJQPkOMXh4Qk7wU1/HllL/x5R8iZTbTveeoznaK4mm7HfA1HiXICNBBZH42kp13Iz2Fwsv6RlwfWQX6ycmS2LQW+WCrJPSJEaLWAhE0G1LIWAFxOBi4QuOu8NhoDLcqcj31eDsygMkmTXJUFCNTDMrdgBz/BxKH379cf4OpFXNL2U8kVXLltS8yZsbCboXd7E3ZksEICIhwdkippCb+SiCthWKsjZGp7vQDAQiCAe75Dk4heVM9HSxkYwtvI8bmbyGKJq4SQe8pWHYvtXJjeu6eH0CohqlknfHWWZ4WVoL5Rh2u1sZFoNRrncsZlTSagopUcSOGhHSUnUZ/k+USnZ6YvJO/V2yAdSqJKZ5i2OA2nAIEKKp8FaElIuGmkKNpBuDWSARTMmVH5ROe+7Ixlm6Z/s5jCRhmZx5mqqejG2PSQu9WMq5ToupTNX5lLnZ5VbMI+K+tG1VDZ0bxgjGW+AiMaa6pAOh4kKRi+mSmFGm7r+3ZreMj3gFUbcdTwkBffo5jVSnJGGy2SkwA6lGO9bIWkdQ4LRgcasH62ApiIzfTWRdVEmJF0k4WCIkn8ut2ySuua2JsaYC5R/GRhrvuT58O0bFiiioulwoITKMJVZqMKGqqxUY0t1dtTggJocUoujpmFoGYyLC2euJpUWHj8xFwdGGLKK+n7V0aw+/TBibTSYPq0dMP44C+yXRnRg0QWLblj0wKIXFn2w6IfFACwGYTEE2z4G6SotjQcy5SAjN9KjYm1jYKze/jATYNwzPhCYhMhMSrRNy1F9uR86l3U5QFOxqa0mC9O1biImB6o1TZN0v6XUnc6iQ+drn4E84n3jLBo4ybTdK0Pvj8TdE8kPEPSf0KN1xjSld0TmIJ3M0lADOH5DgXm0d3WBBfZWyIXIF11EFUn2Sisz4CKip/r3WTfTImnuvEEXhwVjmm4/FFgCSCi5iCqqrOE1LpPEeHjVjzmRrl/4rGG5XNpxSHAuSoQKT2tJ2FhP36vdZl3oPum2NotRBU/pu6XuUKcZx0d2IAv030xjKPNSsSxLllZlcbjNb7sDytUWFYn7pzotR53iOUUUT0tnzNJZBaOxNhfIza0WrOZaNHUkV9WYUPxtuo+9Lgus5MdSIoJNa7Q7Gp21Wo7nSU1BDEtJFq3FRxMUy+0ZwVZqpVPvkIhmwRZHLU4px536/RIryIPW+HiJWVfti9ZPKYHEdtNMO6yXRDH3bUClzcm/PKXEdNFdtiSdtXXCNB4ObHKsf9ldPPmW/CFL3fY2WPJGvTtg2fdtqtSzs+wX2H04tkxI0W45kjrqprk/UIi7mHyppJurdNLqURvf8T1Un9MIkmr9T8xqsqRL3mXXd3rU+TpT6c1X2m/C4OGcMQcUZ6302p9Gj2YDDt2mR79swFOeui0ue25gXY56jlFhCKXMd60nYDFIp9Mhmai0Mu27Y46VnaFSl6LsHNSXd2QAUgfkM1FBLgGFTLaID2lcLEAluQSUMvnLjnwPIKlHuSKqyCOgUhFVzQII1YqoJo+AWkW2zi5SuB4DbkAKN2LXNrVI52ZpqSWXgFamdJtvSFbtSFYdSFadSFZd6Ktu7Kge9FUvdob7jlQ4hZjup5QSP+kBJNjBjI9SkNg5dKQSHw1nkBrJIBqthqsZY9rFuHbdCRSJNAlCvJ6Sw50GJJqZI8vDrPYwpz3Maw8L2sOi9rCkPSxn+VjRPla1jzXtY1372NA+NrXfvoWDza9bD+b5G57BHj2t3nmzeBjL9hVXnvj4C3uy0BAaDxP+fcbHmTiAHhACdIQ9B1dOKvcXF32P8W2q/FYs+9mg50/ir76rZ0jj7w/z+F2++GqpPvndKSrd+//ffeZ/7Px6r3Pymsrig92fJ98nxw/Ktf/7nXJ6V/zkkct+xzcO1s/mt/ufv/c7HjoIdt3c14P49k1aaJQ8ae3d4+7dBovwYZBAVkJEVT6GiNTnCCn1stJu3Lpx53ahXm8IwDxeVu1fTm9y/iTT/APAZ+e/fwC+n2b/Ffw4OgaYSzlR7L95qdkZB70MctmdBR/UBp6wrTzvn4I4POYlMGUH6K1aA9fUWajEdgtHAHZhnEtc7c5l7J3M5YQ7m8uT+J9rpjiQejFzosBAkj79Jgzq0KbdMIFAhntvIIFiKlp6c/UZhl6BfINtf6cWTfy1CUbCpp0eHDREQKGnoDX9lNpI+mt9mw6uh41opNOkTw+9Xq21rfpwMyyxsF6PEUMXN1FaLc6J6S3Uom2r7dYw9AbSMVwXDhIlTZ5Jw+Ky+w4n0MLBtZ9IMJpSSnowXjw8XmAvLUhjf6sGI5tpB0mFpN8/ykgn/I7ghcNohWi+1kZK78o5lw2aamyTZz3hMpUq0fc+9KNknOMKsXvjQVAhA7e2En2f5ypsL3VfuACxGUnWuOczWEi+ltBsPRH/ZTmNmlnR8Isl+gCSZ1yVj57fLGOhMG9V09VIuYR9by8wOfREieTWP5kjeGvWiiK5DwAAAA==) format("woff2");unicode-range:U+1D12B}
   *{box-sizing:border-box}
-  html,body{margin:0;background:#0D131A;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  html,body{margin:0;background:#0D131A;font-family:"FT Music",ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
   button{font-family:inherit;cursor:pointer;border:none;background:transparent;padding:0;color:inherit}
   .w-full{width:100%}
   .p-4{padding:1rem}.p-3{padding:.75rem}.p-2{padding:.5rem}
@@ -74,7 +76,7 @@
 <div id="root"></div>
 <script type="text/babel" data-presets="react">
 const { useState, useMemo, useEffect } = React;
-const VERSION = "v0.24";
+const VERSION = "v0.25";
 document.title = `Fretboard Trainer · ${VERSION}`;
 
 // ChordCharts Dark tokens (BR-01). Colour roles (BR-02): gold = the key, CAGED = position, greyscale = everything else.
@@ -99,7 +101,7 @@ const MARKERS = {3:1,5:1,7:1,9:1,12:2,15:1};
 const DEG_LABEL = {0:"R",1:"♭2",2:"2",3:"♭3",4:"3",5:"4",6:"♭5",7:"5",8:"♭6",9:"6",10:"♭7",11:"7"};
 const MONO_GREY = "#5b6679";
 // Degrees the formula names differently from the semitone default (TH-05). Keys: scale mode or chord quality.
-const DEG_OVERRIDE = { lydian: {6:"♯4"}, aug: {8:"♯5"}, aug7: {8:"♯5"}, dim7: {9:"°7"} };
+const DEG_OVERRIDE = { lydian: {6:"♯4"}, aug: {8:"♯5"}, aug7: {8:"♯5"}, dim7: {9:"𝄫7"} };
 
 // Grouped as Triads, Sevenths, Added notes (UX-04); the same qualities per tonality as v0.21.
 const ARP_QUAL = {
@@ -141,6 +143,8 @@ const MODE_IV = {
 
 // Calmer CAGED set (decision 7 = b), all with ink labels (DS-04).
 const POS_COLOR = {C:"#E5766B",A:"#E9A15C",G:"#DDD05A",E:"#7FA8E6",D:"#7CC68D"};
+// Nut-substitute hatch: the second stripe per position colour, 1.5:1 against it; ink labels stay at 4.6:1 or more on both stripes.
+const HATCH = {C:"#efa9a2",A:"#bb834e",G:"#b3aa4d",E:"#b6cdf1",D:"#c5e6cd"};
 const POS_MAJOR = [{num:1,letter:"C",off:4,w:3},{num:2,letter:"A",off:6,w:3},{num:3,letter:"G",off:9,w:3},{num:4,letter:"E",off:-1,w:3},{num:5,letter:"D",off:1,w:4}];
 const POS_MINOR = [{num:1,letter:"C",off:4,w:4},{num:2,letter:"A",off:7,w:3},{num:3,letter:"G",off:9,w:3},{num:4,letter:"E",off:0,w:3},{num:5,letter:"D",off:2,w:3}];
 
@@ -269,6 +273,22 @@ function gapCells(root, set, p) {
   return out;
 }
 
+// Nut substitutes. A cell of the window's lower copy (12 frets down, gap fill included) that falls below the nut is played at
+// the same pitch on the next lower string, where that cell is not already in the window; the low E string has none.
+// Returns keys s * 100 + fret for the substitute cells.
+function nutSubs(root, set, p, gaps) {
+  const base = (((root - 4 + p.off) % 12) + 12) % 12;
+  const lo = base - 12, out = new Set();
+  if (lo + p.w < 0) return out;
+  const inWinAt = (s, f) => ((((f - base) % 12) + 12) % 12) <= p.w || (gaps !== null && gaps.has(s * 12 + (((f % 12) + 12) % 12)));
+  for (let s = 0; s < 5; s++) for (let f = lo - 1; f < 0; f++) {
+    if (!set.has((((OPEN_ABS[s] + f - root) % 12) + 12) % 12) || !inWinAt(s, f)) continue;
+    const g = f + OPEN_ABS[s] - OPEN_ABS[s + 1];
+    if (g >= 0 && !inWinAt(s + 1, g)) out.add((s + 1) * 100 + g);
+  }
+  return out;
+}
+
 function Board({ cfg, update, globals }) {
   const { scope, arp, pos, focus, keyRoot, keyMode, arpMode, diaLabel, strGroup, mode } = cfg;
   const { labelMode, isolate, ghost, view, setLabelMode, setIsolate, setGhost, setView } = globals;
@@ -289,6 +309,8 @@ function Board({ cfg, update, globals }) {
   const activePos = typeof pos === "number" ? posList.find((p) => p.num === pos) : null;
   // Gap fill applies to the Scale and Chord layers in a single position only; Pentatonic, Blues, Major and minor and All are unchanged.
   const gaps = useMemo(() => (activePos && (scope === "scale" || scope === "arpeggio") ? gapCells(root, scopeSet, activePos) : null), [activePos, scope, root, scopeSet]);
+  // Nut substitutes apply to every layer in a single position; All is unchanged.
+  const subs = useMemo(() => (activePos ? nutSubs(root, scopeSet, activePos, gaps) : null), [activePos, root, scopeSet, gaps]);
   // Focus keeps only degrees that can be lit in the current position, strings and Isolate; one that leaves is dropped (UX-13). Interlock ignores focus (UX-14).
   const litSet = new Set();
   for (let s = 0; s < 6; s++) for (let f = 0; f <= FRETS; f++) {
@@ -315,8 +337,8 @@ function Board({ cfg, update, globals }) {
     const base = (((root - 4 + p.off) % 12) + 12) % 12;
     return ((((f - base) % 12) + 12) % 12) <= p.w;
   }
-  // A gap-fill cell counts as inside the active position.
-  function inWin(s, f) { return inPos(f, activePos) || (gaps !== null && gaps.has(s * 12 + (f % 12))); }
+  // A gap-fill cell and a nut substitute count as inside the active position.
+  function inWin(s, f) { return inPos(f, activePos) || (gaps !== null && gaps.has(s * 12 + (f % 12))) || (subs !== null && subs.has(s * 100 + f)); }
   const phase = (f, p) => { const b = (((root - 4 + p.off) % 12) + 12) % 12; return ((((f - b) % 12) + 12) % 12); };
 
   const fit = view === "fit";
@@ -375,6 +397,9 @@ function Board({ cfg, update, globals }) {
       const txt = bg === MONO_GREY ? THEME.text : bg === THEME.sel ? THEME.onSel : THEME.ink;
       const sz = isRoot || isCT ? dotBig : dotBase;
       const dotBg = splitB ? `linear-gradient(135deg, ${bg} 0 50%, ${splitB} 50% 100%)` : bg;
+      // A nut substitute is hatched in its position colour; a root keeps its solid halo, with the hatch on the centre.
+      const isSub = !interlock && subs !== null && subs.has(s * 100 + f);
+      const faceBg = isSub ? `repeating-linear-gradient(135deg, ${bg} 0 3px, ${HATCH[activePos.letter]} 3px 6px)` : dotBg;
       // The whole fret cell is the dot's hit area (A11y-W2); dots leave the tab order, the Focus chips do the same job (A11y-W5).
       const tappable = inScope && !interlock;
       cells.push(
@@ -382,10 +407,10 @@ function Board({ cfg, update, globals }) {
           <div className="absolute left-0 right-0" style={{ top: "50%", transform: "translateY(-50%)", height: STRING_GAUGE[s], background: THEME.edge }} />
           {inScope && (isRoot ? (
             <button tabIndex={-1} disabled={interlock} className="relative rounded-full flex items-center justify-center transition-all" style={{ width: sz+8, height: sz+8, background: dotBg, opacity: dim ? 0.16 : 1, zIndex: 5, cursor: interlock ? "default" : "pointer" }} title={`${noteName(pc)} · ${fdeg(iv)}`}>
-              <div className="rounded-full flex items-center justify-center" style={{ width: sz, height: sz, background: dotBg, border: `2px solid ${THEME.bg}`, color: txt, fontSize: fontPx, fontWeight: 800 }}>{labelOf(pc, iv)}</div>
+              <div className="rounded-full flex items-center justify-center" style={{ width: sz, height: sz, background: faceBg, border: `2px solid ${THEME.bg}`, color: txt, fontSize: fontPx, fontWeight: 800 }}>{labelOf(pc, iv)}</div>
             </button>
           ) : (
-            <button tabIndex={-1} disabled={interlock} className="relative rounded-full flex items-center justify-center transition-all" style={{ width: sz, height: sz, fontSize: fontPx, fontWeight: isCT ? 800 : 500, color: txt, background: dotBg, opacity: dim ? 0.16 : 1, zIndex: isCT ? 3 : 2, cursor: interlock ? "default" : "pointer" }} title={`${noteName(pc)} · ${fdeg(iv)}`}>{labelOf(pc, iv)}</button>
+            <button tabIndex={-1} disabled={interlock} className="relative rounded-full flex items-center justify-center transition-all" style={{ width: sz, height: sz, fontSize: fontPx, fontWeight: isCT ? 800 : 500, color: txt, background: faceBg, opacity: dim ? 0.16 : 1, zIndex: isCT ? 3 : 2, cursor: interlock ? "default" : "pointer" }} title={`${noteName(pc)} · ${fdeg(iv)}`}>{labelOf(pc, iv)}</button>
           ))}
           {!inScope && ghost && (
             <div className="absolute rounded-full flex items-center justify-center" style={{ width: fit ? 18 : 23, height: fit ? 18 : 23, background: THEME.track, border: `1px solid ${THEME.line}`, color: THEME.muted, fontSize: 11, fontWeight: 600, opacity: dim ? 0.16 : 1, zIndex: 1 }} title={noteName(pc, root)}>{labelOf(pc, iv)}</div>
@@ -608,7 +633,7 @@ function Help({ onExample }) {
       <P><b>Chord → Any chord.</b> Triads, sevenths and added-note chords on the current chord root. The list follows whether that chord is major or minor.</P>
       <P><b>Scale.</b> Major keys: Ionian, Lydian, Mixolydian. Minor keys: Aeolian, Dorian, Phrygian, harmonic minor, melodic minor.</P>
       <H>Filter</H>
-      <P><b>Position.</b> The five CAGED positions, 1 C to 5 D. One position dims the notes outside it. In one position, a note missing from the window is added from one fret outside it (Scale and Chord). All shows the five together; a note shared by two neighbouring positions is split two-tone. In All, dots cannot be tapped and Focus and Notes: Chord tones are unavailable.</P>
+      <P><b>Position.</b> The five CAGED positions, 1 C to 5 D. One position dims the notes outside it. In one position, a note missing from the window is added from one fret outside it (Scale and Chord). A window note that would fall below the nut is played at the same pitch on the next lower string, shown hatched (every layer; the low E string has none). All shows the five together; a note shared by two neighbouring positions is split two-tone. In All, dots cannot be tapped and Focus and Notes: Chord tones are unavailable.</P>
       <P><b>Strings.</b> Limits the board to one three-string set, 1–3 to 4–6.</P>
       <P><b>Notes.</b> Chord tones dims every other note. In Chord, every tone of the chord counts; in Scale, its 1, 3, 5 and 7; in Pentatonic, Blues and Major and minor, the 1, 3, 5 and 7 of the key's scale where present.</P>
       <P><b>Focus.</b> A tap on a dot (anywhere in its fret) or a Focus chip keeps that degree and dims the rest. More taps add degrees; a second tap releases one. A degree that cannot be lit under the current position, strings or Notes setting is unavailable.</P>
