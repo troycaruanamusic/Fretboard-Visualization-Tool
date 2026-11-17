@@ -50,19 +50,32 @@
   .row{display:flex;flex-direction:column;align-items:flex-start;gap:4px}
   .rowlab{font-size:12.5px;color:#A9B6C4;white-space:nowrap}
   .track{display:inline-flex;flex-wrap:wrap;gap:2px;padding:2px;border-radius:8px;background:#091017;min-width:0}
+  /* Equal-cell grid (Round 4b, mock-up C): minmax(0, 1fr) cells, each as wide as the widest label when there is room and
+     still equal when there is not; a tight cell keeps its label centred in the padding. */
+  .gtrack{display:inline-grid;max-width:100%}
+  .gtrack .seg{position:relative;display:flex;align-items:center;justify-content:center;min-width:0}
+  @media (max-width:379px){.gtrack .seg{font-size:13px}}
+  /* The Show sub-panel hangs off the chosen Show cell: caret and inset surface (Round 4b). */
+  .subpanel{margin-top:8px;background:#1B2530;border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0}
+  .caret{position:absolute;left:50%;top:calc(100% + 2px);transform:translateX(-50%);width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:8px solid #1B2530;pointer-events:none}
+  .subpanel h3{margin:0;font-size:.875rem;line-height:1.25rem;font-weight:700;color:#E3E9F0}
+  .pagenav{display:flex}
+  @media (max-width:619px){.pagenav{order:3;flex-basis:100%}}
   .transition-colors{transition:background-color .15s,border-color .15s,color .15s}
   .transition-all{transition:all .15s}
   /* Control heights: 34 px on desktop, 44 px on touch (A11y-W2, the ChordCharts device rule). */
   .seg{height:30px}.btn,.chip{height:34px}
   @media (pointer:coarse){.seg,.btn,.chip{height:44px}}
   /* Head, summary line and board first; four groups below (UX-01, IA-03, IA-05). */
-  .head{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;margin-bottom:8px}
+  .head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;min-height:44px;margin-bottom:8px}
   .sumrow{display:flex;align-items:center;gap:8px;min-height:34px;overflow-x:auto;white-space:nowrap;margin-bottom:8px}
   @media (pointer:coarse){.sumrow{min-height:44px}}
   .boardwrap{background:#0D131A;padding-bottom:8px}
   /* Sticky on a phone held upright, so the result of a tap stays on screen (RS-03). */
   @media (max-width:899px) and (min-height:600px){.boardwrap{position:sticky;top:0;z-index:10}}
-  .groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;align-items:start}
+  .groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr));gap:12px;align-items:start}
+  /* Desktop: the four groups in one row, Show widest for its panel (mock-up A); below, two columns or one. */
+  @media (min-width:1200px){.groups{grid-template-columns:1fr 1.4fr 1fr .8fr}}
   .card{background:#141C25;border-radius:.5rem;padding:.75rem;display:flex;flex-direction:column;gap:10px;min-width:0}
   .card h2{margin:0;font-size:.875rem;line-height:1.25rem;font-weight:700;color:#E3E9F0}
   /* The ChordCharts focus ring (A11y-S1). */
@@ -76,7 +89,7 @@
 <div id="root"></div>
 <script type="text/babel" data-presets="react">
 const { useState, useMemo, useEffect } = React;
-const VERSION = "v0.26";
+const VERSION = "v0.27";
 document.title = `Fretboard Trainer · ${VERSION}`;
 
 // ChordCharts Dark tokens (BR-01). Colour roles (BR-02): gold = the key, CAGED = position, greyscale = everything else.
@@ -123,7 +136,7 @@ const ARP_QUAL = {
 const ARP_ALL = (t) => ARP_QUAL[t].flatMap(([, qs]) => qs);
 // Header summary names (UX-07).
 const QUAL_NAME = { maj7:"maj7", dom7:"7", min7:"m7", m7b5:"m7♭5", dim7:"dim7", aug7:"aug7", add9:"add9", add11:"add11", add13:"6", m6:"m6", madd9:"m(add9)", madd11:"m(add11)", sus2:"sus2", sus4:"sus4", "7sus4":"7sus4" };
-const MODE_NAME = { ionian:"Ionian", lydian:"Lydian", mixolydian:"Mixolydian", aeolian:"Aeolian", dorian:"Dorian", phrygian:"Phrygian", harmonic:"harmonic minor", melodic:"melodic minor" };
+const MODE_NAME = { ionian:"Ionian", dorian:"Dorian", phrygian:"Phrygian", lydian:"Lydian", mixolydian:"Mixolydian", aeolian:"Aeolian", locrian:"Locrian", harmonic:"harmonic minor", melodic:"melodic minor" };
 
 const DIATONIC = {
   major: [["I",0,"maj"],["ii",2,"min"],["iii",4,"min"],["IV",5,"maj"],["V",7,"maj"],["vi",9,"min"],["vii°",11,"dim"]],
@@ -135,15 +148,16 @@ const KEY_DEG = {
   minor: { 0: "1", 2: "2", 3: "♭3", 5: "4", 7: "5", 8: "♭6", 10: "♭7" },
 };
 
-const MODES = {
-  major: [["ionian","Ionian"],["lydian","Lydian"],["mixolydian","Mixolydian"]],
-  minor: [["aeolian","Aeolian"],["dorian","Dorian"],["phrygian","Phrygian"],["harmonic","Harmonic"],["melodic","Melodic"]],
-};
+// The seven modes of major in parent order (IA-review decision 4), in any key, numbered from the mode root; harmonic and
+// melodic minor under Other scales. A mode sets Major or Minor by its 3rd (Round 4b), so windows and chord tones follow it.
+const MODES = [["ionian","Ionian"],["dorian","Dorian"],["phrygian","Phrygian"],["lydian","Lydian"],["mixolydian","Mixolydian"],["aeolian","Aeolian"],["locrian","Locrian"]];
+const OTHER_SCALES = [["harmonic","Harmonic minor"],["melodic","Melodic minor"]];
 const MODE_IV = {
   ionian: [0,2,4,5,7,9,11], lydian: [0,2,4,6,7,9,11], mixolydian: [0,2,4,5,7,9,10],
-  aeolian: [0,2,3,5,7,8,10], dorian: [0,2,3,5,7,9,10], phrygian: [0,1,3,5,7,8,10],
+  aeolian: [0,2,3,5,7,8,10], dorian: [0,2,3,5,7,9,10], phrygian: [0,1,3,5,7,8,10], locrian: [0,1,3,5,6,8,10],
   harmonic: [0,2,3,5,7,8,11], melodic: [0,2,3,5,7,9,11],
 };
+const MODE_Q = (m) => (MODE_IV[m][2] === 4 ? "major" : "minor");
 
 // Calmer CAGED set (decision 7 = b), all with ink labels (DS-04).
 const POS_COLOR = {C:"#E5766B",A:"#E9A15C",G:"#DDD05A",E:"#7FA8E6",D:"#7CC68D"};
@@ -213,7 +227,8 @@ function Seg({ active, onClick, children, tone = "grey", pos = null, disabled = 
   );
 }
 // A labelled radio group: one tab stop (the chosen choice, else the first available), arrow keys move and choose (A11y-W4, A11y-W5).
-function Track({ label, children }) {
+// With cols, an equal-cell grid sized to its widest label (Round 4b); arrow keys still move in reading order.
+function Track({ label, children, cols = 0 }) {
   const ref = React.useRef(null);
   const radios = () => [...ref.current.querySelectorAll('[role="radio"]')];
   useEffect(() => {
@@ -232,7 +247,7 @@ function Track({ label, children }) {
     const n = k === "Home" ? 0 : k === "End" ? rs.length - 1 : (i + step + rs.length) % rs.length;
     rs[n].focus(); rs[n].click();
   };
-  return <span ref={ref} className="track" role="radiogroup" aria-label={label} onKeyDown={onKeyDown}>{children}</span>;
+  return <span ref={ref} className={cols ? "track gtrack" : "track"} role="radiogroup" aria-label={label} onKeyDown={onKeyDown} style={cols ? { gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` } : undefined}>{children}</span>;
 }
 // A labelled control row inside a group card: label above the controls (IA-05). No label, no label line.
 const Row = ({ label = "", children, className = "" }) => <div className={"row " + className}>{label && <span className="rowlab">{label}</span>}{children}</div>;
@@ -258,7 +273,8 @@ function gapCells(root, set, p) {
   const inSet = (m) => set.has((((m - root) % 12) + 12) % 12);
   const have = new Set();
   for (let s = 0; s < 6; s++) for (let f = base; f <= top; f++) if (inSet(OPEN_ABS[s] + f)) have.add(OPEN_ABS[s] + f);
-  const out = new Set();
+  const out = new Set(), cut = new Set();
+  out.cut = cut;
   if (have.size) {
     const lo = Math.min(...have), hi = Math.max(...have);
     for (let m = lo + 1; m < hi; m++) {
@@ -270,7 +286,21 @@ function gapCells(root, set, p) {
         const d = f < base ? base - f : f - top;
         if (!best || d < best.d || (d === best.d && f > top)) best = { s, f, d };
       }
-      if (best) out.add(best.s * 12 + (best.f % 12));
+      if (!best) continue;
+      out.add(best.s * 12 + (best.f % 12));
+      // A full copy 12 or 24 frets up whose fill would land past the last fret takes the nearest on-board cell outside it
+      // instead, which is below it (Round 4b, open item 3 = b). Kept as exact cells (s * 100 + fret) so no other copy changes.
+      for (let k = 12; top + k <= FRETS; k += 12) {
+        if (best.f + k <= FRETS) continue;
+        let alt = null;
+        for (let s = 0; s < 6; s++) {
+          const f = m + k - OPEN_ABS[s];
+          if (f < 0 || f > FRETS || (f >= base + k && f <= top + k)) continue;
+          const d = f < base + k ? base + k - f : f - top - k;
+          if (!alt || d < alt.d || (d === alt.d && f > top + k)) alt = { s, f, d };
+        }
+        if (alt) cut.add(alt.s * 100 + alt.f);
+      }
     }
   }
   GAP_CACHE.set(id, out);
@@ -342,7 +372,7 @@ function Board({ cfg, update, globals }) {
     return ((((f - base) % 12) + 12) % 12) <= p.w;
   }
   // A gap-fill cell and a nut substitute count as inside the active position.
-  function inWin(s, f) { return inPos(f, activePos) || (gaps !== null && gaps.has(s * 12 + (f % 12))) || (subs !== null && subs.has(s * 100 + f)); }
+  function inWin(s, f) { return inPos(f, activePos) || (gaps !== null && (gaps.has(s * 12 + (f % 12)) || gaps.cut.has(s * 100 + f))) || (subs !== null && subs.has(s * 100 + f)); }
   const phase = (f, p) => { const b = (((root - 4 + p.off) % 12) + 12) % 12; return ((((f - b) % 12) + 12) % 12); };
 
   // One size: the neck fits the width when full-size dots fit, and scrolls below that (RS-01); the View control is gone.
@@ -522,25 +552,30 @@ function Board({ cfg, update, globals }) {
       {/* Four groups: Key, Show, Filter, Display; a row of cards on desktop and tablet, stacked on a phone (IA-05). */}
       <div className="groups mt-3">
       <Card title="Key">
-        {/* Major / Minor beside the key, both gold (UX-09). */}
+        {/* The 12 keys as a 6 × 2 equal-cell grid, Major / Minor below; both gold (UX-09, IA-review decision 3).
+            Major / Minor goes back to Ionian or Aeolian unless the chosen mode already has that 3rd (Round 4b). */}
         <Row>
-          <div className="flex flex-wrap gap-2">
-            <Track label="Key">{NOTES_SHARP.map((n,i) => <Seg key={i} tone="gold" active={keyRoot === i} onClick={() => update({ root: i, keyRoot: i, tonality: keyMode, arp: keyArp(keyMode) })}>{KEY_NAME[keyMode][i]}</Seg>)}</Track>
-            <Track label="Major or minor">{[["major","Major"],["minor","Minor"]].map(([t,l]) => <Seg key={t} tone="gold" active={keyMode === t} onClick={() => update({ keyMode: t, tonality: t, root: keyRoot, arp: "triad", mode: t === "major" ? "ionian" : "aeolian" })}>{l}</Seg>)}</Track>
-          </div>
+          <Track label="Key" cols={6}>{NOTES_SHARP.map((n,i) => <Seg key={i} tone="gold" active={keyRoot === i} onClick={() => update({ root: i, keyRoot: i, tonality: keyMode, arp: keyArp(keyMode) })}>{KEY_NAME[keyMode][i]}</Seg>)}</Track>
+        </Row>
+        <Row>
+          <Track label="Major or minor" cols={2}>{[["major","Major"],["minor","Minor"]].map(([t,l]) => <Seg key={t} tone="gold" active={keyMode === t} onClick={() => update({ keyMode: t, tonality: t, root: keyRoot, arp: "triad", mode: keyMode === t && MODE_Q(mode) === t ? mode : t === "major" ? "ionian" : "aeolian" })}>{l}</Seg>)}</Track>
         </Row>
       </Card>
 
       <Card title="Show">
+      {/* Show as four equal cells; the sub-panel hangs off the chosen cell (caret, inset surface) and is titled with the
+          resolved name, "C Dorian" or "C major pentatonic" (IA-review, mock-up C). Blues has the title only. */}
+      <div>
       <Row>
         {/* Major and minor is an option under Pentatonic, not a fifth layer (feature table). */}
-        <Track label="Show">{[["arpeggio","Chord"],["pentatonic","Pentatonic"],["blues","Blues"],["scale","Scale"]].map(([k,l]) => {
+        <Track label="Show" cols={4}>{[["arpeggio","Chord"],["pentatonic","Pentatonic"],["blues","Blues"],["scale","Scale"]].map(([k,l]) => {
           const on = scope === k || (k === "pentatonic" && scope === "blended");
-          return <Seg key={k} active={on} onClick={() => { if (!on) update(k === "arpeggio" ? { scope: k } : toKey(k)); }}>{l}</Seg>;
+          return <Seg key={k} active={on} aria-controls="show-panel" onClick={() => { if (!on) update(k === "arpeggio" ? { scope: k } : toKey(k)); }}>{l}{on && <span aria-hidden="true" className="caret" />}</Seg>;
         })}</Track>
       </Row>
 
-      <div>
+      <div id="show-panel" className="subpanel" role="group" aria-labelledby="show-title">
+        <h3 id="show-title">{summary}</h3>
         {(scope === "pentatonic" || scope === "blended") && (
           <Row label="Pentatonic">
             <Track label="Pentatonic">
@@ -582,25 +617,32 @@ function Board({ cfg, update, globals }) {
             )}
           </div>
         )}
-        {scope === "scale" && (
-          <Row label="Scale">
-            <Track label="Scale">{MODES[tonality].map(([k,l]) => <Seg key={k} active={mode === k} onClick={() => update({ mode: k })}>{l}</Seg>)}</Track>
+        {/* All seven modes in any key; a mode with the other 3rd switches Major / Minor (Round 4b). */}
+        {scope === "scale" && [["Mode", MODES, 4], ["Other scales", OTHER_SCALES, 2]].map(([lab, list, n]) => (
+          <Row key={lab} label={lab}>
+            <Track label={lab} cols={n}>{list.map(([k,l]) => <Seg key={k} active={mode === k} onClick={() => {
+              const q = MODE_Q(k);
+              update(q === keyMode ? { mode: k } : { mode: k, keyMode: q, tonality: q, root: keyRoot, arp: "triad" });
+            }}>{l}</Seg>)}</Track>
           </Row>
-        )}
+        ))}
+      </div>
       </div>
       </Card>
 
       <Card title="Filter">
       <Row label="Position">
-        <Track label="Position">
+        {/* Seven equal cells on one row: the shape letter as the label, its number small, the colour as the underline (mock-up C).
+            The number is 11 px, the floor (BR-05); the accessible name stays "1 C". */}
+        <Track label="Position" cols={7}>
           <Seg active={pos === null} onClick={() => update({ pos: null })}>Off</Seg>
-          {posList.map((p) => <Seg key={p.num} active={pos === p.num} onClick={() => update({ pos: p.num })} pos={POS_COLOR[p.letter]}>{p.num} {p.letter}</Seg>)}
+          {posList.map((p) => <Seg key={p.num} active={pos === p.num} onClick={() => update({ pos: p.num })} pos={POS_COLOR[p.letter]} aria-label={`${p.num} ${p.letter}`}><span aria-hidden="true" style={{ fontSize: 11, fontWeight: 500, marginRight: 3 }}>{p.num}</span>{p.letter}</Seg>)}
           <Seg active={interlock} onClick={() => update({ pos: "all" })}>All</Seg>
         </Track>
       </Row>
 
       <Row label="Strings">
-        <Track label="Strings">
+        <Track label="Strings" cols={5}>
           <Seg active={strGroup === null} onClick={() => update({ strGroup: null })}>All</Seg>
           {[[0,"1–3"],[1,"2–4"],[2,"3–5"],[3,"4–6"]].map(([g,l]) => (
             <Seg key={g} active={strGroup === g} onClick={() => update({ strGroup: g })}>{l}</Seg>
@@ -657,18 +699,18 @@ function Board({ cfg, update, globals }) {
 function Help({ onExample }) {
   const H = ({ children }) => <h2 className="text-sm font-bold text-body" style={{ margin: "16px 0 4px" }}>{children}</h2>;
   const P = ({ children }) => <p className="text-sm text-body" style={{ margin: "0 0 8px", lineHeight: 1.5 }}>{children}</p>;
-  // Written from the v0.26 build (CP-01, CP-04): thing-first, no second person.
+  // Written from the v0.27 build (CP-01, CP-04): thing-first, no second person.
   return (
     <div className="p-3 rounded-lg" style={{ background: THEME.panel, maxWidth: 760 }}>
-      <P>Scales, chords and the five CAGED positions on a standard-tuned (EADGBE) neck, frets 0–21. The board comes first, with a summary line above it; the controls sit in four groups below: Key, Show, Filter and Display.</P>
+      <P>Scales, chords and the five CAGED positions on a standard-tuned (EADGBE) neck, frets 0–21. The board comes first, with a summary line above it; the controls sit in four groups below: Key, Show, Filter and Display. The head switches between three pages: Neck (this trainer), Chords and Modes; Chords and Modes are still being built.</P>
       <H>Key and Show</H>
       <P><b>Key.</b> The 12 roots with Major or Minor. Note names follow the key signature; notes outside the key are spelled from the chord or scale formula (C dim7: C Eb Gb Bbb).</P>
-      <P><b>Show.</b> Chord: the chord tones only. Pentatonic: the key's major or minor pentatonic, or Major and minor: both pentatonics together (1 2 ♭3 3 4 5 6 ♭7). Blues: the pentatonic with the blue note (♭3 in major, ♭5 in minor). Scale: seven-note scales.</P>
+      <P><b>Show.</b> Chord: the chord tones only. Pentatonic: the key's major or minor pentatonic, or Major and minor: both pentatonics together (1 2 ♭3 3 4 5 6 ♭7). Blues: the pentatonic with the blue note (♭3 in major, ♭5 in minor). Scale: seven-note scales. The chosen layer opens a panel under it, titled with the result (C Dorian, C major pentatonic).</P>
       <P><b>Chord → In key.</b> The seven chords of the key: I ii iii IV V vi vii° in major; i ii° III iv v VI ♭VII in minor (natural minor). Numbers count from the key or from the chord. Key numbers in a minor key are 1 2 ♭3 4 5 ♭6 ♭7.</P>
       <P><b>Chord → Any chord.</b> Triads, sevenths and added-note chords on the current chord root. The list follows whether that chord is major or minor.</P>
-      <P><b>Scale.</b> Major keys: Ionian, Lydian, Mixolydian. Minor keys: Aeolian, Dorian, Phrygian, harmonic minor, melodic minor.</P>
+      <P><b>Scale.</b> The seven modes of the major scale in parent order, Ionian to Locrian, on any key root and numbered from that root (C Dorian: 1 2 ♭3 4 5 6 ♭7). Harmonic and melodic minor are under Other scales. A mode sets Major or Minor by its 3rd: Ionian, Lydian and Mixolydian are major; Dorian, Phrygian, Aeolian, Locrian and the two minor scales are minor. Positions and chord tones follow. Choosing the other of Major or Minor goes back to Ionian or Aeolian.</P>
       <H>Filter</H>
-      <P><b>Position.</b> The five CAGED positions, 1 C to 5 D. One position dims the notes outside it, and the board scrolls to it when the neck is wider than the screen. In one position, a note missing from the window is added from one fret outside it (Scale and Chord). A window note that would fall below the nut is played at the same pitch on the next lower string, shown hatched (every layer; the low E string has none). All shows the five together: neutral dots over a faint tint of each window, split where two windows meet. The ruler under the fret numbers names each window's span. In All, dots cannot be tapped and Focus and Notes: Chord tones are unavailable.</P>
+      <P><b>Position.</b> The five CAGED positions, 1 C to 5 D. One position dims the notes outside it, and the board scrolls to it when the neck is wider than the screen. In one position, a note missing from the window is added from one fret outside it (Scale and Chord). A window note that would fall below the nut is played at the same pitch on the next lower string, shown hatched (every layer; the low E string has none). In a window copy that ends at fret 21, a missing note comes from just below the window instead. All shows the five together: neutral dots over a faint tint of each window, split where two windows meet. The ruler under the fret numbers names each window's span. In All, dots cannot be tapped and Focus and Notes: Chord tones are unavailable.</P>
       <P><b>Strings.</b> Limits the board to one three-string set, 1–3 to 4–6.</P>
       <P><b>Notes.</b> Chord tones dims every other note. In Chord, every tone of the chord counts; in Scale, its 1, 3, 5 and 7; in Pentatonic, Blues and Major and minor, the 1, 3, 5 and 7 of the key's scale where present.</P>
       <P><b>Focus.</b> A tap on a dot (anywhere in its fret) or a Focus chip keeps that degree and dims the rest. More taps add degrees; a second tap releases one. A degree that cannot be lit under the current position, strings or Notes setting is unavailable.</P>
@@ -690,7 +732,24 @@ function Help({ onExample }) {
   );
 }
 
+// Chords and Modes: page shells until they are built; each says what it will hold and links back to Neck (Round 4b).
+const PAGE_NOTE = {
+  chords: ["Chords", "The seven chords of the key as triads on one string set, every inversion, stepped I to vii° along the neck. Until then, Neck → Show → Chord → In key lights one chord of the key at a time."],
+  modes: ["Modes", "The seven modes of the parent key side by side, each with its characteristic tone, linked to the same mode on the neck. Until then, Neck → Show → Scale has all seven modes in any key."],
+};
+function PagePlaceholder({ page, onNeck }) {
+  const [title, text] = PAGE_NOTE[page];
+  return (
+    <section className="p-3 rounded-lg" aria-label={title} style={{ background: THEME.panel, maxWidth: 760 }}>
+      <h2 className="text-sm font-bold text-body" style={{ margin: "0 0 4px" }}>{title} · in progress</h2>
+      <p className="text-sm text-body" style={{ margin: "0 0 12px", lineHeight: 1.5 }}>{text}</p>
+      <Btn onClick={onNeck}>Back to Neck</Btn>
+    </section>
+  );
+}
+
 function FretboardTrainer() {
+  const [page, setPage] = useState("neck");
   const [labelMode, setLabelMode] = useState("degree");
   const [isolate, setIsolate] = useState(false);
   const [ghost, setGhost] = useState(false);
@@ -715,6 +774,7 @@ function FretboardTrainer() {
       setIsolate(false);
     }
     setHelp(false);
+    setPage("neck");
   };
   // Clear: filters only; Key and Show stay (decision 12 = a).
   const anyFilter = cfg.pos !== null || cfg.strGroup !== null || cfg.focus.length > 0 || isolate;
@@ -723,17 +783,20 @@ function FretboardTrainer() {
   return (
     <div className="w-full" style={{ background: THEME.bg, color: THEME.text }}>
       <div className="p-4">
-      {/* One 44 px head (IA-03): plain text title (decision 15 = a); Help and Clear. No tab bar (decision 2 = b);
-          Reference returns as a head button when it has content (IA-02). */}
+      {/* One 44 px head (IA-03): plain text title (decision 15 = a), the page switch (IA-review, mock-up A), Help and Clear.
+          On a phone the switch takes its own row. A page choice closes Help; Clear acts on the Neck page only. */}
       <header className="head">
-        <h1 className="text-xl font-bold text-body" style={{ margin: 0 }}>Fretboard Trainer</h1>
-        <div className="flex gap-2">
+        <h1 className="text-xl font-bold text-body" style={{ margin: 0, whiteSpace: "nowrap" }}>Fretboard Trainer</h1>
+        <nav className="pagenav" aria-label="Pages">
+          <Track label="Page" cols={3}>{[["neck","Neck"],["chords","Chords"],["modes","Modes"]].map(([k,l]) => <Seg key={k} active={page === k && !help} onClick={() => { setPage(k); setHelp(false); }}>{l}</Seg>)}</Track>
+        </nav>
+        <div className="flex gap-2" style={{ marginLeft: "auto" }}>
           <Btn onClick={() => setHelp((h) => !h)} aria-pressed={help}>Help</Btn>
-          <Btn onClick={clearAll} disabled={!anyFilter}>Clear</Btn>
+          <Btn onClick={clearAll} disabled={!anyFilter || page !== "neck"}>Clear</Btn>
         </div>
       </header>
 
-      {help ? <Help onExample={applyPreset} /> : <Board cfg={cfg} update={up} globals={globals} />}
+      {help ? <Help onExample={applyPreset} /> : page === "neck" ? <Board cfg={cfg} update={up} globals={globals} /> : <PagePlaceholder page={page} onNeck={() => setPage("neck")} />}
       </div>
     </div>
   );
