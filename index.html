@@ -76,7 +76,7 @@
 <div id="root"></div>
 <script type="text/babel" data-presets="react">
 const { useState, useMemo, useEffect } = React;
-const VERSION = "v0.25";
+const VERSION = "v0.26";
 document.title = `Fretboard Trainer · ${VERSION}`;
 
 // ChordCharts Dark tokens (BR-01). Colour roles (BR-02): gold = the key, CAGED = position, greyscale = everything else.
@@ -95,11 +95,15 @@ const OPEN = [4,11,7,2,9,4];
 const OPEN_ABS = [64,59,55,50,45,40]; // e4 B3 G3 D3 A2 E2 as MIDI numbers, for pitch order across strings
 const STRING_LABELS = ["e","B","G","D","A","E"];
 const STRING_GAUGE = [1.2,1.6,2.1,2.6,3.2,3.8];
-const FRETS = 15;
-const MARKERS = {3:1,5:1,7:1,9:1,12:2,15:1};
+const FRETS = 21;
+const MARKERS = {3:1,5:1,7:1,9:1,12:2,15:1,17:1,19:1,21:1};
+// Column widths at full size: the open column, then frets 1–21 tapering 60 → 34 px, so a 30 px dot fits every fret.
+// Each column is minmax(w px, w fr): the neck fills the width when that fits and scrolls at full size below it (RS-01).
+const COL_PX = [64, ...Array.from({ length: FRETS }, (_, i) => Math.round(60 * Math.pow(34 / 60, i / (FRETS - 1))))];
 
 const DEG_LABEL = {0:"R",1:"♭2",2:"2",3:"♭3",4:"3",5:"4",6:"♭5",7:"5",8:"♭6",9:"6",10:"♭7",11:"7"};
-const MONO_GREY = "#5b6679";
+// Neutral dots (DS-05): a value step, chord tones light and other scale tones muted, both with ink labels.
+const NEUTRAL_CT = "#E3E9F0", NEUTRAL_OTHER = "#A9B6C4";
 // Degrees the formula names differently from the semitone default (TH-05). Keys: scale mode or chord quality.
 const DEG_OVERRIDE = { lydian: {6:"♯4"}, aug: {8:"♯5"}, aug7: {8:"♯5"}, dim7: {9:"𝄫7"} };
 
@@ -291,7 +295,7 @@ function nutSubs(root, set, p, gaps) {
 
 function Board({ cfg, update, globals }) {
   const { scope, arp, pos, focus, keyRoot, keyMode, arpMode, diaLabel, strGroup, mode } = cfg;
-  const { labelMode, isolate, ghost, view, setLabelMode, setIsolate, setGhost, setView } = globals;
+  const { labelMode, isolate, ghost, setLabelMode, setIsolate, setGhost } = globals;
   // Only the Arpeggio layer reads the chord root and quality; every other layer uses the key (UX-10).
   const root = scope === "arpeggio" ? cfg.root : keyRoot;
   const tonality = scope === "arpeggio" ? cfg.tonality : keyMode;
@@ -341,15 +345,46 @@ function Board({ cfg, update, globals }) {
   function inWin(s, f) { return inPos(f, activePos) || (gaps !== null && gaps.has(s * 12 + (f % 12))) || (subs !== null && subs.has(s * 100 + f)); }
   const phase = (f, p) => { const b = (((root - 4 + p.off) % 12) + 12) % 12; return ((((f - b) % 12) + 12) % 12); };
 
-  const fit = view === "fit";
-  const cellH = fit ? 34 : 46;
-  const dotBig = fit ? 23 : 30;
-  const dotBase = fit ? 18 : 24;
+  // One size: the neck fits the width when full-size dots fit, and scrolls below that (RS-01); the View control is gone.
+  const cellH = 46;
+  const dotBig = 30;
+  const dotBase = 24;
   const fontPx = 11; // nothing under 11 px (BR-05)
-  const scaleColsPx = [64,60,56,53,50,47,44,41,39,37,35,33,31,29,27,25];
-  const COLS = fit ? `22px ${scaleColsPx.map((n)=> n*0.62 + "px").join(" ")}` : `30px ${scaleColsPx.map((n)=> n + "px").join(" ")}`;
+  const COLS = `30px ${COL_PX.map((n) => `minmax(${n}px, ${n}fr)`).join(" ")}`;
 
-  const dotColorNormal = (iv) => (iv === 0 ? THEME.sel : MONO_GREY);
+  // Position ruler (DS-03): each window copy on the neck as a labelled span. In All, spans take two lanes so that
+  // overlapping windows never share one; a single position uses the first lane.
+  const ruler = useMemo(() => {
+    const spans = [];
+    posList.forEach((p) => {
+      const b = (((root - 4 + p.off) % 12) + 12) % 12;
+      for (let c = b - 12; c <= FRETS; c += 12) {
+        const a = Math.max(0, c), z = Math.min(FRETS, c + p.w);
+        if (z >= a) spans.push({ p, a, z, clipped: a !== c || z !== c + p.w });
+      }
+    });
+    spans.sort((x, y) => x.a - y.a || x.z - y.z);
+    const ends = [];
+    spans.forEach((sp) => {
+      let l = ends.findIndex((e) => e < sp.a);
+      if (l < 0) { l = ends.length; ends.push(-1); }
+      ends[l] = sp.z; sp.lane = l;
+    });
+    return { spans, lanes: Math.max(2, ends.length) };
+  }, [posList, root]);
+
+  // Scroll to the chosen position when the neck scrolls (RS-03 part): the window's main copy, one fret either side, centred.
+  const scrollRef = React.useRef(null);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !activePos || el.scrollWidth <= el.clientWidth) return;
+    const b = (((root - 4 + activePos.off) % 12) + 12) % 12;
+    const lo = el.querySelector(`[data-fret="${Math.max(0, b - 1)}"]`), hi = el.querySelector(`[data-fret="${Math.min(FRETS, b + activePos.w + 1)}"]`);
+    if (!lo || !hi) return;
+    const box = el.getBoundingClientRect(), l = lo.getBoundingClientRect().left - box.left + el.scrollLeft, r = hi.getBoundingClientRect().right - box.left + el.scrollLeft;
+    const smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollTo({ left: Math.max(0, (l + r) / 2 - el.clientWidth / 2), behavior: smooth ? "smooth" : "auto" });
+  }, [pos, root, tonality]);
   const keyRel = scope === "arpeggio" && arpMode === "diatonic" && diaLabel === "key";
   const degLabel = (pc, iv) => {
     if (keyRel) {
@@ -379,41 +414,46 @@ function Board({ cfg, update, globals }) {
         if (anyFocus && !focusSet.has(iv)) dim = true;
         if (isolate && !ctSet.has(iv)) dim = true;
       }
-      let bg, splitB = null;
-      if (interlock) {
-        const hits = posList.filter((p) => inPos(f, p));
-        if (hits.length === 0) bg = MONO_GREY;
-        else if (hits.length === 1) bg = POS_COLOR[hits[0].letter];
-        else {
-          const ord = hits.slice().sort((a,b) => phase(f,b) - phase(f,a));
-          bg = POS_COLOR[ord[0].letter]; splitB = POS_COLOR[ord[1].letter];
-        }
-      } else if (activePos) {
-        bg = inWin(s, f) ? POS_COLOR[activePos.letter] : MONO_GREY;
-      } else {
-        bg = dotColorNormal(iv);
-      }
-      // Dark labels on gold and on every position colour, two-tone dots included (DS-04).
-      const txt = bg === MONO_GREY ? THEME.text : bg === THEME.sel ? THEME.onSel : THEME.ink;
+      // Fill: the position colour inside a single position; neutral dots with no position and in All (DS-05, decision 6 = b).
+      // The root (R3) has an ink centre and a rim: gold where no position colour applies, else the position colour.
+      const posFill = activePos && inWin(s, f) ? POS_COLOR[activePos.letter] : null;
+      const fill = posFill || (isCT ? NEUTRAL_CT : NEUTRAL_OTHER);
+      const rim = posFill || THEME.sel;
       const sz = isRoot || isCT ? dotBig : dotBase;
-      const dotBg = splitB ? `linear-gradient(135deg, ${bg} 0 50%, ${splitB} 50% 100%)` : bg;
-      // A nut substitute is hatched in its position colour; a root keeps its solid halo, with the hatch on the centre.
+      // A nut substitute is hatched in its position colour; on a root the hatch is on the rim, the ink centre stays.
       const isSub = !interlock && subs !== null && subs.has(s * 100 + f);
-      const faceBg = isSub ? `repeating-linear-gradient(135deg, ${bg} 0 3px, ${HATCH[activePos.letter]} 3px 6px)` : dotBg;
+      const hatch = (c) => `repeating-linear-gradient(135deg, ${c} 0 3px, ${HATCH[activePos.letter]} 3px 6px)`;
+      // Filtered-out notes are monochrome open circles, not faded dots (DS-01): edge ring, muted label. The root keeps a
+      // heavier ring; a nut substitute keeps a dashed one.
+      const ring = (w) => `${w}px ${isSub ? "dashed" : "solid"} ${THEME.edge}`;
+      const face = dim
+        ? { background: "transparent", border: ring(isRoot ? 3 : 1.5), color: THEME.muted }
+        : isRoot
+          ? { background: isSub ? hatch(rim) : rim, color: THEME.text }
+          : { background: isSub ? hatch(fill) : fill, color: THEME.ink };
+      // All: a faint tint of each window behind its frets, split where two windows meet (decision 6 = b). The ruler names them.
+      let tint;
+      if (interlock) {
+        const hits = posList.filter((p) => inPos(f, p)).sort((a, b) => phase(f, b) - phase(f, a)).map((p) => POS_COLOR[p.letter] + "1F");
+        if (hits.length) tint = hits.length > 1 ? `linear-gradient(90deg, ${hits[0]} 0 50%, ${hits[1]} 50% 100%)` : `linear-gradient(${hits[0]}, ${hits[0]})`;
+      }
+      const cellBg = [tint, f === 0 && THEME.track].filter(Boolean).join(", ") || undefined;
       // The whole fret cell is the dot's hit area (A11y-W2); dots leave the tab order, the Focus chips do the same job (A11y-W5).
       const tappable = inScope && !interlock;
+      const title = `${noteName(pc)} · ${fdeg(iv)}`;
       cells.push(
-        <div key={f} onClick={tappable ? () => update({ focus: toggle(activeFocus, iv) }) : undefined} className="relative flex items-center justify-center" style={{ height: cellH, borderRight: f === 0 ? `5px solid ${THEME.nut}` : `2px solid ${THEME.line}`, background: f === 0 ? THEME.track : undefined, cursor: tappable ? "pointer" : undefined }}>
+        <div key={f} data-fret={s === 0 ? f : undefined} onClick={tappable ? () => update({ focus: toggle(activeFocus, iv) }) : undefined} className="relative flex items-center justify-center" style={{ height: cellH, borderRight: f === 0 ? `5px solid ${THEME.nut}` : `2px solid ${THEME.line}`, background: cellBg, cursor: tappable ? "pointer" : undefined }}>
           <div className="absolute left-0 right-0" style={{ top: "50%", transform: "translateY(-50%)", height: STRING_GAUGE[s], background: THEME.edge }} />
-          {inScope && (isRoot ? (
-            <button tabIndex={-1} disabled={interlock} className="relative rounded-full flex items-center justify-center transition-all" style={{ width: sz+8, height: sz+8, background: dotBg, opacity: dim ? 0.16 : 1, zIndex: 5, cursor: interlock ? "default" : "pointer" }} title={`${noteName(pc)} · ${fdeg(iv)}`}>
-              <div className="rounded-full flex items-center justify-center" style={{ width: sz, height: sz, background: faceBg, border: `2px solid ${THEME.bg}`, color: txt, fontSize: fontPx, fontWeight: 800 }}>{labelOf(pc, iv)}</div>
+          {inScope && (isRoot && !dim ? (
+            <button tabIndex={-1} disabled={interlock} className="relative rounded-full flex items-center justify-center transition-all" style={{ width: sz, height: sz, background: face.background, zIndex: 5, cursor: interlock ? "default" : "pointer" }} title={title}>
+              <div className="rounded-full flex items-center justify-center" style={{ width: sz - 8, height: sz - 8, background: THEME.ink, color: face.color, fontSize: fontPx, fontWeight: 800 }}>{labelOf(pc, iv)}</div>
             </button>
           ) : (
-            <button tabIndex={-1} disabled={interlock} className="relative rounded-full flex items-center justify-center transition-all" style={{ width: sz, height: sz, fontSize: fontPx, fontWeight: isCT ? 800 : 500, color: txt, background: faceBg, opacity: dim ? 0.16 : 1, zIndex: isCT ? 3 : 2, cursor: interlock ? "default" : "pointer" }} title={`${noteName(pc)} · ${fdeg(iv)}`}>{labelOf(pc, iv)}</button>
+            <button tabIndex={-1} disabled={interlock} className="relative rounded-full flex items-center justify-center transition-all" style={{ width: sz, height: sz, fontSize: fontPx, fontWeight: isRoot || isCT ? 800 : 500, ...face, zIndex: isRoot ? 5 : isCT ? 3 : 2, cursor: interlock ? "default" : "pointer" }} title={title}>{labelOf(pc, iv)}</button>
           ))}
+          {/* Chromatic notes are bare labels with no circle, so a circle always means "in the set" (DS-06). */}
           {!inScope && ghost && (
-            <div className="absolute rounded-full flex items-center justify-center" style={{ width: fit ? 18 : 23, height: fit ? 18 : 23, background: THEME.track, border: `1px solid ${THEME.line}`, color: THEME.muted, fontSize: 11, fontWeight: 600, opacity: dim ? 0.16 : 1, zIndex: 1 }} title={noteName(pc, root)}>{labelOf(pc, iv)}</div>
+            <div className="absolute flex items-center justify-center" style={{ color: dim ? THEME.edge : THEME.muted, fontSize: 11, fontWeight: 600, zIndex: 1 }} title={noteName(pc, root)}>{labelOf(pc, iv) || <span style={{ width: 5, height: 5, borderRadius: 3, background: dim ? THEME.edge : THEME.muted }} />}</div>
           )}
         </div>
       );
@@ -457,13 +497,23 @@ function Board({ cfg, update, globals }) {
             </button>
           ))}
         </div>
-        <div className={fit ? "rounded-xl pb-2" : "overflow-x-auto pb-2 rounded-xl"} style={{ background: THEME.panel2 }}>
-          <div className="grid p-3" style={{ gridTemplateColumns: COLS, width: fit ? "100%" : undefined, minWidth: fit ? undefined : "fit-content" }}>
+        <div ref={scrollRef} className="overflow-x-auto pb-2 rounded-xl" style={{ background: THEME.panel2 }}>
+          <div className="grid p-3" style={{ gridTemplateColumns: COLS, width: "100%", minWidth: "min-content" }}>
             {[0,1,2,3,4,5].map(renderRow)}
             <div />
             {/* Fret numbers: muted; marker frets bold in text. The marker-dot row is gone (DS-07). */}
             {Array.from({ length: FRETS + 1 }, (_, f) => (
               <div key={"n" + f} className="flex items-center justify-center text-xs" style={{ height: 24, color: MARKERS[f] ? THEME.text : THEME.muted, fontWeight: MARKERS[f] ? 700 : 400 }}>{f}</div>
+            ))}
+            {/* Position ruler (DS-03, A11y-W3): names each window span in text. Its height is reserved with Position Off,
+                so the controls below do not move when a position is chosen. */}
+            {Array.from({ length: ruler.lanes }, (_, l) => <div key={"rl" + l} style={{ gridRow: 8 + l, gridColumn: 1, height: 22 }} />)}
+            {ruler.spans.filter((sp) => interlock || (activePos && sp.p.num === activePos.num)).map((sp) => (
+              <div key={`r${sp.p.num}-${sp.a}`} data-ruler={`${sp.p.num} ${sp.p.letter}`} className="flex items-end justify-center text-xs font-semibold text-body"
+                style={{ gridRow: 8 + (interlock ? sp.lane : 0), gridColumn: `${sp.a + 2} / ${sp.z + 3}`, height: 22, margin: "0 2px", paddingBottom: 3, whiteSpace: "nowrap", overflow: "hidden",
+                  borderBottom: `3px solid ${POS_COLOR[sp.p.letter]}`, borderLeft: sp.clipped && sp.a === 0 ? "none" : `2px solid ${POS_COLOR[sp.p.letter]}`, borderRight: sp.clipped && sp.z === FRETS ? "none" : `2px solid ${POS_COLOR[sp.p.letter]}` }}>
+                {sp.p.num} {sp.p.letter}
+              </div>
             ))}
           </div>
         </div>
@@ -566,45 +616,30 @@ function Board({ cfg, update, globals }) {
         </Track>
       </Row>
 
-      {interlock ? (
-        <Row>
-          <div className="flex flex-wrap gap-2 items-center" style={{ minHeight: 34 }}>
-            {posList.slice().sort((a,b) => a.num - b.num).map((p) => (
-              <div key={p.num} className="flex items-center gap-2 px-2 py-1 rounded-lg text-xs font-semibold" style={{ background: THEME.track }}>
-                <span className="rounded-full" style={{ width: 12, height: 12, background: POS_COLOR[p.letter] }} />
-                <span className="text-body">{p.num} {p.letter}</span>
-              </div>
-            ))}
-          </div>
-        </Row>
-      ) : (
-        <Row label="Focus">
-          <div className="flex flex-wrap gap-2 items-center" role="group" aria-label="Focus">
-            {degrees.map((iv) => {
-              const focused = focusSet.has(iv);
-              const ct = ctSet.has(iv);
-              const off = !litSet.has(iv);
-              const quiet = anyFocus && !focused;
-              return (
-                <button key={iv} disabled={off} aria-disabled={off} aria-pressed={focused} onClick={() => update({ focus: toggle(activeFocus, iv) })} className="chip flex items-center gap-2 px-2 rounded-lg text-xs" style={{ border: `1px solid ${focused ? "transparent" : THEME.edge}`, background: focused ? THEME.ctlHover : quiet ? "transparent" : THEME.ctl, boxShadow: focused ? `0 0 0 1.5px ${THEME.text}` : "none", opacity: off ? 0.5 : 1, cursor: off ? "default" : "pointer", fontWeight: ct ? 800 : 500 }}>
-                  <span className="rounded-full" style={{ width: 12, height: 12, background: dotColorNormal(iv), boxShadow: iv === 0 ? `0 0 0 1.5px ${THEME.text}` : "none" }} />
-                  <span className="text-body">{degLabel((root + iv) % 12, iv)}</span>
-                  <span className="text-muted">{noteName((root + iv) % 12, root)}</span>
-                </button>
-              );
-            })}
-          </div>
-        </Row>
-      )}
+      {/* Focus chips: degree and note only, chord tones bold (DS-08). The All legend is gone: the Position buttons and the
+          ruler name the positions. In All the chips are unavailable, like Notes. */}
+      <Row label="Focus">
+        <div className="flex flex-wrap gap-2 items-center" role="group" aria-label="Focus">
+          {degrees.map((iv) => {
+            const focused = focusSet.has(iv);
+            const ct = ctSet.has(iv);
+            const off = interlock || !litSet.has(iv);
+            const quiet = anyFocus && !focused;
+            return (
+              <button key={iv} disabled={off} aria-disabled={off} aria-pressed={focused} onClick={() => update({ focus: toggle(activeFocus, iv) })} className="chip flex items-center gap-2 px-2 rounded-lg text-xs" style={{ border: `1px solid ${focused ? "transparent" : THEME.edge}`, background: focused ? THEME.ctlHover : quiet ? "transparent" : THEME.ctl, boxShadow: focused ? `0 0 0 1.5px ${THEME.text}` : "none", opacity: off ? 0.5 : 1, cursor: off ? "default" : "pointer", fontWeight: ct ? 800 : 500 }}>
+                <span className="text-body">{degLabel((root + iv) % 12, iv)}</span>
+                <span className="text-muted">{noteName((root + iv) % 12, root)}</span>
+              </button>
+            );
+          })}
+        </div>
+      </Row>
       </Card>
 
       {/* Display beside the other groups, with the board on screen (IA-01, decision 2 = b). */}
       <Card title="Display">
         <Row label="Labels">
           <Track label="Labels">{[["degree","Degrees"],["name","Notes"],["none","None"]].map(([k,l]) => <Seg key={k} active={labelMode === k} onClick={() => setLabelMode(k)}>{l}</Seg>)}</Track>
-        </Row>
-        <Row label="View">
-          <Track label="View">{[["scroll","Scroll"],["fit","Fit"]].map(([k,l]) => <Seg key={k} active={view === k} onClick={() => setView(k)}>{l}</Seg>)}</Track>
         </Row>
         <Row label="Other notes">
           <Track label="Other notes">
@@ -622,10 +657,10 @@ function Board({ cfg, update, globals }) {
 function Help({ onExample }) {
   const H = ({ children }) => <h2 className="text-sm font-bold text-body" style={{ margin: "16px 0 4px" }}>{children}</h2>;
   const P = ({ children }) => <p className="text-sm text-body" style={{ margin: "0 0 8px", lineHeight: 1.5 }}>{children}</p>;
-  // Written from the v0.24 build (CP-01, CP-04): thing-first, no second person.
+  // Written from the v0.26 build (CP-01, CP-04): thing-first, no second person.
   return (
     <div className="p-3 rounded-lg" style={{ background: THEME.panel, maxWidth: 760 }}>
-      <P>Scales, chords and the five CAGED positions on a standard-tuned (EADGBE) neck, frets 0–15. The board comes first, with a summary line above it; the controls sit in four groups below: Key, Show, Filter and Display.</P>
+      <P>Scales, chords and the five CAGED positions on a standard-tuned (EADGBE) neck, frets 0–21. The board comes first, with a summary line above it; the controls sit in four groups below: Key, Show, Filter and Display.</P>
       <H>Key and Show</H>
       <P><b>Key.</b> The 12 roots with Major or Minor. Note names follow the key signature; notes outside the key are spelled from the chord or scale formula (C dim7: C Eb Gb Bbb).</P>
       <P><b>Show.</b> Chord: the chord tones only. Pentatonic: the key's major or minor pentatonic, or Major and minor: both pentatonics together (1 2 ♭3 3 4 5 6 ♭7). Blues: the pentatonic with the blue note (♭3 in major, ♭5 in minor). Scale: seven-note scales.</P>
@@ -633,16 +668,16 @@ function Help({ onExample }) {
       <P><b>Chord → Any chord.</b> Triads, sevenths and added-note chords on the current chord root. The list follows whether that chord is major or minor.</P>
       <P><b>Scale.</b> Major keys: Ionian, Lydian, Mixolydian. Minor keys: Aeolian, Dorian, Phrygian, harmonic minor, melodic minor.</P>
       <H>Filter</H>
-      <P><b>Position.</b> The five CAGED positions, 1 C to 5 D. One position dims the notes outside it. In one position, a note missing from the window is added from one fret outside it (Scale and Chord). A window note that would fall below the nut is played at the same pitch on the next lower string, shown hatched (every layer; the low E string has none). All shows the five together; a note shared by two neighbouring positions is split two-tone. In All, dots cannot be tapped and Focus and Notes: Chord tones are unavailable.</P>
+      <P><b>Position.</b> The five CAGED positions, 1 C to 5 D. One position dims the notes outside it, and the board scrolls to it when the neck is wider than the screen. In one position, a note missing from the window is added from one fret outside it (Scale and Chord). A window note that would fall below the nut is played at the same pitch on the next lower string, shown hatched (every layer; the low E string has none). All shows the five together: neutral dots over a faint tint of each window, split where two windows meet. The ruler under the fret numbers names each window's span. In All, dots cannot be tapped and Focus and Notes: Chord tones are unavailable.</P>
       <P><b>Strings.</b> Limits the board to one three-string set, 1–3 to 4–6.</P>
       <P><b>Notes.</b> Chord tones dims every other note. In Chord, every tone of the chord counts; in Scale, its 1, 3, 5 and 7; in Pentatonic, Blues and Major and minor, the 1, 3, 5 and 7 of the key's scale where present.</P>
       <P><b>Focus.</b> A tap on a dot (anywhere in its fret) or a Focus chip keeps that degree and dims the rest. More taps add degrees; a second tap releases one. A degree that cannot be lit under the current position, strings or Notes setting is unavailable.</P>
       <P><b>Filter chips and Clear.</b> Each active filter (position, strings, Notes: Chord tones, focus) shows as a chip beside the summary line; its ✕ removes it. Clear removes every filter; Key and Show stay.</P>
-      <P><b>Dots.</b> Chord tones are larger and bold. The root is ringed: gold with no position, the position colour in a position or in All.</P>
+      <P><b>Dots.</b> Chord tones are larger and bold. With no position and in All, chord tones are light and the other notes grey. The root has a dark centre and a rim: gold with no position and in All, the position colour in a position. Dimmed notes are open circles.</P>
       <H>Display</H>
       <P><b>Labels.</b> Degrees, note names or none.</P>
-      <P><b>View.</b> Scroll keeps full-size frets and scrolls sideways. Fit narrows the frets.</P>
-      <P><b>Other notes.</b> Shown adds faint markers for the notes outside the current set.</P>
+      <P><b>Neck.</b> The neck fills the width when every fret has room for a full-size dot, and scrolls sideways below that.</P>
+      <P><b>Other notes.</b> Shown adds the notes outside the current set as bare labels with no circle (a small dot when Labels is None).</P>
       <H>Examples</H>
       <P>Each sets Show, position, strings, focus and Notes; Display stays. ♭7 of a dominant 7th also sets Major.</P>
       <ul style={{ margin: 0, paddingLeft: 18 }}>
@@ -659,10 +694,9 @@ function FretboardTrainer() {
   const [labelMode, setLabelMode] = useState("degree");
   const [isolate, setIsolate] = useState(false);
   const [ghost, setGhost] = useState(false);
-  const [view, setView] = useState("scroll");
   const [help, setHelp] = useState(false);
   const [cfg, setCfg] = useState({ root: 0, tonality: "major", scope: "pentatonic", arp: "triad", pos: null, focus: [], keyRoot: 0, keyMode: "major", arpMode: "diatonic", diaLabel: "key", strGroup: null, mode: "ionian" });
-  const globals = { labelMode, isolate, ghost, view, setLabelMode, setIsolate, setGhost, setView };
+  const globals = { labelMode, isolate, ghost, setLabelMode, setIsolate, setGhost };
   const up = (p) => setCfg((c) => ({ ...c, ...p }));
 
   // Examples (was Quick start): trainer state only, Strings included; Labels, View and Other notes stay (UX-15, decision 13 = a).
