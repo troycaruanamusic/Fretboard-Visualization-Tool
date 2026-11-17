@@ -63,7 +63,7 @@
   .caret{position:absolute;left:50%;top:calc(100% + 2px);transform:translateX(-50%);width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:8px solid #1B2530;pointer-events:none}
   .subpanel h3{margin:0;font-size:.875rem;line-height:1.25rem;font-weight:700;color:#E3E9F0}
   .pagenav{display:flex}
-  @media (max-width:619px){.pagenav{order:3;flex-basis:100%}}
+  @media (max-width:699px){.pagenav{order:3;flex-basis:100%}}
   /* Chords page (Round 5): the chord strip and the two control groups (mock-ups D and E). */
   .strip{display:flex;align-items:stretch;gap:6px;margin-top:8px}
   .strip .btn{height:auto;min-height:34px}
@@ -119,6 +119,11 @@
   @media (pointer:coarse){.seg,.btn,.chip{height:44px}}
   /* Head, summary line and board first; four groups below (UX-01, IA-03, IA-05). */
   .head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;min-height:44px;margin-bottom:8px}
+  /* Copy link (Round 7): beside Help on a wide head. Below 700 px, where the three buttons and the page switch cannot share
+     the title's row, it ends the page-switch row, so the head keeps two rows. */
+  .hbtns{display:flex;gap:8px;margin-left:auto}
+  .head .copyl{min-width:100px;justify-content:center}
+  @media (max-width:699px){.hbtns{display:contents}.hbtns .hb1{margin-left:auto}.pagenav{flex:1 1 calc(100% - 124px)}.head .copyl{order:4}}
   .sumrow{display:flex;align-items:center;gap:8px;min-height:34px;overflow-x:auto;white-space:nowrap;margin-bottom:8px}
   @media (pointer:coarse){.sumrow{min-height:44px}}
   .boardwrap{background:#0D131A;padding-bottom:8px}
@@ -140,7 +145,7 @@
 <div id="root"></div>
 <script type="text/babel" data-presets="react">
 const { useState, useMemo, useEffect } = React;
-const VERSION = "v0.30";
+const VERSION = "v0.31";
 document.title = `Fretboard Trainer · ${VERSION}`;
 
 // ChordCharts Dark tokens (BR-01). Colour roles (BR-02): gold = the key, CAGED = position, greyscale = everything else.
@@ -171,20 +176,23 @@ const NEUTRAL_CT = "#E3E9F0", NEUTRAL_OTHER = "#A9B6C4";
 // Degrees the formula names differently from the semitone default (TH-05). Keys: scale mode or chord quality.
 const DEG_OVERRIDE = { lydian: {6:"♯4"}, aug: {8:"♯5"}, aug7: {8:"♯5"}, dim7: {9:"𝄫7"} };
 
-// Grouped as Triads, Sevenths, Added notes (UX-04); the same qualities per tonality as v0.21.
-const ARP_QUAL = {
-  major: [
-    ["Triads", [["triad","Triad"],["sus2","sus2"],["sus4","sus4"],["aug","aug"],["dim","dim"]]],
-    ["Sevenths", [["maj7","maj7"],["dom7","7"],["7sus4","7sus4"],["aug7","aug7"],["m7b5","m7♭5"],["dim7","dim7"]]],
-    ["Added notes", [["add9","add9"],["add11","add11"],["add13","6"]]],
-  ],
-  minor: [
-    ["Triads", [["triad","Triad"],["sus2","sus2"],["sus4","sus4"],["dim","dim"]]],
-    ["Sevenths", [["min7","m7"],["7sus4","7sus4"],["m7b5","m7♭5"],["dim7","dim7"]]],
-    ["Added notes", [["madd9","add9"],["madd11","add11"],["m6","6"]]],
-  ],
-};
-const ARP_ALL = (t) => ARP_QUAL[t].flatMap(([, qs]) => qs);
+// One quality list for Major and Minor keys (UX-16): the common qualities, then the rest under More (IA-04, the ChordCharts
+// keypad pattern). "Major" and "Minor" are the triad (arp "triad") with that 3rd. Every v0.30 quality is here.
+const QUAL_COMMON = [["major","Major"],["minor","Minor"],["dom7","7"],["maj7","maj7"],["min7","m7"],["sus4","sus4"]];
+const QUAL_MORE = [
+  ["Triads", [["sus2","sus2"],["aug","aug"],["dim","dim"]], 3],
+  ["Sevenths", [["7sus4","7sus4"],["m7b5","m7♭5"],["dim7","dim7"],["aug7","aug7"]], 4],
+  ["Added notes", [["add13","6"],["add9","add9"],["add11","add11"],["m6","m6"],["madd9","m(add9)"],["madd11","m(add11)"]], 3],
+];
+const QUAL_IN_MORE = (arp) => QUAL_MORE.some(([, qs]) => qs.some(([k]) => k === arp));
+// A quality with a 3rd fixes the chord's Major / Minor, which picks its position windows as in v0.30 (maj7 was a major-key
+// chord, m7 a minor-key one). sus2, sus4, 7sus4, dim, m7♭5 and dim7 were in both lists and keep the current one.
+const QUAL_T = { dom7:"major", maj7:"major", aug:"major", aug7:"major", add9:"major", add11:"major", add13:"major", min7:"minor", m6:"minor", madd9:"minor", madd11:"minor" };
+// The chord kept on a Key, Major / Minor or Show change: in Any chord the quality stays, with its own Major / Minor where it
+// has one (UX-10, UX-11; Major or Minor affects the key's chords and scales only, UX-16). Otherwise the key's tonic triad.
+const keepChord = (c, km) => (c.arpMode === "quality"
+  ? { arp: c.arp, tonality: c.arp === "triad" ? c.tonality : QUAL_T[c.arp] || km }
+  : { arp: "triad", tonality: km });
 // Header summary names (UX-07).
 const QUAL_NAME = { maj7:"maj7", dom7:"7", min7:"m7", m7b5:"m7♭5", dim7:"dim7", aug7:"aug7", add9:"add9", add11:"add11", add13:"6", m6:"m6", madd9:"m(add9)", madd11:"m(add11)", sus2:"sus2", sus4:"sus4", "7sus4":"7sus4" };
 const MODE_NAME = { ionian:"Ionian", dorian:"Dorian", phrygian:"Phrygian", lydian:"Lydian", mixolydian:"Mixolydian", aeolian:"Aeolian", locrian:"Locrian", harmonic:"harmonic minor", melodic:"melodic minor" };
@@ -378,13 +386,11 @@ function nutSubs(root, set, p, gaps) {
 
 function Board({ cfg, update, globals }) {
   const { scope, arp, pos, focus, keyRoot, keyMode, arpMode, diaLabel, strGroup, mode } = cfg;
-  const { labelMode, isolate, ghost, dotColour, setLabelMode, setIsolate, setGhost, setDotColour } = globals;
+  const { labelMode, isolate, ghost, dotColour, more, setLabelMode, setIsolate, setGhost, setDotColour, setMore } = globals;
   const caged = dotColour === "caged";
   // Only the Arpeggio layer reads the chord root and quality; every other layer uses the key (UX-10).
   const root = scope === "arpeggio" ? cfg.root : keyRoot;
   const tonality = scope === "arpeggio" ? cfg.tonality : keyMode;
-  // Quality kept on a key or layer change: a chosen Chord Quality if the key's list has it, else the tonic triad (UX-10, UX-11).
-  const keyArp = (km) => (arpMode === "quality" && ARP_ALL(km).some(([k]) => k === arp) ? arp : "triad");
   const scopeSet = useMemo(() => new Set(scopeIntervals(tonality, scope, arp, mode)), [tonality, scope, arp, mode]);
   // Chord tones: every tone of the chord; in a scale layer, its 1, 3, 5 and 7 (TH-04).
   const ctSet = useMemo(() => {
@@ -575,7 +581,7 @@ function Board({ cfg, update, globals }) {
     anyFocus && [`Focus ${activeFocus.slice().sort((a,b) => a-b).map((iv) => degLabel((root + iv) % 12, iv)).join(" ")}`, () => update({ focus: [] })],
   ].filter(Boolean);
   // From a scale layer, Show resets the chord root and quality to the key (UX-10).
-  const toKey = (k) => ({ scope: k, root: keyRoot, tonality: keyMode, arp: keyArp(keyMode) });
+  const toKey = (k) => ({ scope: k, root: keyRoot, ...keepChord(cfg, keyMode) });
 
   return (
     <div>
@@ -621,10 +627,10 @@ function Board({ cfg, update, globals }) {
         {/* The 12 keys as a 6 × 2 equal-cell grid, Major / Minor below; both gold (UX-09, IA-review decision 3).
             Major / Minor goes back to Ionian or Aeolian unless the chosen mode already has that 3rd (Round 4b). */}
         <Row>
-          <Track label="Key" cols={6}>{NOTES_SHARP.map((n,i) => <Seg key={i} tone="gold" active={keyRoot === i} onClick={() => update({ root: i, keyRoot: i, tonality: keyMode, arp: keyArp(keyMode) })}>{accs(KEY_NAME[keyMode][i])}</Seg>)}</Track>
+          <Track label="Key" cols={6}>{NOTES_SHARP.map((n,i) => <Seg key={i} tone="gold" active={keyRoot === i} onClick={() => update({ root: i, keyRoot: i, ...keepChord(cfg, keyMode) })}>{accs(KEY_NAME[keyMode][i])}</Seg>)}</Track>
         </Row>
         <Row>
-          <Track label="Major or minor" cols={2}>{[["major","Major"],["minor","Minor"]].map(([t,l]) => <Seg key={t} tone="gold" active={keyMode === t} onClick={() => update({ keyMode: t, tonality: t, root: keyRoot, arp: "triad", mode: keyMode === t && MODE_Q(mode) === t ? mode : t === "major" ? "ionian" : "aeolian" })}>{l}</Seg>)}</Track>
+          <Track label="Major or minor" cols={2}>{[["major","Major"],["minor","Minor"]].map(([t,l]) => <Seg key={t} tone="gold" active={keyMode === t} onClick={() => update({ keyMode: t, root: keyRoot, ...keepChord(cfg, t), mode: keyMode === t && MODE_Q(mode) === t ? mode : t === "major" ? "ionian" : "aeolian" })}>{l}</Seg>)}</Track>
         </Row>
       </Card>
 
@@ -655,7 +661,7 @@ function Board({ cfg, update, globals }) {
             <Row label="Chord">
               <Track label="Chord">
                 <Seg active={arpMode === "diatonic"} onClick={() => update({ arpMode: "diatonic", arp: "triad" })}>In key</Seg>
-                <Seg active={arpMode === "quality"} onClick={() => update({ arpMode: "quality" })}>Any chord</Seg>
+                <Seg active={arpMode === "quality"} onClick={() => { update({ arpMode: "quality" }); if (QUAL_IN_MORE(arp)) setMore(true); }}>Any chord</Seg>
               </Track>
             </Row>
             {arpMode === "diatonic" ? (
@@ -675,11 +681,23 @@ function Board({ cfg, update, globals }) {
                 </Row>
               </React.Fragment>
             ) : (
-              ARP_QUAL[tonality].map(([group, qs]) => (
-                <Row key={group} label={group}>
-                  <Track label={group}>{qs.map(([k,l]) => <Seg key={k} active={arp === k} onClick={() => update({ arp: k })}>{l}</Seg>)}</Track>
+              <React.Fragment>
+                {/* Common qualities, then More (IA-04, UX-16). Any chord opens More when the chosen quality is in it (vii° from In key). */}
+                <Row label="Quality">
+                  <Track label="Quality" cols={6}>{QUAL_COMMON.map(([k,l]) => {
+                    const tri = k === "major" || k === "minor";
+                    return <Seg key={k} active={tri ? arp === "triad" && tonality === k : arp === k} onClick={() => update(tri ? { arp: "triad", tonality: k } : { arp: k, tonality: QUAL_T[k] || tonality })}>{l}</Seg>;
+                  })}</Track>
                 </Row>
-              ))
+                <Row>
+                  <Btn onClick={() => setMore((m) => !m)} aria-expanded={more} aria-controls="qual-more">More<span aria-hidden="true" className="text-muted" style={{ marginLeft: 6, display: "inline-block", transform: more ? "rotate(180deg)" : "none" }}>▾</span></Btn>
+                </Row>
+                {more && <div id="qual-more" className="flex flex-col gap-2">{QUAL_MORE.map(([group, qs, n]) => (
+                  <Row key={group} label={group}>
+                    <Track label={group} cols={n}>{qs.map(([k,l]) => <Seg key={k} active={arp === k} onClick={() => update({ arp: k, tonality: QUAL_T[k] || tonality })}>{l}</Seg>)}</Track>
+                  </Row>
+                ))}</div>}
+              </React.Fragment>
             )}
           </div>
         )}
@@ -688,7 +706,7 @@ function Board({ cfg, update, globals }) {
           <Row key={lab} label={lab}>
             <Track label={lab} cols={n}>{list.map(([k,l]) => <Seg key={k} active={mode === k} onClick={() => {
               const q = MODE_Q(k);
-              update(q === keyMode ? { mode: k } : { mode: k, keyMode: q, tonality: q, root: keyRoot, arp: "triad" });
+              update(q === keyMode ? { mode: k } : { mode: k, keyMode: q, root: keyRoot, ...keepChord(cfg, q) });
             }}>{l}</Seg>)}</Track>
           </Row>
         ))}
@@ -769,15 +787,16 @@ function Board({ cfg, update, globals }) {
 function Help({ onExample }) {
   const H = ({ children }) => <h2 className="text-sm font-bold text-body" style={{ margin: "16px 0 4px" }}>{children}</h2>;
   const P = ({ children }) => <p className="text-sm text-body" style={{ margin: "0 0 8px", lineHeight: 1.5 }}>{children}</p>;
-  // Written from the v0.30 build (CP-01, CP-04): thing-first, no second person.
+  // Written from the v0.31 build (CP-01, CP-04): thing-first, no second person.
   return (
     <div className="p-3 rounded-lg" style={{ background: THEME.panel, maxWidth: 760 }}>
       <P>Scales, chords and the five CAGED positions on a standard-tuned (EADGBE) neck, frets 0–21. The board comes first, with a summary line above it; the controls sit in four groups below: Key, Show, Filter and Display. The head switches between three pages: Neck (this trainer), Chords and Modes. Key and Major or Minor are the same on Neck and Chords; Modes has its own parent key.</P>
+      <P><b>Copy link.</b> The address holds the page, the key and the settings on Neck, Chords and Modes, so a copied link opens the same view, for example a set-up board sent to a student. On a phone or tablet the button opens the share sheet. Back returns to the previous page.</P>
       <H>Key and Show</H>
       <P><b>Key.</b> The 12 roots with Major or Minor. Note names follow the key signature, with ♭ and ♯; notes outside the key are spelled from the chord or scale formula (C dim7: C E♭ G♭ B𝄫).</P>
       <P><b>Show.</b> Chord: the chord tones only. Pentatonic: the key's major or minor pentatonic, or Major and minor: both pentatonics together (1 2 ♭3 3 4 5 6 ♭7). Blues: the pentatonic with the blue note (♭3 in major, ♭5 in minor). Scale: seven-note scales. The chosen layer opens a panel under it, titled with the result (C Dorian, C major pentatonic).</P>
       <P><b>Chord → In key.</b> The seven chords of the key: I ii iii IV V vi vii° in major; i ii° III iv v VI ♭VII in minor (natural minor). Numbers count from the key or from the chord. Key numbers in a minor key are 1 2 ♭3 4 5 ♭6 ♭7.</P>
-      <P><b>Chord → Any chord.</b> Triads, sevenths and added-note chords on the current chord root. The list follows whether that chord is major or minor.</P>
+      <P><b>Chord → Any chord.</b> Triads, sevenths and added-note chords on the current chord root, in one list for major and minor keys. The common qualities show first: Major, Minor, 7, maj7, m7 and sus4. More opens the rest: sus2, aug and dim; 7sus4, m7♭5, dim7 and aug7; 6, add9, add11, m6, m(add9) and m(add11). A chosen quality stays when Key, Major or minor, or Show changes.</P>
       <P><b>Scale.</b> The seven modes of the major scale in parent order, Ionian to Locrian, on any key root and numbered from that root (C Dorian: 1 2 ♭3 4 5 6 ♭7). Harmonic and melodic minor are under Other scales. A mode sets Major or Minor by its 3rd: Ionian, Lydian and Mixolydian are major; Dorian, Phrygian, Aeolian, Locrian and the two minor scales are minor. Positions and chord tones follow. Choosing the other of Major or Minor goes back to Ionian or Aeolian.</P>
       <H>Filter</H>
       <P><b>Position.</b> The five CAGED positions, 1 C to 5 D. One position dims the notes outside it, and the board scrolls to it when the neck is wider than the screen. In one position, a note missing from the window is added from one fret outside it (Scale and Chord). A window note that would fall below the nut is played at the same pitch on the next lower string, shown hatched (every layer; the low E string has none). In a window copy that ends at fret 21, a missing note comes from just below the window instead. All shows the five together, coloured as Dot colour sets. The ruler under the fret numbers names each window's span: grey with no position, the chosen position in colour, all five in colour in All. In All, dots cannot be tapped and Focus and Notes: Chord tones are unavailable.</P>
@@ -966,7 +985,6 @@ function ChordsPage({ cfg, update, ch, setCh }) {
   const keyName = uniAcc(KEY_NAME[keyMode][keyRoot]);
   const summary = `${keyName} ${keyMode} · ${cur.rn} · ${uniAcc(keySp[cur.root].name)} ${TRIAD_Q[cur.q][0]} · strings ${SET_NAME[strSet]}, ${INV_NAME[inv]}`;
   // Key and Major / Minor act exactly as on the Neck page, so both pages stay on one key.
-  const keyArp = (km) => (arpMode === "quality" && ARP_ALL(km).some(([k]) => k === arp) ? arp : "triad");
   const opt = (k, v) => setCh((c) => ({ ...c, [k]: v }));
 
   return (
@@ -994,10 +1012,10 @@ function ChordsPage({ cfg, update, ch, setCh }) {
       <div className="cgroups mt-3">
         <Card title="Key">
           <Row>
-            <Track label="Key" cols={6}>{NOTES_SHARP.map((n, i) => <Seg key={i} tone="gold" active={keyRoot === i} onClick={() => update({ root: i, keyRoot: i, tonality: keyMode, arp: keyArp(keyMode) })}>{uniAcc(KEY_NAME[keyMode][i])}</Seg>)}</Track>
+            <Track label="Key" cols={6}>{NOTES_SHARP.map((n, i) => <Seg key={i} tone="gold" active={keyRoot === i} onClick={() => update({ root: i, keyRoot: i, ...keepChord(cfg, keyMode) })}>{uniAcc(KEY_NAME[keyMode][i])}</Seg>)}</Track>
           </Row>
           <Row>
-            <Track label="Major or minor" cols={2}>{[["major","Major"],["minor","Minor"]].map(([t,l]) => <Seg key={t} tone="gold" active={keyMode === t} onClick={() => update({ keyMode: t, tonality: t, root: keyRoot, arp: "triad", mode: keyMode === t && MODE_Q(mode) === t ? mode : t === "major" ? "ionian" : "aeolian" })}>{l}</Seg>)}</Track>
+            <Track label="Major or minor" cols={2}>{[["major","Major"],["minor","Minor"]].map(([t,l]) => <Seg key={t} tone="gold" active={keyMode === t} onClick={() => update({ keyMode: t, root: keyRoot, ...keepChord(cfg, t), mode: keyMode === t && MODE_Q(mode) === t ? mode : t === "major" ? "ionian" : "aeolian" })}>{l}</Seg>)}</Track>
           </Row>
         </Card>
         <Card title="Diatonic chords">
@@ -1125,20 +1143,136 @@ function ModesPage({ md, setMd, onNeck }) {
   );
 }
 
+// URL state (UX-18, Round 7): page, key and the Neck, Chords and Modes state, as query parameters. A value at its default is
+// left out, so the plain address is the default view. Help is not in the URL. Notes are C, Db … B with s for sharp (Fs, Cs).
+const NOTE_TOK = ["C","Db","D","Eb","E","F","Gb","G","Ab","A","Bb","B"];
+const NOTE_IN = (v) => { const t = String(v).replace(/s$/, "#"); const i = NOTE_TOK.indexOf(t); return i >= 0 ? i : NOTES_SHARP.indexOf(t); };
+const noteTok = (pc, km) => (km ? KEY_NAME[km][pc] : NOTE_TOK[pc]).replace("#", "s");
+const STR_TOK = ["13", "24", "35", "46"];
+const oneOf = (...vs) => (v) => (vs.includes(v) ? v : undefined);
+const intIn = (lo, hi) => (v) => (/^-?\d+$/.test(v) && +v >= lo && +v <= hi ? +v : undefined);
+const ARP_KEYS = ["triad", ...QUAL_COMMON.map(([k]) => k).filter((k) => k !== "major" && k !== "minor"), ...QUAL_MORE.flatMap(([, qs]) => qs.map(([k]) => k))];
+const listIn = (lo, hi) => (v) => { const a = v.split(".").map(intIn(lo, hi)); return a.every((x) => x !== undefined) && new Set(a).size === a.length ? a : undefined; };
+// [parameter, state part, field, default, encode, decode]
+const URL_FIELDS = [
+  ["p", "top", "page", "neck", String, oneOf("neck", "chords", "modes")],
+  ["key", "cfg", "keyRoot", 0, null, NOTE_IN],
+  ["mode", "cfg", "keyMode", "major", String, oneOf("major", "minor")],
+  ["show", "cfg", "scope", "pentatonic", String, oneOf("arpeggio", "pentatonic", "blended", "blues", "scale")],
+  ["chord", "cfg", "arpMode", "diatonic", (v) => (v === "quality" ? "any" : "inkey"), (v) => ({ any: "quality", inkey: "diatonic" })[v]],
+  ["q", "cfg", "arp", "triad", String, oneOf(...ARP_KEYS)],
+  ["croot", "cfg", "root", 0, (v) => noteTok(v), NOTE_IN],
+  ["cmode", "cfg", "tonality", "major", String, oneOf("major", "minor")],
+  ["scale", "cfg", "mode", "ionian", String, oneOf(...MODES.map(([k]) => k), ...OTHER_SCALES.map(([k]) => k))],
+  ["num", "cfg", "diaLabel", "key", String, oneOf("key", "chord")],
+  ["pos", "cfg", "pos", null, String, (v) => (v === "all" ? "all" : intIn(1, 5)(v))],
+  ["str", "cfg", "strGroup", null, (v) => STR_TOK[v], (v) => (STR_TOK.includes(v) ? STR_TOK.indexOf(v) : undefined)],
+  ["focus", "cfg", "focus", [], (v) => v.join("."), listIn(0, 11)],
+  ["labels", "top", "labelMode", "degree", String, oneOf("degree", "name", "none")],
+  ["notes", "top", "isolate", false, () => "ct", (v) => (v === "ct" ? true : undefined)],
+  ["other", "top", "ghost", false, () => "shown", (v) => (v === "shown" ? true : undefined)],
+  ["dots", "top", "dotColour", "caged", String, oneOf("caged", "neutral")],
+  ["deg", "ch", "deg", 0, (v) => String(v + 1), (v) => { const n = intIn(1, 7)(v); return n === undefined ? undefined : n - 1; }],
+  ["set", "ch", "strSet", 0, (v) => STR_TOK[v], (v) => (STR_TOK.includes(v) ? STR_TOK.indexOf(v) : undefined)],
+  ["inv", "ch", "inv", 0, String, intIn(0, 2)],
+  ["cnum", "ch", "numFrom", "key", String, oneOf("key", "chord")],
+  ["behind", "ch", "scaleBehind", false, () => "shown", (v) => (v === "shown" ? true : undefined)],
+  ["parent", "md", "parent", 0, (v) => noteTok(v), NOTE_IN],
+  ["mview", "md", "view", "notes", String, oneOf("notes", "numbers")],
+  ["find", "md", "lkRoot", "", (v) => noteTok(+v), (v) => { const n = NOTE_IN(v); return n < 0 ? undefined : String(n); }],
+  ["findmode", "md", "lkMode", "", (v) => String(+v + 1), (v) => { const n = intIn(1, 7)(v); return n === undefined ? undefined : String(n - 1); }],
+  ["hit", "md", "hit", null, (v) => String(v + 1), (v) => { const n = intIn(1, 7)(v); return n === undefined ? undefined : n - 1; }],
+  ["open", "md", "open", [], (v) => v.map((i) => i + 1).join("."), (v) => { const a = listIn(1, 7)(v); return a && a.map((i) => i - 1); }],
+];
+const URL_DEFAULT = {
+  top: { page: "neck", labelMode: "degree", isolate: false, ghost: false, dotColour: "caged", more: false },
+  cfg: { root: 0, tonality: "major", scope: "pentatonic", arp: "triad", pos: null, focus: [], keyRoot: 0, keyMode: "major", arpMode: "diatonic", diaLabel: "key", strGroup: null, mode: "ionian" },
+  ch: { deg: 0, strSet: 0, inv: 0, numFrom: "key", scaleBehind: false },
+  md: { parent: 0, view: "notes", hit: null, lkRoot: "", lkMode: "", open: [] },
+};
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+// More is open by default when the chosen Any chord quality is in it; more=1 or more=0 records any other choice.
+const moreDefault = (c) => c.scope === "arpeggio" && c.arpMode === "quality" && QUAL_IN_MORE(c.arp);
+function stateToQuery(st) {
+  const q = new URLSearchParams();
+  URL_FIELDS.forEach(([k, part, f, d, enc]) => {
+    const v = st[part][f];
+    if (!same(v, d)) q.set(k, enc ? enc(v) : noteTok(v, st.cfg.keyMode));
+  });
+  if (st.top.more !== moreDefault(st.cfg)) q.set("more", st.top.more ? "1" : "0");
+  const t = q.toString();
+  return t ? "?" + t : "";
+}
+function queryToState(search) {
+  const q = new URLSearchParams(search);
+  const st = { top: { ...URL_DEFAULT.top }, cfg: { ...URL_DEFAULT.cfg }, ch: { ...URL_DEFAULT.ch }, md: { ...URL_DEFAULT.md } };
+  URL_FIELDS.forEach(([k, part, f, d, , dec]) => {
+    if (!q.has(k)) return;
+    const v = dec(q.get(k));
+    if (v !== undefined && !(typeof v === "number" && v < 0)) st[part][f] = v;
+  });
+  // A hand-edited link: a quality with a 3rd takes its own Major / Minor, as a click would.
+  if (st.cfg.arp !== "triad" && QUAL_T[st.cfg.arp]) st.cfg.tonality = QUAL_T[st.cfg.arp];
+  st.top.more = q.get("more") === "1" ? true : q.get("more") === "0" ? false : moreDefault(st.cfg);
+  return st;
+}
+const URL_INIT = typeof location !== "undefined" ? queryToState(location.search) : queryToState("");
+
 function FretboardTrainer() {
-  const [page, setPage] = useState("neck");
-  const [labelMode, setLabelMode] = useState("degree");
-  const [isolate, setIsolate] = useState(false);
-  const [ghost, setGhost] = useState(false);
-  const [dotColour, setDotColour] = useState("caged");
+  // Every value starts from the URL (Round 7); with no query it is the v0.30 default.
+  const [page, setPage] = useState(URL_INIT.top.page);
+  const [labelMode, setLabelMode] = useState(URL_INIT.top.labelMode);
+  const [isolate, setIsolate] = useState(URL_INIT.top.isolate);
+  const [ghost, setGhost] = useState(URL_INIT.top.ghost);
+  const [dotColour, setDotColour] = useState(URL_INIT.top.dotColour);
+  const [more, setMore] = useState(URL_INIT.top.more);
   const [help, setHelp] = useState(false);
-  const [cfg, setCfg] = useState({ root: 0, tonality: "major", scope: "pentatonic", arp: "triad", pos: null, focus: [], keyRoot: 0, keyMode: "major", arpMode: "diatonic", diaLabel: "key", strGroup: null, mode: "ionian" });
+  const [cfg, setCfg] = useState(URL_INIT.cfg);
   // Chords page state (Round 5): chosen degree, string set, inversion, Numbers from, Scale behind. Key lives in cfg.
-  const [ch, setCh] = useState({ deg: 0, strSet: 0, inv: 0, numFrom: "key", scaleBehind: false });
+  const [ch, setCh] = useState(URL_INIT.ch);
   // Modes page state (Round 6): its own parent key (a major key, index = pitch class), Notes / Numbers, the reverse
   // lookup and the rows opened for details. It does not change the key on Neck or Chords until a row link is used.
-  const [md, setMd] = useState({ parent: 0, view: "notes", hit: null, lkRoot: "", lkMode: "", open: [] });
-  const globals = { labelMode, isolate, ghost, dotColour, setLabelMode, setIsolate, setGhost, setDotColour };
+  const [md, setMd] = useState(URL_INIT.md);
+  // The URL follows the state: a page change adds a history step, so Back returns to the previous page; any other change
+  // replaces the current step. Back and Forward restore the state the step held (Round 7).
+  const lastPage = React.useRef(page);
+  useEffect(() => {
+    const st = { top: { page, labelMode, isolate, ghost, dotColour, more }, cfg, ch, md };
+    const url = location.pathname + stateToQuery(st) + location.hash;
+    const push = lastPage.current !== page;
+    lastPage.current = page;
+    if (url === location.pathname + location.search + location.hash && !push) return;
+    try { history[push ? "pushState" : "replaceState"](null, "", url); } catch (e) { /* a sandboxed frame: the URL stays */ }
+  }, [page, labelMode, isolate, ghost, dotColour, more, cfg, ch, md]);
+  useEffect(() => {
+    const onPop = () => {
+      const st = queryToState(location.search);
+      lastPage.current = st.top.page;
+      setPage(st.top.page); setLabelMode(st.top.labelMode); setIsolate(st.top.isolate); setGhost(st.top.ghost); setDotColour(st.top.dotColour); setMore(st.top.more);
+      setCfg(st.cfg); setCh(st.ch); setMd(st.md); setHelp(false);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+  // Copy link: the share sheet on a touch device that has one, else the clipboard; the button reads "Copied" for 2 s.
+  const [copied, setCopied] = useState("");
+  const copyLink = async () => {
+    const url = location.href;
+    const done = (t) => { setCopied(t); setTimeout(() => setCopied(""), 2000); };
+    if (navigator.share && window.matchMedia("(pointer: coarse)").matches) {
+      try { await navigator.share({ title: "Fretboard Trainer", url }); } catch (e) { /* dismissed */ }
+      return;
+    }
+    try { await navigator.clipboard.writeText(url); done("Copied"); return; } catch (e) { /* fall back below */ }
+    const ta = document.createElement("textarea");
+    ta.value = url; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    done(ok ? "Copied" : "Not copied");
+  };
+  const globals = { labelMode, isolate, ghost, dotColour, more, setLabelMode, setIsolate, setGhost, setDotColour, setMore };
   const up = (p) => setCfg((c) => ({ ...c, ...p }));
 
   // Examples (was Quick start): trainer state only, Strings included; Labels, View and Other notes stay (UX-15, decision 13 = a).
@@ -1163,11 +1297,10 @@ function FretboardTrainer() {
   // there (Round 6). Filters, Labels and Other notes stay, as they do for those clicks.
   const showMode = (r, mk) => {
     setCfg((c) => {
-      const keyArp = (n, km) => (n.arpMode === "quality" && ARP_ALL(km).some(([k]) => k === n.arp) ? n.arp : "triad");
-      let n = { ...c, root: r, keyRoot: r, tonality: c.keyMode, arp: keyArp(c, c.keyMode) };
-      if (n.scope !== "scale") n = { ...n, scope: "scale", root: n.keyRoot, tonality: n.keyMode, arp: keyArp(n, n.keyMode) };
+      let n = { ...c, root: r, keyRoot: r, ...keepChord(c, c.keyMode) };
+      if (n.scope !== "scale") n = { ...n, scope: "scale", root: n.keyRoot, ...keepChord(n, n.keyMode) };
       const q = MODE_Q(mk);
-      return q === n.keyMode ? { ...n, mode: mk } : { ...n, mode: mk, keyMode: q, tonality: q, root: n.keyRoot, arp: "triad" };
+      return q === n.keyMode ? { ...n, mode: mk } : { ...n, mode: mk, keyMode: q, root: n.keyRoot, ...keepChord(n, q) };
     });
     setHelp(false);
     setPage("neck");
@@ -1179,16 +1312,17 @@ function FretboardTrainer() {
   return (
     <div className="w-full" style={{ background: THEME.bg, color: THEME.text }}>
       <div className="p-4">
-      {/* One 44 px head (IA-03): plain text title (decision 15 = a), the page switch (IA-review, mock-up A), Help and Clear.
+      {/* One 44 px head (IA-03): plain text title (decision 15 = a), the page switch (IA-review, mock-up A), Copy link, Help and Clear.
           On a phone the switch takes its own row. A page choice closes Help; Clear acts on the Neck page only. */}
       <header className="head">
         <h1 className="text-xl font-bold text-body" style={{ margin: 0, whiteSpace: "nowrap" }}>Fretboard Trainer</h1>
         <nav className="pagenav" aria-label="Pages">
           <Track label="Page" cols={3}>{[["neck","Neck"],["chords","Chords"],["modes","Modes"]].map(([k,l]) => <Seg key={k} active={page === k && !help} onClick={() => { setPage(k); setHelp(false); }}>{l}</Seg>)}</Track>
         </nav>
-        <div className="flex gap-2" style={{ marginLeft: "auto" }}>
-          <Btn onClick={() => setHelp((h) => !h)} aria-pressed={help}>Help</Btn>
-          <Btn onClick={clearAll} disabled={!anyFilter || page !== "neck"}>Clear</Btn>
+        <div className="hbtns">
+          <Btn onClick={copyLink} aria-live="polite" className="btn copyl text-sm transition-colors">{copied || "Copy link"}</Btn>
+          <Btn onClick={() => setHelp((h) => !h)} aria-pressed={help} className="btn hb hb1 text-sm transition-colors">Help</Btn>
+          <Btn onClick={clearAll} disabled={!anyFilter || page !== "neck"} className="btn hb text-sm transition-colors">Clear</Btn>
         </div>
       </header>
 
