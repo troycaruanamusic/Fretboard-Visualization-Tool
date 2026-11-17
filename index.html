@@ -61,6 +61,15 @@
   .subpanel h3{margin:0;font-size:.875rem;line-height:1.25rem;font-weight:700;color:#E3E9F0}
   .pagenav{display:flex}
   @media (max-width:619px){.pagenav{order:3;flex-basis:100%}}
+  /* Chords page (Round 5): the chord strip and the two control groups (mock-ups D and E). */
+  .strip{display:flex;align-items:stretch;gap:6px;margin-top:8px}
+  .strip .btn{height:auto;min-height:34px}
+  .striptrack{flex:1;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px;padding:2px;border-radius:8px;background:#091017;min-width:0}
+  @media (max-width:639px){.striptrack{grid-template-columns:repeat(4,minmax(0,1fr))}}
+  .stripcell{min-width:0;padding:6px 4px;border-radius:6px;display:flex;flex-direction:column;align-items:center;gap:2px;white-space:nowrap;min-height:44px}
+  .cgroups{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr));gap:12px;align-items:start}
+  @media (min-width:1200px){.cgroups{grid-template-columns:1fr 2.4fr}}
+  .crows{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:10px 16px}
   .transition-colors{transition:background-color .15s,border-color .15s,color .15s}
   .transition-all{transition:all .15s}
   /* Control heights: 34 px on desktop, 44 px on touch (A11y-W2, the ChordCharts device rule). */
@@ -89,7 +98,7 @@
 <div id="root"></div>
 <script type="text/babel" data-presets="react">
 const { useState, useMemo, useEffect } = React;
-const VERSION = "v0.27";
+const VERSION = "v0.28";
 document.title = `Fretboard Trainer · ${VERSION}`;
 
 // ChordCharts Dark tokens (BR-01). Colour roles (BR-02): gold = the key, CAGED = position, greyscale = everything else.
@@ -699,10 +708,10 @@ function Board({ cfg, update, globals }) {
 function Help({ onExample }) {
   const H = ({ children }) => <h2 className="text-sm font-bold text-body" style={{ margin: "16px 0 4px" }}>{children}</h2>;
   const P = ({ children }) => <p className="text-sm text-body" style={{ margin: "0 0 8px", lineHeight: 1.5 }}>{children}</p>;
-  // Written from the v0.27 build (CP-01, CP-04): thing-first, no second person.
+  // Written from the v0.28 build (CP-01, CP-04): thing-first, no second person.
   return (
     <div className="p-3 rounded-lg" style={{ background: THEME.panel, maxWidth: 760 }}>
-      <P>Scales, chords and the five CAGED positions on a standard-tuned (EADGBE) neck, frets 0–21. The board comes first, with a summary line above it; the controls sit in four groups below: Key, Show, Filter and Display. The head switches between three pages: Neck (this trainer), Chords and Modes; Chords and Modes are still being built.</P>
+      <P>Scales, chords and the five CAGED positions on a standard-tuned (EADGBE) neck, frets 0–21. The board comes first, with a summary line above it; the controls sit in four groups below: Key, Show, Filter and Display. The head switches between three pages: Neck (this trainer), Chords and Modes; Modes is still being built. Key and Major or Minor are the same on Neck and Chords.</P>
       <H>Key and Show</H>
       <P><b>Key.</b> The 12 roots with Major or Minor. Note names follow the key signature; notes outside the key are spelled from the chord or scale formula (C dim7: C Eb Gb Bbb).</P>
       <P><b>Show.</b> Chord: the chord tones only. Pentatonic: the key's major or minor pentatonic, or Major and minor: both pentatonics together (1 2 ♭3 3 4 5 6 ♭7). Blues: the pentatonic with the blue note (♭3 in major, ♭5 in minor). Scale: seven-note scales. The chosen layer opens a panel under it, titled with the result (C Dorian, C major pentatonic).</P>
@@ -720,6 +729,11 @@ function Help({ onExample }) {
       <P><b>Labels.</b> Degrees, note names or none.</P>
       <P><b>Neck.</b> The neck fills the width when every fret has room for a full-size dot, and scrolls sideways below that.</P>
       <P><b>Other notes.</b> Shown adds the notes outside the current set as bare labels with no circle (a small dot when Labels is None).</P>
+      <H>Chords page</H>
+      <P><b>The ladder.</b> The seven triads of the key, I ii iii IV V vi vii° in major and i ii° III iv v VI ♭VII in minor, as closed voicings on one three-string set, all on the neck at once. The chosen chord is filled, the other six are outlined, and each has its Roman numeral above it. I sits at its lowest place on the neck and each chord climbs from the one before; a chord that would pass fret 21 is shown an octave lower.</P>
+      <P><b>Chord strip.</b> Numeral, chord name and frets, low string to high, for each chord. A tap chooses a chord; ◀ and ▶ step down and up, wrapping round. The arrow keys step too, inside the strip and anywhere on the page outside another control group.</P>
+      <P><b>Strings and Inversion.</b> String sets 1–3 to 4–6. Root position has the root on the set's lowest string, 1st inversion the 3rd, 2nd inversion the 5th.</P>
+      <P><b>Numbers from and Scale behind.</b> Key numbers every note by its degree in the key (1 to 7; ♭3 ♭6 ♭7 in minor); Chord numbers each shape from its own root (R 3 5, ♭3 in minor chords, ♭5 in diminished). Scale behind shows the key's other notes on the string set as bare labels, numbered the same way, counting from the chosen chord with Chord.</P>
       <H>Examples</H>
       <P>Each sets Show, position, strings, focus and Notes; Display stays. ♭7 of a dominant 7th also sets Major.</P>
       <ul style={{ margin: 0, paddingLeft: 18 }}>
@@ -732,9 +746,217 @@ function Help({ onExample }) {
   );
 }
 
-// Chords and Modes: page shells until they are built; each says what it will hold and links back to Neck (Round 4b).
+// Chords page (Round 5, IA-review mock-ups D and E): the seven diatonic triads of the key as closed voicings on one
+// three-string set, all seven on the neck at once, the chosen one filled and the rest outlined, Roman numerals above.
+// Triads only; sevenths come later (IA-review decision 5). Key and Major / Minor are shared with the Neck page.
+// Names on this page use ♭ / ♯ (Round 5); the Neck page keeps b / # until Round 4b item 6 is decided there.
+const uniAcc = (s) => s.replace(/b/g, "♭").replace(/#/g, "♯");
+const INV_NAME = ["root position", "1st inversion", "2nd inversion"];
+const SET_NAME = ["1–3", "2–4", "3–5", "4–6"];
+const TRIAD_Q = { maj: ["major", ""], min: ["minor", "m"], dim: ["diminished", "°"] };
+// The ladder on string set g (top string index: 0 = strings 1–3). Chord k's bass, on the set's lowest string, is the chord
+// tone the inversion puts there; each higher string takes the next chord tone above (closed). I sits at its lowest place
+// on the neck and each chord climbs from the one below; a chord that would pass fret 21 drops an octave (Round 5).
+// Frets per shape are listed low string to high, as in the strip.
+function triadLadder(keyRoot, keyMode, g, inv) {
+  const sc = MODE_IV[keyMode === "major" ? "ionian" : "aeolian"];
+  const strs = [g + 2, g + 1, g];
+  let prev = null;
+  return DIATONIC[keyMode].map(([rn, off, q], k) => {
+    const pcs = [0, 2, 4].map((j) => (keyRoot + sc[(k + j) % 7]) % 12);
+    const order = [...pcs.slice(inv), ...pcs.slice(0, inv)];
+    const up = (p, pc) => { let m = p; while (((m % 12) + 12) % 12 !== pc) m++; return m; };
+    const build = (b) => { const ps = [b]; order.slice(1).forEach((pc) => ps.push(up(ps[ps.length - 1] + 1, pc))); return ps; };
+    let bass;
+    if (prev === null) { bass = up(OPEN_ABS[strs[0]] - 12, order[0]); while (build(bass).some((m, i) => m - OPEN_ABS[strs[i]] < 0)) bass += 12; }
+    else bass = up(prev + 1, order[0]);
+    prev = bass;
+    let frets = build(bass).map((m, i) => m - OPEN_ABS[strs[i]]);
+    if (Math.max(...frets) > FRETS) frets = frets.map((f) => f - 12);
+    return { rn, root: pcs[0], q, cells: frets.map((f, i) => ({ s: strs[i], f, pc: (OPEN[strs[i]] + f) % 12 })), frets };
+  });
+}
+
+// The chord strip: numeral, name and frets per chord, a radio group with ◀ ▶ either side. Arrow keys move and choose
+// inside it; on the page, ← and → step the chord when focus is not in another control group (Round 5).
+function ChordStrip({ ladder, deg, setDeg, nameOf }) {
+  const ref = React.useRef(null);
+  const step = (d) => setDeg((deg + d + 7) % 7);
+  const onKeyDown = (e) => {
+    const k = e.key;
+    const d = k === "ArrowRight" || k === "ArrowDown" ? 1 : k === "ArrowLeft" || k === "ArrowUp" ? -1 : 0;
+    if (!d && k !== "Home" && k !== "End") return;
+    e.preventDefault();
+    const n = k === "Home" ? 0 : k === "End" ? 6 : (deg + d + 7) % 7;
+    setDeg(n);
+    ref.current.querySelectorAll('[role="radio"]')[n].focus();
+  };
+  return (
+    <div className="strip">
+      <Btn onClick={() => step(-1)} aria-label="Previous chord">◀</Btn>
+      <div ref={ref} className="striptrack" role="radiogroup" aria-label="Chords in the key" onKeyDown={onKeyDown}>
+        {ladder.map((c, k) => (
+          <button key={c.rn} role="radio" aria-checked={k === deg} tabIndex={k === deg ? 0 : -1} onClick={() => setDeg(k)} className="stripcell transition-colors"
+            aria-label={`${c.rn}, ${nameOf(c)}, frets ${c.frets.join(" ")}`}
+            style={{ background: k === deg ? THEME.ctlHover : "transparent", boxShadow: k === deg ? `0 0 0 1.5px ${THEME.text}` : "none", color: k === deg ? THEME.text : THEME.muted }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: THEME.text }}>{c.rn}</span>
+            <span style={{ fontSize: 12.5, fontWeight: k === deg ? 700 : 500 }}>{nameOf(c)}</span>
+            <span style={{ fontSize: 11, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", color: THEME.muted }}>{c.frets.join(" ")}</span>
+          </button>
+        ))}
+      </div>
+      <Btn onClick={() => step(1)} aria-label="Next chord">▶</Btn>
+    </div>
+  );
+}
+
+function ChordsPage({ cfg, update, ch, setCh }) {
+  const { keyRoot, keyMode, arp, arpMode, mode } = cfg;
+  const { deg, strSet, inv, numFrom, scaleBehind } = ch;
+  const setDeg = (d) => setCh((c) => ({ ...c, deg: d }));
+  const ladder = useMemo(() => triadLadder(keyRoot, keyMode, strSet, inv), [keyRoot, keyMode, strSet, inv]);
+  const keySp = useMemo(() => keySpelling(keyRoot, keyMode), [keyRoot, keyMode]);
+  const nameOf = (c) => uniAcc(keySp[c.root].name) + TRIAD_Q[c.q][1];
+  const cur = ladder[deg];
+  // Numbers from Key: key degrees (minor 1 2 ♭3 4 5 ♭6 ♭7). From Chord: each shape from its own root (R 3 5, ♭3, ♭5).
+  const label = (pc, chordRoot) => {
+    if (numFrom === "key") return KEY_DEG[keyMode][(((pc - keyRoot) % 12) + 12) % 12];
+    return DEG_LABEL[(((pc - chordRoot) % 12) + 12) % 12];
+  };
+  const cell = {};
+  ladder.forEach((c, k) => c.cells.forEach((x) => { cell[x.s * 100 + x.f] = { k, c }; }));
+  const inKey = (pc) => KEY_DEG[keyMode][(((pc - keyRoot) % 12) + 12) % 12] !== undefined;
+  const onSet = (s) => s >= strSet && s <= strSet + 2;
+
+  // Scroll the chosen shape into view when the neck scrolls, as the Neck page does for a position.
+  const scrollRef = React.useRef(null);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || el.scrollWidth <= el.clientWidth) return;
+    const lo = el.querySelector(`[data-fret="${Math.max(0, Math.min(...cur.frets) - 1)}"]`), hi = el.querySelector(`[data-fret="${Math.min(FRETS, Math.max(...cur.frets) + 1)}"]`);
+    if (!lo || !hi) return;
+    const box = el.getBoundingClientRect(), l = lo.getBoundingClientRect().left - box.left + el.scrollLeft, r = hi.getBoundingClientRect().right - box.left + el.scrollLeft;
+    const smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollTo({ left: Math.max(0, (l + r) / 2 - el.clientWidth / 2), behavior: smooth ? "smooth" : "auto" });
+  }, [deg, strSet, inv, keyRoot, keyMode]);
+
+  // ← and → step the chord from anywhere on the page except inside a control group, which keeps its own arrow keys.
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.key !== "ArrowLeft" && e.key !== "ArrowRight") || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      const t = e.target;
+      if (t && t.closest && t.closest('[role="radiogroup"], input, select, textarea')) return;
+      e.preventDefault();
+      setCh((c) => ({ ...c, deg: (c.deg + (e.key === "ArrowRight" ? 1 : -1) + 7) % 7 }));
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
+  const cellH = 46, fontPx = 11;
+  const COLS = `30px ${COL_PX.map((n) => `minmax(${n}px, ${n}fr)`).join(" ")}`;
+  const renderRow = (s) => {
+    const cells = [];
+    for (let f = 0; f <= FRETS; f++) {
+      const pc = (OPEN[s] + f) % 12;
+      const hit = cell[s * 100 + f];
+      let dot = null;
+      if (hit) {
+        const isRoot = pc === hit.c.root;
+        const lab = label(pc, hit.c.root);
+        const title = `${hit.c.rn} ${nameOf(hit.c)} · ${uniAcc(keySp[pc].name)}`;
+        if (hit.k === deg) {
+          // The chosen shape: neutral light dots with ink labels; its root is R3, a dark centre with a gold rim (Round 5).
+          dot = isRoot ? (
+            <div data-shape={hit.k} data-chosen="1" data-root="1" title={title} className="relative rounded-full flex items-center justify-center" style={{ width: 30, height: 30, background: THEME.sel, zIndex: 5 }}>
+              <div className="rounded-full flex items-center justify-center" style={{ width: 22, height: 22, background: THEME.ink, color: THEME.text, fontSize: fontPx, fontWeight: 800 }}>{lab}</div>
+            </div>
+          ) : (
+            <div data-shape={hit.k} data-chosen="1" title={title} className="relative rounded-full flex items-center justify-center" style={{ width: 30, height: 30, background: NEUTRAL_CT, color: THEME.ink, fontSize: fontPx, fontWeight: 800, zIndex: 3 }}>{lab}</div>
+          );
+        } else {
+          // The other six: outlined, text-colour labels; a root has the heavier ring, as a dimmed root does on the Neck page.
+          dot = <div data-shape={hit.k} data-root={isRoot ? "1" : undefined} title={title} className="relative rounded-full flex items-center justify-center" style={{ width: 26, height: 26, background: THEME.panel2, border: `${isRoot ? 3 : 2}px solid ${THEME.edge}`, color: THEME.text, fontSize: fontPx, fontWeight: 500, zIndex: 2 }}>{lab}</div>;
+        }
+      } else if (scaleBehind && onSet(s) && inKey(pc)) {
+        // Scale behind: the key's other notes on the set as bare labels, like Other notes on the Neck page.
+        dot = <div data-behind="1" className="relative" style={{ color: THEME.muted, fontSize: 11, fontWeight: 600 }} title={uniAcc(keySp[pc].name)}>{label(pc, cur.root)}</div>;
+      }
+      cells.push(
+        <div key={f} data-fret={s === 0 ? f : undefined} className="relative flex items-center justify-center" style={{ gridRow: s + 2, gridColumn: f + 2, height: cellH, borderRight: f === 0 ? `5px solid ${THEME.nut}` : `2px solid ${THEME.line}`, background: f === 0 ? THEME.track : undefined }}>
+          <div className="absolute left-0 right-0" style={{ top: "50%", transform: "translateY(-50%)", height: STRING_GAUGE[s], background: THEME.edge }} />
+          {dot}
+        </div>
+      );
+    }
+    return (
+      <div key={s} className="contents">
+        <div className="flex items-center justify-center text-xs font-semibold" style={{ gridRow: s + 2, gridColumn: 1, height: cellH, color: onSet(s) ? THEME.text : THEME.muted }}>{STRING_LABELS[s]}</div>
+        {cells}
+      </div>
+    );
+  };
+
+  const keyName = uniAcc(KEY_NAME[keyMode][keyRoot]);
+  const summary = `${keyName} ${keyMode} · ${cur.rn} · ${uniAcc(keySp[cur.root].name)} ${TRIAD_Q[cur.q][0]} · strings ${SET_NAME[strSet]}, ${INV_NAME[inv]}`;
+  // Key and Major / Minor act exactly as on the Neck page, so both pages stay on one key.
+  const keyArp = (km) => (arpMode === "quality" && ARP_ALL(km).some(([k]) => k === arp) ? arp : "triad");
+  const opt = (k, v) => setCh((c) => ({ ...c, [k]: v }));
+
+  return (
+    <div>
+      <div className="boardwrap">
+        <div className="sumrow">
+          <span data-summary aria-live="polite" className="text-sm font-semibold text-body">{summary}</span>
+        </div>
+        <div ref={scrollRef} className="overflow-x-auto pb-2 rounded-xl" style={{ background: THEME.panel2 }}>
+          <div className="grid p-3" style={{ gridTemplateColumns: COLS, width: "100%", minWidth: "min-content" }}>
+            {/* Roman numerals above the neck, each centred over its shape's frets; the chosen one in text colour. */}
+            {ladder.map((c, k) => (
+              <div key={"rn" + c.rn} data-numeral={k} className="flex items-end justify-center" style={{ gridRow: 1, gridColumn: `${Math.min(...c.frets) + 2} / ${Math.max(...c.frets) + 3}`, height: 22, paddingBottom: 2, fontSize: 12.5, fontWeight: 700, whiteSpace: "nowrap", color: k === deg ? THEME.text : THEME.muted }}>{c.rn}</div>
+            ))}
+            <div style={{ gridRow: 1, gridColumn: 1, height: 22 }} />
+            {[0,1,2,3,4,5].map(renderRow)}
+            {Array.from({ length: FRETS + 1 }, (_, f) => (
+              <div key={"n" + f} className="flex items-center justify-center text-xs" style={{ gridRow: 8, gridColumn: f + 2, height: 24, color: MARKERS[f] ? THEME.text : THEME.muted, fontWeight: MARKERS[f] ? 700 : 400 }}>{f}</div>
+            ))}
+          </div>
+        </div>
+        <ChordStrip ladder={ladder} deg={deg} setDeg={setDeg} nameOf={nameOf} />
+      </div>
+
+      <div className="cgroups mt-3">
+        <Card title="Key">
+          <Row>
+            <Track label="Key" cols={6}>{NOTES_SHARP.map((n, i) => <Seg key={i} tone="gold" active={keyRoot === i} onClick={() => update({ root: i, keyRoot: i, tonality: keyMode, arp: keyArp(keyMode) })}>{uniAcc(KEY_NAME[keyMode][i])}</Seg>)}</Track>
+          </Row>
+          <Row>
+            <Track label="Major or minor" cols={2}>{[["major","Major"],["minor","Minor"]].map(([t,l]) => <Seg key={t} tone="gold" active={keyMode === t} onClick={() => update({ keyMode: t, tonality: t, root: keyRoot, arp: "triad", mode: keyMode === t && MODE_Q(mode) === t ? mode : t === "major" ? "ionian" : "aeolian" })}>{l}</Seg>)}</Track>
+          </Row>
+        </Card>
+        <Card title="Diatonic chords">
+          <div className="crows">
+            <Row label="Strings">
+              <Track label="Strings" cols={4}>{SET_NAME.map((l, g) => <Seg key={g} active={strSet === g} onClick={() => opt("strSet", g)}>{l}</Seg>)}</Track>
+            </Row>
+            <Row label="Inversion">
+              <Track label="Inversion" cols={3}>{["Root", "1st", "2nd"].map((l, i) => <Seg key={i} active={inv === i} onClick={() => opt("inv", i)}>{l}</Seg>)}</Track>
+            </Row>
+            <Row label="Numbers from">
+              <Track label="Numbers from" cols={2}>{[["key","Key"],["chord","Chord"]].map(([k,l]) => <Seg key={k} active={numFrom === k} onClick={() => opt("numFrom", k)}>{l}</Seg>)}</Track>
+            </Row>
+            <Row label="Scale behind">
+              <Track label="Scale behind" cols={2}>{[[false,"Hidden"],[true,"Shown"]].map(([v,l]) => <Seg key={l} active={scaleBehind === v} onClick={() => opt("scaleBehind", v)}>{l}</Seg>)}</Track>
+            </Row>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// Modes: a page shell until it is built; it says what it will hold and links back to Neck (Round 4b).
 const PAGE_NOTE = {
-  chords: ["Chords", "The seven chords of the key as triads on one string set, every inversion, stepped I to vii° along the neck. Until then, Neck → Show → Chord → In key lights one chord of the key at a time."],
   modes: ["Modes", "The seven modes of the parent key side by side, each with its characteristic tone, linked to the same mode on the neck. Until then, Neck → Show → Scale has all seven modes in any key."],
 };
 function PagePlaceholder({ page, onNeck }) {
@@ -755,6 +977,8 @@ function FretboardTrainer() {
   const [ghost, setGhost] = useState(false);
   const [help, setHelp] = useState(false);
   const [cfg, setCfg] = useState({ root: 0, tonality: "major", scope: "pentatonic", arp: "triad", pos: null, focus: [], keyRoot: 0, keyMode: "major", arpMode: "diatonic", diaLabel: "key", strGroup: null, mode: "ionian" });
+  // Chords page state (Round 5): chosen degree, string set, inversion, Numbers from, Scale behind. Key lives in cfg.
+  const [ch, setCh] = useState({ deg: 0, strSet: 0, inv: 0, numFrom: "key", scaleBehind: false });
   const globals = { labelMode, isolate, ghost, setLabelMode, setIsolate, setGhost };
   const up = (p) => setCfg((c) => ({ ...c, ...p }));
 
@@ -796,7 +1020,7 @@ function FretboardTrainer() {
         </div>
       </header>
 
-      {help ? <Help onExample={applyPreset} /> : page === "neck" ? <Board cfg={cfg} update={up} globals={globals} /> : <PagePlaceholder page={page} onNeck={() => setPage("neck")} />}
+      {help ? <Help onExample={applyPreset} /> : page === "neck" ? <Board cfg={cfg} update={up} globals={globals} /> : page === "chords" ? <ChordsPage cfg={cfg} update={up} ch={ch} setCh={setCh} /> : <PagePlaceholder page={page} onNeck={() => setPage("neck")} />}
       </div>
     </div>
   );
