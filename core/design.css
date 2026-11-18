@@ -1,0 +1,95 @@
+  /* 𝄫 (U+1D12B) only: Noto Music subset, Copyright 2022 The Noto Project Authors, SIL Open Font License 1.1. No system font in the stack has it. */
+  @font-face{font-family:"FT Music";src:url(data:font/woff2;base64,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) format("woff2");unicode-range:U+1D12B}
+  /* 𝄪 (U+1D12A) only: GNU FreeFont FreeSerif subset, Copyright 2002-2012 GNU FreeFont contributors, GPL-3+ with the Font
+     Exception (embedding in a page does not put the page under the GPL). No system font in the stack has it either (Round 6b). */
+  @font-face{font-family:"FT Music";src:url(data:font/woff2;base64,d09GMgABAAAAAALcABAAAAAABcAAAAKGAZxtYwAAAAAAAAAAAAAAAAAAAAAAAAAAGYE8GhQbIByCDB+CCAZgADAREApcdwE2AiQDCAsGAAQgBQYHIBvCBAieBdWNftGVZ0JshPy6I4hsZtWzq7O8MhBQ5Agxpsx+5JAxQggRVJCWR6degAoa4BMuttwfYyRkaUqLs///9+6cT2Pi/XPTs4AfhvT/ptYSC+MwSyyzAhnz+BKKVNNtMkQiIjBMwqMr9jx9dSWBMnKF2LExaaizaWvSMGtT0mjWFrnQqkLSle2uoV3bp+awGjpKTmR3EugCSZEjGyO6ToafqQGEGpHmxLiNuBWYUe3iK/RDgTqAZjiOQhvtxJRp7w+U5VCtArnk/6PQZfmjjY0y+FHEmAoC9I8ZYGpr8VwG3C0UTJgfOz++xZ/C0jK3jE8GKVAt5WGgSV8Qo38sQE7L0JRBspbTK0BSM9CRyEiZMET0Tcsd4cc4O3dyu5GkZrfJFBdYBMQAiqGUshAD9uDwJrACY/H32jaUmTz/C3/DbMNrlbNTthCziDdJt/Ew8TxeJfrgVRzox2/B38BAjMETGENqQ6wjrvner3vWmiIDaYX9ObEDW/AEekW5L3ZOrFpvGiO7C7Al/oZL/P9gmrJmumimLLyKEKiHQqEAgTwdjWtKpAtpBV7114szBkaKUko1WSkvpSyHhABMn/c9PVs1H5Gd1RG2ZKeiHwLi+RQdDEJCjiYyBZqoA9oAQrzXq74MgUxtSVNRrcpAAjkCXdANkAOiy+YL9zhWqSjieDELFVG5OLivkIVj97YMh0z/vtG65kN6LD19fmn3Yc3+qL/05Gn9ow1pvq/B0jMnlzb6vdmwnkvPnwGCuLl3M976ev5eY34rt89+gBc+W/vAp+/N+v/9/yqyUyhLIMhO/c+WyjN//0cVAgCQ0gqd4nldBVI2xYT41wQBAOoqgRoZUH1ULwYA) format("woff2");unicode-range:U+1D12A}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#0D131A;font-family:"FT Music",ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  button{font-family:inherit;cursor:pointer;border:none;background:transparent;padding:0;color:inherit}
+  .w-full{width:100%}
+  .p-4{padding:1rem}.p-3{padding:.75rem}.p-2{padding:.5rem}
+  .pb-2{padding-bottom:.5rem}
+  .px-2{padding-left:.5rem;padding-right:.5rem}
+  .px-2\.5{padding-left:.625rem;padding-right:.625rem}
+  .py-1{padding-top:.25rem;padding-bottom:.25rem}
+  .py-1\.5{padding-top:.375rem;padding-bottom:.375rem}
+  .py-0\.5{padding-top:.125rem;padding-bottom:.125rem}
+  .mb-2{margin-bottom:.5rem}.mb-3{margin-bottom:.75rem}.mb-4{margin-bottom:1rem}
+  .mt-1\.5{margin-top:.375rem}.mt-3{margin-top:.75rem}
+  .ml-1{margin-left:.25rem}
+  .mr-1{margin-right:.25rem}
+  .rounded{border-radius:.25rem}.rounded-md{border-radius:.375rem}.rounded-lg{border-radius:.5rem}
+  .rounded-xl{border-radius:.75rem}.rounded-2xl{border-radius:1rem}.rounded-full{border-radius:9999px}
+  .flex{display:flex}.grid{display:grid}.contents{display:contents}
+  .flex-wrap{flex-wrap:wrap}.flex-col{flex-direction:column}
+  .items-center{align-items:center}.items-end{align-items:flex-end}
+  .justify-center{justify-content:center}
+  .gap-1{gap:.25rem}.gap-1\.5{gap:.375rem}.gap-2{gap:.5rem}.gap-3{gap:.75rem}
+  .relative{position:relative}.absolute{position:absolute}.left-0{left:0}.right-0{right:0}
+  .overflow-x-auto{overflow-x:auto}
+  .text-xs{font-size:12.5px;line-height:1rem}
+  .text-sm{font-size:.875rem;line-height:1.25rem}
+  .text-xl{font-size:1.25rem;line-height:1.75rem}
+  .font-medium{font-weight:500}.font-semibold{font-weight:600}.font-bold{font-weight:700}
+  .underline{text-decoration:underline}
+  .text-body{color:#E3E9F0}.text-muted{color:#A9B6C4}.text-link{color:#9CC6EE}
+  /* Rows inside a group card: label above its controls (IA-05). */
+  .row{display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+  .rowlab{font-size:12.5px;color:#A9B6C4;white-space:nowrap}
+  .track{display:inline-flex;flex-wrap:wrap;gap:2px;padding:2px;border-radius:8px;background:#091017;min-width:0}
+  /* Equal-cell grid (Round 4b, mock-up C): minmax(0, 1fr) cells, each as wide as the widest label when there is room and
+     still equal when there is not; a tight cell keeps its label centred in the padding. */
+  .gtrack{display:inline-grid;max-width:100%}
+  .gtrack .seg{position:relative;display:flex;align-items:center;justify-content:center;min-width:0}
+  @media (max-width:379px){.gtrack .seg{font-size:13px}}
+  /* The Show sub-panel hangs off the chosen Show cell: caret and inset surface (Round 4b). */
+  .subpanel{margin-top:8px;background:#1B2530;border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0}
+  .caret{position:absolute;left:50%;top:calc(100% + 2px);transform:translateX(-50%);width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:8px solid #1B2530;pointer-events:none}
+  .subpanel h3{margin:0;font-size:.875rem;line-height:1.25rem;font-weight:700;color:#E3E9F0}
+  .pagenav{display:flex}
+  .sr{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+  .transition-colors{transition:background-color .15s,border-color .15s,color .15s}
+  .transition-all{transition:all .15s}
+  /* Control heights: 34 px on desktop, 44 px on touch (A11y-W2, the ChordCharts device rule). */
+  .seg{height:30px}.btn,.chip{height:34px}
+  @media (pointer:coarse){.seg,.btn,.chip{height:44px}}
+  /* Head, summary line and board first; four groups below (UX-01, IA-03, IA-05). */
+  .head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;min-height:44px;margin-bottom:8px}
+  /* Copy link (Round 7) and the tuning slot (Round 11): Tuning follows the page switch and the three buttons sit at the
+     right; where they cannot share the title's row they take the next one. Below 700 px the head has three rows (Atlas
+     mock-up): title, Help and Clear; the four-cell page switch; Tuning and Copy link. */
+  .hrow2{display:flex;flex:1 1 auto;align-items:center;gap:8px}
+  .hbtns{display:flex;gap:8px;margin-left:auto}
+  .head .copyl{min-width:100px;justify-content:center}
+  .tuning{position:relative}
+  .tmenu{position:absolute;left:0;top:calc(100% + 6px);z-index:30;min-width:250px;background:#1B2530;border:1px solid #6C7C8E;border-radius:12px;padding:6px;box-shadow:0 12px 32px rgba(0,0,0,.55);display:flex;flex-direction:column;gap:2px}
+  .titem{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 10px;border-radius:8px;font-size:.875rem;color:#E3E9F0;text-align:left;white-space:nowrap}
+  .titem:not([disabled]):hover{background:#2A3645}
+  @media (max-width:699px){.hrow2,.hbtns{display:contents}.hbtns .hb{order:1}.hbtns .hb1{margin-left:auto}.pagenav{order:3;flex-basis:100%}.pagenav .track{display:grid;flex:1}.tuning{order:4}.head .copyl{order:5;margin-left:auto}}
+  .card{background:#141C25;border-radius:.5rem;padding:.75rem;display:flex;flex-direction:column;gap:10px;min-width:0}
+  .card h2{margin:0;font-size:.875rem;line-height:1.25rem;font-weight:700;color:#E3E9F0}
+  .ahead{margin:0 0 8px;font-size:.875rem;line-height:1.25rem;font-weight:700;color:#E3E9F0;display:flex;align-items:baseline;gap:8px}
+  .acards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(250px,100%),1fr));gap:12px;align-items:start}
+  .acards.lg{grid-template-columns:repeat(auto-fill,minmax(min(380px,100%),1fr))}
+  .acard{display:flex;flex-direction:column;gap:8px;padding:10px;border-radius:8px;background:#141C25;border:1px solid #334252;min-width:0;cursor:pointer}
+  .acard:hover{border-color:#6C7C8E}
+  .acard.lit{border-color:transparent;box-shadow:0 0 0 1.5px #E3E9F0}
+  .acard-hit{display:flex;flex-direction:column;gap:8px;width:100%;text-align:left;border-radius:6px}
+  .acard-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+  .acard-foot{display:flex;flex-wrap:wrap;align-items:center;gap:4px}
+  .atag{display:inline-flex;align-items:center;height:22px;padding:0 7px;border-radius:4px;background:#091017;color:#A9B6C4;font-size:11.5px;font-weight:500;white-space:nowrap}
+  .aback{position:fixed;inset:0;background:rgba(4,8,12,.6);z-index:40}
+  .asheet{position:fixed;left:0;right:0;bottom:0;max-height:88vh;background:#141C25;border-radius:16px 16px 0 0;box-shadow:0 -8px 32px rgba(0,0,0,.5);display:flex;flex-direction:column;color:#E3E9F0}
+  .asheet-body{flex:1;overflow-y:auto;padding:0 16px}
+  .agrip{width:40px;height:4px;border-radius:2px;background:#6C7C8E;margin:8px auto 0}
+  .asec{padding:12px 0;display:flex;flex-direction:column;gap:10px;min-width:0}
+  .asec+.asec{border-top:1px solid #334252}
+  .asec h3{margin:0;font-size:.875rem;line-height:1.25rem;font-weight:700;color:#E3E9F0}
+  .adlg-h{margin:0;font-size:1rem;line-height:1.5rem;font-weight:700;flex:1;color:#E3E9F0}
+  .apop{position:fixed;left:16px;right:16px;top:88px;max-height:calc(100vh - 104px);overflow-y:auto;background:#1B2530;border:1px solid #6C7C8E;border-radius:12px;padding:12px;box-shadow:0 12px 32px rgba(0,0,0,.55);display:flex;flex-direction:column;gap:10px;color:#E3E9F0}
+  .asheet:focus,.apop:focus{outline:none}
+  /* The ChordCharts focus ring (A11y-S1). */
+  :focus-visible{outline:2px solid #9CC6EE;outline-offset:2px}
+  :focus:not(:focus-visible){outline:none}
+  /* Reduced motion, as in ChordCharts (A11y-S2). */
+  @media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}

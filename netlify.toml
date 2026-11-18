@@ -1,0 +1,8 @@
+# Fretboard Trainer site. Netlify builds the single file from core/ and apps/fretboard/ (npm run build) and publishes
+# dist/fretboard. Deploy Previews build the same way. Production publishes from the `production` branch (site settings).
+[build]
+  command = "npm run build -- fretboard"
+  publish = "dist/fretboard"
+
+[build.environment]
+  NODE_VERSION = "22"

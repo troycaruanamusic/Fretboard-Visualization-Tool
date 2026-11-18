@@ -1,2 +1,17 @@
 # Fretboard-Visualization-Tool
-Guitar Fretboard Visualization Tool
+Guitar Fretboard Visualization Tool: the Fretboard Trainer, and the shared core the planned trainer apps will build on.
+
+## Layout
+- `core/`: shared by every app. Note names and keys, spelling, scales and modes (with the NNS modal reference data), chord formulas, the link-format readers, the design system (`design.css`, tokens and controls) and the Atlas card grid. A core module never imports app code; the build fails if one does.
+- `apps/fretboard/`: the Fretboard Trainer (guitar). Its page template, CSS, guitar and CAGED data, the four pages, URL state and the app shell.
+- `build.mjs`: builds each app into one self-contained HTML file, `dist/<app>/index.html`.
+
+## Build
+```sh
+npm install
+npm run build            # every app
+npm run build -- fretboard
+```
+`dist/` is build output and is not committed. Edit `core/` and `apps/`, never the built file. Netlify runs the build (`netlify.toml`) for Deploy Previews and for production, which publishes from the `production` branch.
+
+The built page still compiles its JSX in the browser with Babel, as the single-file versions did.
