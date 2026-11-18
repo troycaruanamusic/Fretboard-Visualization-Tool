@@ -145,7 +145,7 @@
 <div id="root"></div>
 <script type="text/babel" data-presets="react">
 const { useState, useMemo, useEffect } = React;
-const VERSION = "v0.32";
+const VERSION = "v0.33";
 document.title = `Fretboard Trainer · ${VERSION}`;
 
 // ChordCharts Dark tokens (BR-01). Colour roles (BR-02): gold = the key, CAGED = position, greyscale = everything else.
@@ -261,15 +261,42 @@ const spellAt = (li, pc) => {
   if (d > 6) d -= 12;
   return LETTERS[l] + (d > 0 ? "#".repeat(d) : "b".repeat(-d));
 };
-// The seven notes of the key (Ionian or Aeolian), spelled from the key signature (TH-01).
-function keySpelling(keyRoot, keyMode) {
-  const li = LETTERS.indexOf(KEY_NAME[keyMode][keyRoot][0]);
+// The seven notes of the key (Ionian or Aeolian), spelled from the key signature (TH-01). The Neck may pass its own root
+// letter (Round 9); the Chords page keeps the 24 standard key names.
+function keySpelling(keyRoot, keyMode, letter = LETTERS.indexOf(KEY_NAME[keyMode][keyRoot][0])) {
+  const li = letter;
   const map = {};
   MODE_IV[keyMode === "major" ? "ionian" : "aeolian"].forEach((s, k) => {
     const pc = (keyRoot + s) % 12;
     map[pc] = { name: spellAt(li + k, pc), letter: li + k };
   });
   return map;
+}
+
+// Neck root spelling (Round 9). A root may take any letter that reaches it with one accidental at most (F♯ or G♭, B or C♭).
+// The Neck picks the letter that spells the scale shown with the fewest accidentals (𝄫 and 𝄪 count two): the mode or
+// other scale in a Scale layer, otherwise the key (Ionian or Aeolian). A tie keeps the standard key name (KEY_NAME).
+// A Modes row link may carry its own letter (keySpell) for a tie, G♭ Ionian, A♭ Dorian, C♭ Lydian; it never costs more.
+const accCount = (s) => (s.match(/[#b]/g) || []).length;
+const spellIvs = (c) => (c.scope === "scale" ? MODE_IV[c.mode] : MODE_IV[c.keyMode === "major" ? "ionian" : "aeolian"]);
+const spellCost = (li, pc, ivs) => ivs.reduce((n, iv, k) => n + accCount(spellAt(li + k, (pc + iv) % 12)), 0);
+const okLetter = (li, pc) => accCount(spellAt(li, pc)) <= 1;
+function autoLetter(pc, c) {
+  const ivs = spellIvs(c), std = LETTERS.indexOf(KEY_NAME[c.keyMode][pc][0]);
+  let best = std, cost = spellCost(std, pc, ivs);
+  for (let li = 0; li < 7; li++) if (okLetter(li, pc) && spellCost(li, pc, ivs) < cost) { best = li; cost = spellCost(li, pc, ivs); }
+  return best;
+}
+const keySpellLi = (c) => (c.keySpell ? LETTERS.indexOf(c.keySpell) : -1);
+const neckLetter = (c) => (keySpellLi(c) >= 0 ? keySpellLi(c) : autoLetter(c.keyRoot, c));
+// A carried letter holds while it is not the standard name and costs no more than the automatic one; otherwise it is
+// dropped, so the state never holds a letter that has no effect. A Key change drops it too (in the app's update).
+function normSpell(c) {
+  if (!c.keySpell) return c;
+  const li = LETTERS.indexOf(c.keySpell), ivs = spellIvs(c);
+  const keep = li >= 0 && okLetter(li, c.keyRoot) && li !== LETTERS.indexOf(KEY_NAME[c.keyMode][c.keyRoot][0])
+    && spellCost(li, c.keyRoot, ivs) <= spellCost(autoLetter(c.keyRoot, c), c.keyRoot, ivs);
+  return keep ? c : { ...c, keySpell: null };
 }
 
 // A choice on a recessed track (BR-03, decision 4 = a). Chosen: grey thumb with a 1.5 px text ring; gold for the key and
@@ -418,7 +445,8 @@ function Board({ cfg, update, globals }) {
   // Degree names follow the scale or chord formula (TH-05); note names follow the key signature (TH-01).
   const degKey = scope === "scale" ? mode : scope === "arpeggio" ? arp : scope;
   const fdeg = (iv) => (DEG_OVERRIDE[degKey] && DEG_OVERRIDE[degKey][iv]) || DEG_LABEL[iv];
-  const keySp = useMemo(() => keySpelling(keyRoot, keyMode), [keyRoot, keyMode]);
+  const keyLi = neckLetter(cfg);
+  const keySp = useMemo(() => keySpelling(keyRoot, keyMode, keyLi), [keyRoot, keyMode, keyLi]);
   const rootLetter = keySp[root] ? keySp[root].letter : LETTERS.indexOf(NOTES_FLAT[root][0]);
   const spellName = (pc) => {
     const iv = (((pc - root) % 12) + 12) % 12;
@@ -624,10 +652,11 @@ function Board({ cfg, update, globals }) {
       {/* Four groups: Key, Show, Filter, Display; a row of cards on desktop and tablet, stacked on a phone (IA-05). */}
       <div className="groups mt-3">
       <Card title="Key">
-        {/* The 12 keys as a 6 × 2 equal-cell grid, Major / Minor below; both gold (UX-09, IA-review decision 3).
+        {/* The 12 keys as a 6 × 2 equal-cell grid, Major / Minor below; both gold (UX-09, IA-review decision 3). Each cell is
+            spelled as the Neck would spell that root in the scale shown, so G♭ in Lydian (Round 9).
             Major / Minor goes back to Ionian or Aeolian unless the chosen mode already has that 3rd (Round 4b). */}
         <Row>
-          <Track label="Key" cols={6}>{NOTES_SHARP.map((n,i) => <Seg key={i} tone="gold" active={keyRoot === i} onClick={() => update({ root: i, keyRoot: i, ...keepChord(cfg, keyMode) })}>{accs(KEY_NAME[keyMode][i])}</Seg>)}</Track>
+          <Track label="Key" cols={6}>{NOTES_SHARP.map((n,i) => <Seg key={i} tone="gold" active={keyRoot === i} onClick={() => update({ root: i, keyRoot: i, ...keepChord(cfg, keyMode) })}>{accs(spellAt(keyRoot === i ? keyLi : autoLetter(i, cfg), i))}</Seg>)}</Track>
         </Row>
         <Row>
           <Track label="Major or minor" cols={2}>{[["major","Major"],["minor","Minor"]].map(([t,l]) => <Seg key={t} tone="gold" active={keyMode === t} onClick={() => update({ keyMode: t, root: keyRoot, ...keepChord(cfg, t), mode: keyMode === t && MODE_Q(mode) === t ? mode : t === "major" ? "ionian" : "aeolian" })}>{l}</Seg>)}</Track>
@@ -793,7 +822,7 @@ function Help({ onExample }) {
       <P>Scales, chords and the five CAGED positions on a standard-tuned (EADGBE) neck, frets 0–21. The board comes first, with a summary line above it; the controls sit in four groups below: Key, Show, Filter and Display. The head switches between three pages: Neck (this trainer), Chords and Modes. Key and Major or Minor are the same on Neck and Chords; Modes has its own parent key.</P>
       <P><b>Copy link.</b> The address holds the page, the key and the settings on Neck, Chords and Modes, so a copied link opens the same view, for example a set-up board sent to a student. On a phone or tablet the button opens the share sheet. Back returns to the previous page.</P>
       <H>Key and Show</H>
-      <P><b>Key.</b> The 12 roots with Major or Minor. Note names follow the key signature, with ♭ and ♯; notes outside the key are spelled from the chord or scale formula (C dim7: C E♭ G♭ B𝄫).</P>
+      <P><b>Key.</b> The 12 roots with Major or Minor. Note names follow the key signature, with ♭ and ♯; notes outside the key are spelled from the chord or scale formula (C dim7: C E♭ G♭ B𝄫). The root takes the spelling with the fewer accidentals for the scale shown, so the same key cell reads F♯ in Ionian and G♭ in Lydian, E♭ in Aeolian and D♯ in Phrygian. Where both spellings tie, the standard key name stays (F♯ major, E♭ minor).</P>
       <P><b>Show.</b> Chord: the chord tones only. Pentatonic: the key's major or minor pentatonic, or Major and minor: both pentatonics together (1 2 ♭3 3 4 5 6 ♭7). Blues: the pentatonic with the blue note (♭3 in major, ♭5 in minor). Scale: seven-note scales. The chosen layer opens a panel under it, titled with the result (C Dorian, C major pentatonic).</P>
       <P><b>Chord → In key.</b> The seven chords of the key: I ii iii IV V vi vii° in major; i ii° III iv v VI ♭VII in minor (natural minor). Numbers count from the key or from the chord. Key numbers in a minor key are 1 2 ♭3 4 5 ♭6 ♭7.</P>
       <P><b>Chord → Any chord.</b> Triads, sevenths and added-note chords on the current chord root, in one list for major and minor keys. The common qualities show first: Major, Minor, 7, maj7, m7 and sus4. More opens the rest: sus2, aug and dim; 7sus4, m7♭5, dim7 and aug7; 6, add9, add11, m6, m(add9) and m(add11). A chosen quality stays when Key, Major or minor, or Show changes.</P>
@@ -819,7 +848,7 @@ function Help({ onExample }) {
       <H>Modes page</H>
       <P><b>The chart.</b> The seven modes of one parent major key in parent order, Ionian to Locrian: degree, mode, quality, root, the scale tones from that root, and the chord to solo over in Nashville numbers. The light square marks each mode's characteristic tone: ♮4 and ♮7 in Ionian, ♮6 in Dorian, ♭2 in Phrygian, ♯4 in Lydian, ♭7 in Mixolydian, ♭6 in Aeolian, ♭5 in Locrian. View: Notes shows each note with its number below; Numbers shows the formula alone. The data and wording are those of the ChordCharts modal reference.</P>
       <P><b>Find a parent key.</b> A root and a mode give the parent key (D Dorian: C major, its 2nd mode). The chart moves to that key and marks the row.</P>
-      <P><b>Rows.</b> Show … on the neck opens the Neck page on that mode, as Key, Show → Scale and the mode would there; filters stay. The arrow button opens the row's details: solo over, vamp, colour note, avoid / resolve and feel. Avoid and resolve notes are a jazz guideline; in country, blues and rock they are used freely as passing and bend tones. The Neck page has only one spelling per key, so a few roots come out enharmonic there (G♭ Ionian shows as F♯ Ionian).</P>
+      <P><b>Rows.</b> Show … on the neck opens the Neck page on that mode, as Key, Show → Scale and the mode would there; filters stay. The arrow button opens the row's details: solo over, vamp, colour note, avoid / resolve and feel. Avoid and resolve notes are a jazz guideline; in country, blues and rock they are used freely as passing and bend tones. The Neck page keeps the row's root as spelled here (G♭ Ionian, D♯ Phrygian) until Key changes, or until a scale is chosen that the other spelling writes with fewer accidentals.</P>
       <H>Examples</H>
       <P>Each sets Show, position, strings, focus and Notes; Display stays. ♭7 of a dominant 7th also sets Major.</P>
       <ul style={{ margin: 0, paddingLeft: 18 }}>
@@ -1164,7 +1193,7 @@ function ModesPage({ md, setMd, onNeck }) {
                   <td role="cell" className="c-solo"><span className="mlab">Solo over</span><span data-solo>{supText(m.solo)}</span></td>
                   <td role="cell" className="c-act">
                     <div className="macts">
-                      <button data-neck={i} onClick={() => onNeck(rootPc, MODES[i][0])} className="btn text-sm text-link underline" style={{ padding: "0 4px" }}>Show {name} on the neck</button>
+                      <button data-neck={i} onClick={() => onNeck(rootPc, MODES[i][0], sc[i][0])} className="btn text-sm text-link underline" style={{ padding: "0 4px" }}>Show {name} on the neck</button>
                       <Btn onClick={() => toggleOpen(i)} aria-expanded={isOpen} aria-controls={`mdet-${i}`} aria-label={`${m.name} details`} className="btn mtog flex items-center text-sm transition-colors"><span aria-hidden="true" style={{ display: "inline-block", transform: isOpen ? "rotate(90deg)" : "none" }}>▸</span></Btn>
                     </div>
                   </td>
@@ -1233,7 +1262,7 @@ const URL_FIELDS = [
 ];
 const URL_DEFAULT = {
   top: { page: "neck", labelMode: "degree", isolate: false, ghost: false, dotColour: "caged", more: false },
-  cfg: { root: 0, tonality: "major", scope: "pentatonic", arp: "triad", pos: null, focus: [], keyRoot: 0, keyMode: "major", arpMode: "diatonic", diaLabel: "key", strGroup: null, mode: "ionian" },
+  cfg: { root: 0, tonality: "major", scope: "pentatonic", arp: "triad", pos: null, focus: [], keyRoot: 0, keyMode: "major", arpMode: "diatonic", diaLabel: "key", strGroup: null, mode: "ionian", keySpell: null },
   ch: { deg: 0, strSet: 0, inv: 0, numFrom: "key", scaleBehind: false, sev: false, strSet7: 0, inv7: 0 },
   md: { parent: 0, view: "notes", hit: null, lkRoot: "", lkMode: "", open: [] },
 };
@@ -1244,7 +1273,7 @@ function stateToQuery(st) {
   const q = new URLSearchParams();
   URL_FIELDS.forEach(([k, part, f, d, enc]) => {
     const v = st[part][f];
-    if (!same(v, d)) q.set(k, enc ? enc(v) : noteTok(v, st.cfg.keyMode));
+    if (!same(v, d) || (k === "key" && st.cfg.keySpell)) q.set(k, enc ? enc(v) : st.cfg.keySpell ? spellAt(LETTERS.indexOf(st.cfg.keySpell), v).replace("#", "s") : noteTok(v, st.cfg.keyMode));
   });
   if (st.top.more !== moreDefault(st.cfg)) q.set("more", st.top.more ? "1" : "0");
   const t = q.toString();
@@ -1258,6 +1287,13 @@ function queryToState(search) {
     const v = dec(q.get(k));
     if (v !== undefined && !(typeof v === "number" && v < 0)) st[part][f] = v;
   });
+  // A key written with another letter than the standard name (key=Gb, key=Cb, key=Ds) carries that letter while it costs
+  // no more accidentals than the automatic one (Round 9). Any letter with one accidental at most is read.
+  const kt = /^([A-G])(b|s)?$/.exec(q.get("key") || "");
+  if (kt) {
+    const pc = (LETTER_PC[LETTERS.indexOf(kt[1])] + (kt[2] === "b" ? 11 : kt[2] === "s" ? 1 : 0)) % 12;
+    st.cfg = normSpell({ ...st.cfg, keyRoot: pc, keySpell: kt[1] });
+  }
   // A hand-edited link: a quality with a 3rd takes its own Major / Minor, as a click would.
   if (st.cfg.arp !== "triad" && QUAL_T[st.cfg.arp]) st.cfg.tonality = QUAL_T[st.cfg.arp];
   st.top.more = q.get("more") === "1" ? true : q.get("more") === "0" ? false : moreDefault(st.cfg);
@@ -1274,7 +1310,9 @@ function FretboardTrainer() {
   const [dotColour, setDotColour] = useState(URL_INIT.top.dotColour);
   const [more, setMore] = useState(URL_INIT.top.more);
   const [help, setHelp] = useState(false);
-  const [cfg, setCfg] = useState(URL_INIT.cfg);
+  const [cfg, setCfgRaw] = useState(URL_INIT.cfg);
+  // Every cfg change passes through normSpell, so a carried root letter is dropped when it no longer applies (Round 9).
+  const setCfg = (f) => setCfgRaw((c) => normSpell(typeof f === "function" ? f(c) : f));
   // Chords page state (Round 5): chosen degree, string set, inversion, Numbers from, Scale behind. Key lives in cfg.
   const [ch, setCh] = useState(URL_INIT.ch);
   // Modes page state (Round 6): its own parent key (a major key, index = pitch class), Notes / Numbers, the reverse
@@ -1296,7 +1334,7 @@ function FretboardTrainer() {
       const st = queryToState(location.search);
       lastPage.current = st.top.page;
       setPage(st.top.page); setLabelMode(st.top.labelMode); setIsolate(st.top.isolate); setGhost(st.top.ghost); setDotColour(st.top.dotColour); setMore(st.top.more);
-      setCfg(st.cfg); setCh(st.ch); setMd(st.md); setHelp(false);
+      setCfgRaw(st.cfg); setCh(st.ch); setMd(st.md); setHelp(false);
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
@@ -1320,7 +1358,8 @@ function FretboardTrainer() {
     done(ok ? "Copied" : "Not copied");
   };
   const globals = { labelMode, isolate, ghost, dotColour, more, setLabelMode, setIsolate, setGhost, setDotColour, setMore };
-  const up = (p) => setCfg((c) => ({ ...c, ...p }));
+  // Another key drops a carried root letter (Round 9); the same key tapped again keeps it.
+  const up = (p) => setCfg((c) => ({ ...c, ...p, ...(p.keyRoot !== undefined && p.keyRoot !== c.keyRoot ? { keySpell: null } : {}) }));
 
   // Examples (was Quick start): trainer state only, Strings included; Labels, View and Other notes stay (UX-15, decision 13 = a).
   const applyPreset = (p) => {
@@ -1342,12 +1381,14 @@ function FretboardTrainer() {
   };
   // A Modes row link lands on the Neck page in the state that Key (the mode root), then Show → Scale, then Mode would give
   // there (Round 6). Filters, Labels and Other notes stay, as they do for those clicks.
-  const showMode = (r, mk) => {
+  const showMode = (r, mk, letter) => {
     setCfg((c) => {
       let n = { ...c, root: r, keyRoot: r, ...keepChord(c, c.keyMode) };
       if (n.scope !== "scale") n = { ...n, scope: "scale", root: n.keyRoot, ...keepChord(n, n.keyMode) };
       const q = MODE_Q(mk);
-      return q === n.keyMode ? { ...n, mode: mk } : { ...n, mode: mk, keyMode: q, root: n.keyRoot, ...keepChord(n, q) };
+      n = q === n.keyMode ? { ...n, mode: mk } : { ...n, mode: mk, keyMode: q, root: n.keyRoot, ...keepChord(n, q) };
+      // The row's own root letter (G♭, A♭, C♭, D♯, A♯) goes with it (Round 9); normSpell keeps it only where it is a tie or better.
+      return { ...n, keySpell: letter };
     });
     setHelp(false);
     setPage("neck");
