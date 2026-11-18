@@ -145,7 +145,7 @@
 <div id="root"></div>
 <script type="text/babel" data-presets="react">
 const { useState, useMemo, useEffect } = React;
-const VERSION = "v0.31";
+const VERSION = "v0.32";
 document.title = `Fretboard Trainer · ${VERSION}`;
 
 // ChordCharts Dark tokens (BR-01). Colour roles (BR-02): gold = the key, CAGED = position, greyscale = everything else.
@@ -813,8 +813,9 @@ function Help({ onExample }) {
       <H>Chords page</H>
       <P><b>The ladder.</b> The seven triads of the key, I ii iii IV V vi vii° in major and i ii° III iv v VI ♭VII in minor, as closed voicings on one three-string set, all on the neck at once. The chosen chord is filled, the other six are outlined, and each has its Roman numeral above it. I sits at its lowest place on the neck and each chord climbs from the one before; a chord that would pass fret 21 is shown an octave lower.</P>
       <P><b>Chord strip.</b> Numeral, chord name and frets, low string to high, for each chord. A tap chooses a chord; ◀ and ▶ step down and up, wrapping round. The arrow keys step too, inside the strip and anywhere on the page outside another control group.</P>
-      <P><b>Strings and Inversion.</b> String sets 1–3 to 4–6. Root position has the root on the set's lowest string, 1st inversion the 3rd, 2nd inversion the 5th.</P>
-      <P><b>Numbers from and Scale behind.</b> Key numbers every note by its degree in the key (1 to 7; ♭3 ♭6 ♭7 in minor); Chord numbers each shape from its own root (R 3 5, ♭3 in minor chords, ♭5 in diminished). Scale behind shows the key's other notes on the string set as bare labels, numbered the same way, counting from the chosen chord with Chord.</P>
+      <P><b>Triads or Sevenths.</b> Sevenths shows the seven diatonic seventh chords, Imaj7 ii7 iii7 IVmaj7 V7 vi7 viiø7 in major and i7 iiø7 IIImaj7 iv7 v7 VImaj7 ♭VII7 in minor, as drop-2 voicings on one four-string set: a close voicing with its second note from the top dropped an octave. The ladder, strip and stepper work as for triads. Triads and Sevenths each keep their own Strings and Inversion.</P>
+      <P><b>Strings and Inversion.</b> Triads: string sets 1–3 to 4–6. Root position has the root on the set's lowest string, 1st inversion the 3rd, 2nd inversion the 5th. Sevenths: string sets 1–4, 2–5 and 3–6, named by the bass note the same way, low string to high: root position R 5 7 3, 1st inversion 3 7 R 5, 2nd inversion 5 R 3 7, 3rd inversion 7 3 5 R.</P>
+      <P><b>Numbers from and Scale behind.</b> Key numbers every note by its degree in the key (1 to 7; ♭3 ♭6 ♭7 in minor); Chord numbers each shape from its own root (R 3 5, ♭3 in minor chords, ♭5 in diminished; 7 or ♭7 in sevenths). Scale behind shows the key's other notes on the string set as bare labels, numbered the same way, counting from the chosen chord with Chord.</P>
       <H>Modes page</H>
       <P><b>The chart.</b> The seven modes of one parent major key in parent order, Ionian to Locrian: degree, mode, quality, root, the scale tones from that root, and the chord to solo over in Nashville numbers. The light square marks each mode's characteristic tone: ♮4 and ♮7 in Ionian, ♮6 in Dorian, ♭2 in Phrygian, ♯4 in Lydian, ♭7 in Mixolydian, ♭6 in Aeolian, ♭5 in Locrian. View: Notes shows each note with its number below; Numbers shows the formula alone. The data and wording are those of the ChordCharts modal reference.</P>
       <P><b>Find a parent key.</b> A root and a mode give the parent key (D Dorian: C major, its 2nd mode). The chart moves to that key and marks the row.</P>
@@ -833,12 +834,24 @@ function Help({ onExample }) {
 
 // Chords page (Round 5, IA-review mock-ups D and E): the seven diatonic triads of the key as closed voicings on one
 // three-string set, all seven on the neck at once, the chosen one filled and the rest outlined, Roman numerals above.
-// Triads only; sevenths come later (IA-review decision 5). Key and Major / Minor are shared with the Neck page.
+// Sevenths (Round 8, IA-review decision 5): drop-2 on four-string sets. Key and Major / Minor are shared with the Neck page.
 // Names on this page use ♭ / ♯ (Round 5); the Neck page keeps b / # until Round 4b item 6 is decided there.
 const uniAcc = (s) => s.replace(/b/g, "♭").replace(/#/g, "♯");
 const INV_NAME = ["root position", "1st inversion", "2nd inversion"];
 const SET_NAME = ["1–3", "2–4", "3–5", "4–6"];
 const TRIAD_Q = { maj: ["major", ""], min: ["minor", "m"], dim: ["diminished", "°"] };
+// Sevenths (Round 8): the diatonic seventh chords of the key's Ionian or Aeolian degrees, as drop-2 voicings on a
+// four-string set. Inversions are named by the bass note, as for triads: low to high, root position R 5 7 3, 1st 3 7 R 5,
+// 2nd 5 R 3 7, 3rd 7 3 5 R (chord-tone indices 0 R, 1 3rd, 2 5th, 3 7th).
+const INV_NAME7 = [...INV_NAME, "3rd inversion"];
+const SET_NAME7 = ["1–4", "2–5", "3–6"];
+const SEV_Q = { maj7: ["major 7th", "maj7"], m7: ["minor 7th", "m7"], dom7: ["dominant 7th", "7"], m7b5: ["half-diminished 7th", "m7♭5"] };
+const CH_Q = { ...TRIAD_Q, ...SEV_Q };
+const DIATONIC7 = {
+  major: [["Imaj7","maj7"],["ii7","m7"],["iii7","m7"],["IVmaj7","maj7"],["V7","dom7"],["vi7","m7"],["viiø7","m7b5"]],
+  minor: [["i7","m7"],["iiø7","m7b5"],["IIImaj7","maj7"],["iv7","m7"],["v7","m7"],["VImaj7","maj7"],["♭VII7","dom7"]],
+};
+const DROP2 = [[0,2,3,1],[1,3,0,2],[2,0,1,3],[3,1,2,0]];
 // The ladder on string set g (top string index: 0 = strings 1–3). Chord k's bass, on the set's lowest string, is the chord
 // tone the inversion puts there; each higher string takes the next chord tone above (closed). I sits at its lowest place
 // on the neck and each chord climbs from the one below; a chord that would pass fret 21 drops an octave (Round 5).
@@ -850,6 +863,26 @@ function triadLadder(keyRoot, keyMode, g, inv) {
   return DIATONIC[keyMode].map(([rn, off, q], k) => {
     const pcs = [0, 2, 4].map((j) => (keyRoot + sc[(k + j) % 7]) % 12);
     const order = [...pcs.slice(inv), ...pcs.slice(0, inv)];
+    const up = (p, pc) => { let m = p; while (((m % 12) + 12) % 12 !== pc) m++; return m; };
+    const build = (b) => { const ps = [b]; order.slice(1).forEach((pc) => ps.push(up(ps[ps.length - 1] + 1, pc))); return ps; };
+    let bass;
+    if (prev === null) { bass = up(OPEN_ABS[strs[0]] - 12, order[0]); while (build(bass).some((m, i) => m - OPEN_ABS[strs[i]] < 0)) bass += 12; }
+    else bass = up(prev + 1, order[0]);
+    prev = bass;
+    let frets = build(bass).map((m, i) => m - OPEN_ABS[strs[i]]);
+    if (Math.max(...frets) > FRETS) frets = frets.map((f) => f - 12);
+    return { rn, root: pcs[0], q, cells: frets.map((f, i) => ({ s: strs[i], f, pc: (OPEN[strs[i]] + f) % 12 })), frets };
+  });
+}
+// The seventh ladder on string set g (top string index: 0 = strings 1–4): as triadLadder, with the drop-2 order of the
+// inversion. Each tone is the next one above the string below, which gives the drop-2 spacing (bass to top under 2 octaves).
+function seventhLadder(keyRoot, keyMode, g, inv) {
+  const sc = MODE_IV[keyMode === "major" ? "ionian" : "aeolian"];
+  const strs = [g + 3, g + 2, g + 1, g];
+  let prev = null;
+  return DIATONIC7[keyMode].map(([rn, q], k) => {
+    const pcs = [0, 2, 4, 6].map((j) => (keyRoot + sc[(k + j) % 7]) % 12);
+    const order = DROP2[inv].map((i) => pcs[i]);
     const up = (p, pc) => { let m = p; while (((m % 12) + 12) % 12 !== pc) m++; return m; };
     const build = (b) => { const ps = [b]; order.slice(1).forEach((pc) => ps.push(up(ps[ps.length - 1] + 1, pc))); return ps; };
     let bass;
@@ -886,7 +919,12 @@ function ChordStrip({ ladder, deg, setDeg, nameOf }) {
             style={{ background: k === deg ? THEME.ctlHover : "transparent", boxShadow: k === deg ? `0 0 0 1.5px ${THEME.text}` : "none", color: k === deg ? THEME.text : THEME.muted }}>
             <span style={{ fontSize: 14, fontWeight: 700, color: THEME.text }}>{c.rn}</span>
             <span style={{ fontSize: 12.5, fontWeight: k === deg ? 700 : 500 }}>{nameOf(c)}</span>
-            <span style={{ fontSize: 11, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", color: THEME.muted }}>{c.frets.join(" ")}</span>
+            {c.frets.length === 4 ? (
+              // Sevenths: four frets may not fit a narrow cell on one line; they then break between the pairs (Round 8).
+              <span data-frets style={{ fontSize: 11, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", color: THEME.muted, whiteSpace: "normal", textAlign: "center", lineHeight: 1.25 }}>
+                <span style={{ whiteSpace: "nowrap" }}>{c.frets.slice(0, 2).join(" ")}</span> <span style={{ whiteSpace: "nowrap" }}>{c.frets.slice(2).join(" ")}</span>
+              </span>
+            ) : <span style={{ fontSize: 11, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", color: THEME.muted }}>{c.frets.join(" ")}</span>}
           </button>
         ))}
       </div>
@@ -897,11 +935,13 @@ function ChordStrip({ ladder, deg, setDeg, nameOf }) {
 
 function ChordsPage({ cfg, update, ch, setCh }) {
   const { keyRoot, keyMode, arp, arpMode, mode } = cfg;
-  const { deg, strSet, inv, numFrom, scaleBehind } = ch;
+  const { deg, strSet, inv, numFrom, scaleBehind, sev, strSet7, inv7 } = ch;
+  // Triads and Sevenths each keep their own string set and inversion (Round 8).
+  const g = sev ? strSet7 : strSet, iv = sev ? inv7 : inv;
   const setDeg = (d) => setCh((c) => ({ ...c, deg: d }));
-  const ladder = useMemo(() => triadLadder(keyRoot, keyMode, strSet, inv), [keyRoot, keyMode, strSet, inv]);
+  const ladder = useMemo(() => (sev ? seventhLadder : triadLadder)(keyRoot, keyMode, g, iv), [keyRoot, keyMode, sev, g, iv]);
   const keySp = useMemo(() => keySpelling(keyRoot, keyMode), [keyRoot, keyMode]);
-  const nameOf = (c) => uniAcc(keySp[c.root].name) + TRIAD_Q[c.q][1];
+  const nameOf = (c) => uniAcc(keySp[c.root].name) + CH_Q[c.q][1];
   const cur = ladder[deg];
   // Numbers from Key: key degrees (minor 1 2 ♭3 4 5 ♭6 ♭7). From Chord: each shape from its own root (R 3 5, ♭3, ♭5).
   const label = (pc, chordRoot) => {
@@ -911,7 +951,7 @@ function ChordsPage({ cfg, update, ch, setCh }) {
   const cell = {};
   ladder.forEach((c, k) => c.cells.forEach((x) => { cell[x.s * 100 + x.f] = { k, c }; }));
   const inKey = (pc) => KEY_DEG[keyMode][(((pc - keyRoot) % 12) + 12) % 12] !== undefined;
-  const onSet = (s) => s >= strSet && s <= strSet + 2;
+  const onSet = (s) => s >= g && s <= g + (sev ? 3 : 2);
 
   // Scroll the chosen shape into view when the neck scrolls, as the Neck page does for a position.
   const scrollRef = React.useRef(null);
@@ -923,7 +963,7 @@ function ChordsPage({ cfg, update, ch, setCh }) {
     const box = el.getBoundingClientRect(), l = lo.getBoundingClientRect().left - box.left + el.scrollLeft, r = hi.getBoundingClientRect().right - box.left + el.scrollLeft;
     const smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     el.scrollTo({ left: Math.max(0, (l + r) / 2 - el.clientWidth / 2), behavior: smooth ? "smooth" : "auto" });
-  }, [deg, strSet, inv, keyRoot, keyMode]);
+  }, [deg, sev, g, iv, keyRoot, keyMode]);
 
   // ← and → step the chord from anywhere on the page except inside a control group, which keeps its own arrow keys.
   useEffect(() => {
@@ -983,7 +1023,7 @@ function ChordsPage({ cfg, update, ch, setCh }) {
   };
 
   const keyName = uniAcc(KEY_NAME[keyMode][keyRoot]);
-  const summary = `${keyName} ${keyMode} · ${cur.rn} · ${uniAcc(keySp[cur.root].name)} ${TRIAD_Q[cur.q][0]} · strings ${SET_NAME[strSet]}, ${INV_NAME[inv]}`;
+  const summary = `${keyName} ${keyMode} · ${cur.rn} · ${uniAcc(keySp[cur.root].name)} ${CH_Q[cur.q][0]} · strings ${(sev ? SET_NAME7 : SET_NAME)[g]}, ${(sev ? INV_NAME7 : INV_NAME)[iv]}`;
   // Key and Major / Minor act exactly as on the Neck page, so both pages stay on one key.
   const opt = (k, v) => setCh((c) => ({ ...c, [k]: v }));
 
@@ -1020,11 +1060,14 @@ function ChordsPage({ cfg, update, ch, setCh }) {
         </Card>
         <Card title="Diatonic chords">
           <div className="crows">
+            <Row label="Chords">
+              <Track label="Chords" cols={2}>{[[false,"Triads"],[true,"Sevenths"]].map(([v,l]) => <Seg key={l} active={sev === v} onClick={() => opt("sev", v)}>{l}</Seg>)}</Track>
+            </Row>
             <Row label="Strings">
-              <Track label="Strings" cols={4}>{SET_NAME.map((l, g) => <Seg key={g} active={strSet === g} onClick={() => opt("strSet", g)}>{l}</Seg>)}</Track>
+              <Track label="Strings" cols={sev ? 3 : 4}>{(sev ? SET_NAME7 : SET_NAME).map((l, j) => <Seg key={l} active={g === j} onClick={() => opt(sev ? "strSet7" : "strSet", j)}>{l}</Seg>)}</Track>
             </Row>
             <Row label="Inversion">
-              <Track label="Inversion" cols={3}>{["Root", "1st", "2nd"].map((l, i) => <Seg key={i} active={inv === i} onClick={() => opt("inv", i)}>{l}</Seg>)}</Track>
+              <Track label="Inversion" cols={sev ? 4 : 3}>{["Root", "1st", "2nd", "3rd"].slice(0, sev ? 4 : 3).map((l, i) => <Seg key={i} active={iv === i} onClick={() => opt(sev ? "inv7" : "inv", i)}>{l}</Seg>)}</Track>
             </Row>
             <Row label="Numbers from">
               <Track label="Numbers from" cols={2}>{[["key","Key"],["chord","Chord"]].map(([k,l]) => <Seg key={k} active={numFrom === k} onClick={() => opt("numFrom", k)}>{l}</Seg>)}</Track>
@@ -1149,6 +1192,7 @@ const NOTE_TOK = ["C","Db","D","Eb","E","F","Gb","G","Ab","A","Bb","B"];
 const NOTE_IN = (v) => { const t = String(v).replace(/s$/, "#"); const i = NOTE_TOK.indexOf(t); return i >= 0 ? i : NOTES_SHARP.indexOf(t); };
 const noteTok = (pc, km) => (km ? KEY_NAME[km][pc] : NOTE_TOK[pc]).replace("#", "s");
 const STR_TOK = ["13", "24", "35", "46"];
+const STR7_TOK = ["14", "25", "36"];
 const oneOf = (...vs) => (v) => (vs.includes(v) ? v : undefined);
 const intIn = (lo, hi) => (v) => (/^-?\d+$/.test(v) && +v >= lo && +v <= hi ? +v : undefined);
 const ARP_KEYS = ["triad", ...QUAL_COMMON.map(([k]) => k).filter((k) => k !== "major" && k !== "minor"), ...QUAL_MORE.flatMap(([, qs]) => qs.map(([k]) => k))];
@@ -1175,6 +1219,9 @@ const URL_FIELDS = [
   ["deg", "ch", "deg", 0, (v) => String(v + 1), (v) => { const n = intIn(1, 7)(v); return n === undefined ? undefined : n - 1; }],
   ["set", "ch", "strSet", 0, (v) => STR_TOK[v], (v) => (STR_TOK.includes(v) ? STR_TOK.indexOf(v) : undefined)],
   ["inv", "ch", "inv", 0, String, intIn(0, 2)],
+  ["chords", "ch", "sev", false, () => "7", (v) => (v === "7" ? true : undefined)],
+  ["set7", "ch", "strSet7", 0, (v) => STR7_TOK[v], (v) => (STR7_TOK.includes(v) ? STR7_TOK.indexOf(v) : undefined)],
+  ["inv7", "ch", "inv7", 0, String, intIn(0, 3)],
   ["cnum", "ch", "numFrom", "key", String, oneOf("key", "chord")],
   ["behind", "ch", "scaleBehind", false, () => "shown", (v) => (v === "shown" ? true : undefined)],
   ["parent", "md", "parent", 0, (v) => noteTok(v), NOTE_IN],
@@ -1187,7 +1234,7 @@ const URL_FIELDS = [
 const URL_DEFAULT = {
   top: { page: "neck", labelMode: "degree", isolate: false, ghost: false, dotColour: "caged", more: false },
   cfg: { root: 0, tonality: "major", scope: "pentatonic", arp: "triad", pos: null, focus: [], keyRoot: 0, keyMode: "major", arpMode: "diatonic", diaLabel: "key", strGroup: null, mode: "ionian" },
-  ch: { deg: 0, strSet: 0, inv: 0, numFrom: "key", scaleBehind: false },
+  ch: { deg: 0, strSet: 0, inv: 0, numFrom: "key", scaleBehind: false, sev: false, strSet7: 0, inv7: 0 },
   md: { parent: 0, view: "notes", hit: null, lkRoot: "", lkMode: "", open: [] },
 };
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
