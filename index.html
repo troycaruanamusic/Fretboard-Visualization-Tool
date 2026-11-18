@@ -63,7 +63,6 @@
   .caret{position:absolute;left:50%;top:calc(100% + 2px);transform:translateX(-50%);width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:8px solid #1B2530;pointer-events:none}
   .subpanel h3{margin:0;font-size:.875rem;line-height:1.25rem;font-weight:700;color:#E3E9F0}
   .pagenav{display:flex}
-  @media (max-width:699px){.pagenav{order:3;flex-basis:100%}}
   /* Chords page (Round 5): the chord strip and the two control groups (mock-ups D and E). */
   .strip{display:flex;align-items:stretch;gap:6px;margin-top:8px}
   .strip .btn{height:auto;min-height:34px}
@@ -119,11 +118,17 @@
   @media (pointer:coarse){.seg,.btn,.chip{height:44px}}
   /* Head, summary line and board first; four groups below (UX-01, IA-03, IA-05). */
   .head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;min-height:44px;margin-bottom:8px}
-  /* Copy link (Round 7): beside Help on a wide head. Below 700 px, where the three buttons and the page switch cannot share
-     the title's row, it ends the page-switch row, so the head keeps two rows. */
+  /* Copy link (Round 7) and the tuning slot (Round 11): Tuning follows the page switch and the three buttons sit at the
+     right; where they cannot share the title's row they take the next one. Below 700 px the head has three rows (Atlas
+     mock-up): title, Help and Clear; the four-cell page switch; Tuning and Copy link. */
+  .hrow2{display:flex;flex:1 1 auto;align-items:center;gap:8px}
   .hbtns{display:flex;gap:8px;margin-left:auto}
   .head .copyl{min-width:100px;justify-content:center}
-  @media (max-width:699px){.hbtns{display:contents}.hbtns .hb1{margin-left:auto}.pagenav{flex:1 1 calc(100% - 124px)}.head .copyl{order:4}}
+  .tuning{position:relative}
+  .tmenu{position:absolute;left:0;top:calc(100% + 6px);z-index:30;min-width:250px;background:#1B2530;border:1px solid #6C7C8E;border-radius:12px;padding:6px;box-shadow:0 12px 32px rgba(0,0,0,.55);display:flex;flex-direction:column;gap:2px}
+  .titem{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 10px;border-radius:8px;font-size:.875rem;color:#E3E9F0;text-align:left;white-space:nowrap}
+  .titem:not([disabled]):hover{background:#2A3645}
+  @media (max-width:699px){.hrow2,.hbtns{display:contents}.hbtns .hb{order:1}.hbtns .hb1{margin-left:auto}.pagenav{order:3;flex-basis:100%}.pagenav .track{display:grid;flex:1}.tuning{order:4}.head .copyl{order:5;margin-left:auto}}
   .sumrow{display:flex;align-items:center;gap:8px;min-height:34px;overflow-x:auto;white-space:nowrap;margin-bottom:8px}
   @media (pointer:coarse){.sumrow{min-height:44px}}
   .boardwrap{background:#0D131A;padding-bottom:8px}
@@ -134,6 +139,54 @@
   @media (min-width:1200px){.groups{grid-template-columns:1fr 1.4fr 1fr .8fr}}
   .card{background:#141C25;border-radius:.5rem;padding:.75rem;display:flex;flex-direction:column;gap:10px;min-width:0}
   .card h2{margin:0;font-size:.875rem;line-height:1.25rem;font-weight:700;color:#E3E9F0}
+  /* Atlas page (Round 11, Atlas mock-up): the Scales / Chords switch, four control cards (a chip bar, sheet and picker on a
+     phone), the summary row, the neck map and the grid of cards, each a small neck. */
+  .amode{margin-bottom:8px}
+  @media (max-width:699px){.amode .track{display:grid;width:100%}}
+  .agroups{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr));gap:12px;align-items:start}
+  @media (min-width:1200px){.agroups{grid-template-columns:1.3fr 1fr 1.15fr .8fr}}
+  .abar{display:flex;gap:8px;overflow-x:auto;white-space:nowrap;padding:2px}
+  .abar>*{flex:none}
+  .abadge{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:10px;background:#E3E9F0;color:#16232F;font-size:12px;font-weight:700;margin-left:6px}
+  .asum{display:flex;align-items:center;gap:8px;min-height:34px;margin-top:12px}
+  @media (pointer:coarse){.asum{min-height:44px}}
+  .asum-l{display:flex;align-items:center;gap:8px;flex:1;min-width:0;overflow-x:auto;white-space:nowrap;padding:2px}
+  .nmap{background:#141C25;border-radius:.5rem;padding:10px;margin-top:8px}
+  .nm-head{display:flex;align-items:baseline;gap:8px;margin-bottom:6px;min-width:0}
+  .nm-head h2{margin:0;font-size:.875rem;line-height:1.25rem;font-weight:700;color:#E3E9F0;white-space:nowrap}
+  .nm-g{display:grid;background:#1B2530;border-radius:6px;padding:6px 8px 4px}
+  .nm-c{position:relative;display:flex;align-items:center;justify-content:center;min-width:0}
+  .nm-r{height:18px;margin:0 1px;font-size:11px;line-height:15px;text-align:center;white-space:nowrap;overflow:hidden}
+  .ahead{margin:0 0 8px;font-size:.875rem;line-height:1.25rem;font-weight:700;color:#E3E9F0;display:flex;align-items:baseline;gap:8px}
+  .acards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(250px,100%),1fr));gap:12px;align-items:start}
+  .acards.lg{grid-template-columns:repeat(auto-fill,minmax(min(380px,100%),1fr))}
+  .acard{display:flex;flex-direction:column;gap:8px;padding:10px;border-radius:8px;background:#141C25;border:1px solid #334252;min-width:0;cursor:pointer}
+  .acard:hover{border-color:#6C7C8E}
+  .acard.lit{border-color:transparent;box-shadow:0 0 0 1.5px #E3E9F0}
+  .acard-hit{display:flex;flex-direction:column;gap:8px;width:100%;text-align:left;border-radius:6px}
+  .acard-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+  .acard-foot{display:flex;flex-wrap:wrap;align-items:center;gap:4px}
+  .atag{display:inline-flex;align-items:center;height:22px;padding:0 7px;border-radius:4px;background:#091017;color:#A9B6C4;font-size:11.5px;font-weight:500;white-space:nowrap}
+  .mneck{display:block;background:#1B2530;border-radius:6px;padding:6px 6px 2px}
+  .mn-g{display:grid}
+  .mn-c{position:relative;display:flex;align-items:center;justify-content:center;min-width:0}
+  .mn-s{position:absolute;left:0;right:0;top:50%;background:#6C7C8E}
+  .mn-d{position:relative;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;box-sizing:border-box;flex:none;line-height:1}
+  .aback{position:fixed;inset:0;background:rgba(4,8,12,.6);z-index:40}
+  .asheet{position:fixed;left:0;right:0;bottom:0;max-height:88vh;background:#141C25;border-radius:16px 16px 0 0;box-shadow:0 -8px 32px rgba(0,0,0,.5);display:flex;flex-direction:column;color:#E3E9F0}
+  .asheet-body{flex:1;overflow-y:auto;padding:0 16px}
+  .agrip{width:40px;height:4px;border-radius:2px;background:#6C7C8E;margin:8px auto 0}
+  .asec{padding:12px 0;display:flex;flex-direction:column;gap:10px;min-width:0}
+  .asec+.asec{border-top:1px solid #334252}
+  .asec h3{margin:0;font-size:.875rem;line-height:1.25rem;font-weight:700;color:#E3E9F0}
+  .adlg-h{margin:0;font-size:1rem;line-height:1.5rem;font-weight:700;flex:1;color:#E3E9F0}
+  .apop{position:fixed;left:16px;right:16px;top:88px;max-height:calc(100vh - 104px);overflow-y:auto;background:#1B2530;border:1px solid #6C7C8E;border-radius:12px;padding:12px;box-shadow:0 12px 32px rgba(0,0,0,.55);display:flex;flex-direction:column;gap:10px;color:#E3E9F0}
+  .asheet:focus,.apop:focus{outline:none}
+  /* The Key grid fills the picker and the sheet, so its 12 cells are 50 px wide at 360 px. */
+  .apop [aria-label="Key"],.asheet [aria-label="Key"]{display:grid;width:100%}
+  .apick2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%}
+  .apbtn{display:flex;align-items:center;gap:6px;width:100%;min-width:0}
+  .ashow{width:100%}
   /* The ChordCharts focus ring (A11y-S1). */
   :focus-visible{outline:2px solid #9CC6EE;outline-offset:2px}
   :focus:not(:focus-visible){outline:none}
@@ -145,7 +198,7 @@
 <div id="root"></div>
 <script type="text/babel" data-presets="react">
 const { useState, useMemo, useEffect } = React;
-const VERSION = "v0.34";
+const VERSION = "v0.35";
 document.title = `Fretboard Trainer · ${VERSION}`;
 
 // ChordCharts Dark tokens (BR-01). Colour roles (BR-02): gold = the key, CAGED = position, greyscale = everything else.
@@ -411,7 +464,7 @@ function nutSubs(root, set, p, gaps) {
   return out;
 }
 
-function Board({ cfg, update, globals }) {
+function Board({ cfg, update, globals, back = null }) {
   const { scope, arp, pos, focus, keyRoot, keyMode, arpMode, diaLabel, strGroup, mode } = cfg;
   const { labelMode, isolate, ghost, dotColour, more, setLabelMode, setIsolate, setGhost, setDotColour, setMore } = globals;
   const caged = dotColour === "caged";
@@ -616,12 +669,15 @@ function Board({ cfg, update, globals }) {
       {/* Summary line and board first; nothing above the board changes height (UX-01, IA-03). Sticky on an upright phone (RS-03). */}
       <div className="boardwrap">
         <div className="sumrow">
+          {/* After On the neck on an Atlas card (Round 11): the way back, and which card opened this view. */}
+          {back && <Btn data-back onClick={back.go}><span aria-hidden="true" style={{ marginRight: 6 }}>‹</span>Atlas</Btn>}
           <span data-summary className="text-sm font-semibold text-body">{summary}</span>
           {chips.map(([t, clear]) => (
             <button key={t} onClick={clear} aria-label={`Remove ${t}`} className="chip flex items-center gap-1.5 px-2 rounded-lg text-xs transition-colors" style={{ background: THEME.ctl, border: `1px solid ${THEME.edge}`, color: THEME.text, fontWeight: 500 }}>
               {t}<span aria-hidden="true" className="text-muted">✕</span>
             </button>
           ))}
+          {back && <span data-backnote className="text-xs text-muted">Opened from the Atlas: {back.label}</span>}
         </div>
         <div ref={scrollRef} className="overflow-x-auto pb-2 rounded-xl" style={{ background: THEME.panel2 }}>
           <div className="grid p-3" style={{ gridTemplateColumns: COLS, width: "100%", minWidth: "min-content" }}>
@@ -819,8 +875,8 @@ function Help({ onExample }) {
   // Written from the v0.31 build (CP-01, CP-04): thing-first, no second person.
   return (
     <div className="p-3 rounded-lg" style={{ background: THEME.panel, maxWidth: 760 }}>
-      <P>Scales, chords and the five CAGED positions on a standard-tuned (EADGBE) neck, frets 0–21. The board comes first, with a summary line above it; the controls sit in four groups below: Key, Show, Filter and Display. The head switches between three pages: Neck (this trainer), Chords and Modes. Key and Major or Minor are the same on Neck and Chords; Modes has its own parent key.</P>
-      <P><b>Copy link.</b> The address holds the page, the key and the settings on Neck, Chords and Modes, so a copied link opens the same view, for example a set-up board sent to a student. On a phone or tablet the button opens the share sheet. Back returns to the previous page.</P>
+      <P>Scales, chords and the five CAGED positions on a standard-tuned (EADGBE) neck, frets 0–21. The board comes first, with a summary line above it; the controls sit in four groups below: Key, Show, Filter and Display. The head switches between four pages: Neck (this trainer), Chords, Modes and Atlas. Key and Major or Minor are the same on Neck, Chords and Atlas; Modes has its own parent key. Tuning in the head lists Standard; Drop D is listed and not yet available.</P>
+      <P><b>Copy link.</b> The address holds the page, the key and the settings on Neck, Chords, Modes and Atlas, so a copied link opens the same view, for example a set-up board sent to a student. On a phone or tablet the button opens the share sheet. Back returns to the previous page.</P>
       <H>Key and Show</H>
       <P><b>Key.</b> The 12 roots with Major or Minor. Note names follow the key signature, with ♭ and ♯; notes outside the key are spelled from the chord or scale formula (C dim7: C E♭ G♭ B𝄫). The root takes the spelling with the fewer accidentals for the scale shown, so the same key cell reads F♯ in Ionian and G♭ in Lydian, E♭ in Aeolian and D♯ in Phrygian. Where both spellings tie, the standard key name stays (F♯ major, E♭ minor).</P>
       <P><b>Show.</b> Chord: the chord tones only. Pentatonic: the key's major or minor pentatonic, or Major and minor: both pentatonics together (1 2 ♭3 3 4 5 6 ♭7). Blues: the pentatonic with the blue note (♭3 in major, ♭5 in minor). Scale: seven-note scales. The chosen layer opens a panel under it, titled with the result (C Dorian, C major pentatonic).</P>
@@ -851,6 +907,13 @@ function Help({ onExample }) {
       <P><b>The chart.</b> The seven modes of one parent major key in parent order, Ionian to Locrian: degree, mode, quality, root, the scale tones from that root, and the chord to solo over in Nashville numbers. The light square marks each mode's characteristic tone: ♮4 and ♮7 in Ionian, ♮6 in Dorian, ♭2 in Phrygian, ♯4 in Lydian, ♭7 in Mixolydian, ♭6 in Aeolian, ♭5 in Locrian. View: Notes shows each note with its number below; Numbers shows the formula alone. The data and wording are those of the ChordCharts modal reference.</P>
       <P><b>Find a parent key.</b> A root and a mode give the parent key (D Dorian: C major, its 2nd mode). The chart moves to that key and marks the row.</P>
       <P><b>Rows.</b> Show … on the neck opens the Neck page on that mode, as Key, Show → Scale and the mode would there; filters stay. The arrow button opens the row's details: solo over, vamp, colour note, avoid / resolve and feel. Avoid and resolve notes are a jazz guideline; in country, blues and rock they are used freely as passing and bend tones. The Neck page keeps the row's root as spelled here (G♭ Ionian, D♯ Phrygian) until Key changes, or until a scale is chosen that the other spelling writes with fewer accidentals.</P>
+      <H>Atlas page</H>
+      <P><b>The Atlas.</b> A scale as a grid of small necks, one card per shape. Scales is built; Chords comes next. Key, Major or Minor and Mode are those of the Neck page, and Labels is the Neck's Labels, so a change on either page shows on the other.</P>
+      <P><b>Scale.</b> Key and Major or Minor, then Show: Scale (the seven modes, with harmonic and melodic minor under Other scales), Pentatonic or Blues. On a phone the scale button in the bar opens these, and Filters opens every control.</P>
+      <P><b>Lay out by.</b> What changes from card to card. Position: the five CAGED windows of the scale, low fret to high. Mode (Show: Scale only): the seven modes in one window, from the same root (C Ionian, C Dorian; the notes change) or from the parent key (C Ionian, D Dorian; the notes stay, and each mode sits in its own window of that number). Key: the scale in one window in all 12 keys, C up to B. Mode and Key take their window from Position under Lay out by.</P>
+      <P><b>Cards.</b> A card shows the lowest full copy of its window in the window's colour, with the note the Neck adds from one fret outside it (Scale only); "frets 2–5" is the span of its dots. A tap lights the card until it or another card is tapped. On the neck opens the Neck page on that key, scale, position and strings, with Focus and Notes: Chord tones cleared; ‹ Atlas there comes back.</P>
+      <P><b>Neck map.</b> The whole neck as a strip above the cards, on by default except on a phone. With no card lit it shows the scale in CAGED colours, half and half where two windows share a note. A lit card, or one under the mouse, shows its window in every copy on the neck and the other notes as open circles; the ruler names each window's span. Under Mode and Key, where each card is another scale, the map starts on the first card or on the current key's.</P>
+      <P><b>Filter and Display.</b> Strings shows one three-string set in colour and the other strings as open circles. Copies: Also 12 up adds each window's copy 12 frets higher where all of it fits below fret 21. Chord tones: Larger or Same size (the 1, 3, 5 and 7, as on the Neck). Card size: Standard or Large. Clear removes Strings and Also 12 up.</P>
       <H>Examples</H>
       <P>Each sets Show, position, strings, focus and Notes; Display stays. ♭7 of a dominant 7th also sets Major.</P>
       <ul style={{ margin: 0, paddingLeft: 18 }}>
@@ -1259,7 +1322,496 @@ function ModesPage({ md, setMd, onNeck }) {
   );
 }
 
-// URL state (UX-18, Round 7): page, key and the Neck, Chords and Modes state, as query parameters. A value at its default is
+// Atlas page (Round 11, Atlas review and mock-up of 18 Nov): a scale as a grid of small necks, one card per shape. Scales mode
+// is built here; Chords mode follows. Key, Major / Minor and Mode are the Neck's (cfg), and Labels is the Neck's Labels, so
+// the four pages stay on one key; Show, Lay out by and the filters are the Atlas's own (at).
+const AT_SHOW = [["scale","Scale"],["pentatonic","Pentatonic"],["blues","Blues"]];
+const AT_BY = [["position","Position"],["mode","Mode"],["key","Key"]];
+const SCALE_LABEL = Object.fromEntries([...MODES, ...OTHER_SCALES]);
+const AT_POS = (km) => (km === "major" ? POS_MAJOR : POS_MINOR);
+// The scale type alone: "major", "Dorian", "harmonic minor", "minor pentatonic", "major blues".
+const atType = (show, keyMode, mode) => (show === "scale" ? (mode === "ionian" ? "major" : mode === "aeolian" ? "minor" : MODE_NAME[mode]) : `${keyMode} ${show}`);
+// One scale as the Neck page gives it for the same Key, Major / Minor, Show and Mode: intervals, chord tones (1 3 5 7), degree
+// names, and note names from the Neck's root letter (Round 9), so a card and the Neck it opens read the same.
+function atScale(root, keyMode, show, mode, letter) {
+  const ivs = scopeIntervals(keyMode, show, "triad", mode);
+  const set = new Set(ivs);
+  const par = show === "scale" ? ivs : MODE_IV[keyMode === "major" ? "ionian" : "aeolian"];
+  const ct = new Set([par[0], par[2], par[4], par[6]].filter((iv) => set.has(iv)));
+  const li = neckLetter(normSpell({ keyRoot: root, keyMode, scope: show, mode, keySpell: letter || null }));
+  const degKey = show === "scale" ? mode : show;
+  const deg = (iv) => (DEG_OVERRIDE[degKey] && DEG_OVERRIDE[degKey][iv]) || DEG_LABEL[iv];
+  const name = (pc) => { const d = /(\d)$/.exec(deg((((pc - root) % 12) + 12) % 12)); return accs(spellAt(li + (d ? +d[1] : 1) - 1, pc)); };
+  return { root, keyMode, show, mode, set, ct, letter: LETTERS[((li % 7) + 7) % 7], rootName: accs(spellAt(li, root)), deg, name };
+}
+// The cells of one copy of window p: k = 0 is the lowest complete copy, 12 the copy 12 frets up. With fill (Scale only), the
+// gap fill of gapCells as exact cells: each pitch missing between the copy's lowest and highest takes the nearest on-board
+// cell outside the lowest copy, a tie going above; the upper copy takes the same cell 12 frets up or, where that passes the
+// last fret, the nearest on-board cell outside the upper copy.
+function atCells(root, set, p, k, fill) {
+  const base = (((root - 4 + p.off) % 12) + 12) % 12, top = base + p.w;
+  const inSet = (m) => set.has((((m - root) % 12) + 12) % 12);
+  const near = (m, b, t) => {
+    let best = null;
+    for (let s = 0; s < 6; s++) {
+      const f = m - OPEN_ABS[s];
+      if (f < 0 || f > FRETS || (f >= b && f <= t)) continue;
+      const d = f < b ? b - f : f - t;
+      if (!best || d < best.d || (d === best.d && f > t)) best = { s, f, d };
+    }
+    return best;
+  };
+  const cells = [], have = new Set();
+  for (let s = 0; s < 6; s++) for (let f = base; f <= top; f++) if (inSet(OPEN_ABS[s] + f)) { have.add(OPEN_ABS[s] + f); cells.push({ s, f: f + k, gap: false }); }
+  if (fill && have.size) {
+    const lo = Math.min(...have), hi = Math.max(...have);
+    for (let m = lo + 1; m < hi; m++) {
+      if (!inSet(m) || have.has(m)) continue;
+      let g = near(m, base, top);
+      if (g && k) g = g.f + k <= FRETS ? { s: g.s, f: g.f + k } : near(m + k, base + k, top + k);
+      if (g) cells.push({ s: g.s, f: g.f, gap: true });
+    }
+  }
+  return cells;
+}
+// A card's neck: six fret columns (more if the dots span more), the dots centred with the spare column above them.
+function atFrame(cells) {
+  const fs = cells.map((c) => c.f), lo = Math.min(...fs), hi = Math.max(...fs);
+  const span = hi - lo + 1, cols = Math.max(6, span);
+  return { lo, hi, cols, start: Math.max(0, Math.min(FRETS - cols + 1, lo - Math.floor((cols - span) / 2))) };
+}
+// The cards for the current state. Position: the five windows of the scale, low fret to high. Mode: the seven modes in one
+// window number, from the same root or from the parent major key (each mode in its own window of that number; root letters
+// as the Modes page spells them). Key: the scale in one window in all 12 keys, C up to B. Also 12 up adds each window's copy
+// 12 frets higher where all of it fits on the neck.
+function atCards(cfg, at) {
+  const { keyRoot, keyMode, mode } = cfg, { show, by, pos, from, up } = at;
+  const out = [];
+  const add = (id, title, sc, p, tags) => [0, 12].forEach((k) => {
+    const base = (((sc.root - 4 + p.off) % 12) + 12) % 12;
+    if (k && (!up || base + p.w + k > FRETS)) return;
+    const cells = atCells(sc.root, sc.set, p, k, sc.show === "scale");
+    out.push({ id: id + (k ? "u" : ""), title: title + (k ? " · 12 up" : ""), sc, p, k, at: base + k, cells, tags, ...atFrame(cells) });
+  });
+  const typeTag = show === "scale" ? SCALE_LABEL[mode] : `${keyMode} ${show}`;
+  if (by === "mode") {
+    MODES.forEach(([m], i) => {
+      const km = MODE_Q(m), parent = from === "parent";
+      const sc = atScale(parent ? (keyRoot + MODE_REF_OFF[i]) % 12 : keyRoot, km, "scale", m, parent ? MODE_REF.keys[MODE_REF.order[keyRoot]][i][0] : cfg.keySpell);
+      add(m, `${sc.rootName} ${MODE_NAME[m]}`, sc, AT_POS(km).find((p) => p.num === pos), [km]);
+    });
+  } else if (by === "key") {
+    NOTE_TOK.forEach((tok, r) => {
+      const sc = atScale(r, keyMode, show, mode, r === keyRoot ? cfg.keySpell : null);
+      add(tok, `${sc.rootName} ${atType(show, keyMode, mode)}`, sc, AT_POS(keyMode).find((p) => p.num === pos), [typeTag]);
+    });
+  } else {
+    const sc = atScale(keyRoot, keyMode, show, mode, cfg.keySpell);
+    AT_POS(keyMode).forEach((p) => add(String(p.num), `${p.letter} shape`, sc, p, [typeTag]));
+    out.sort((a, b) => a.at - b.at);
+  }
+  return out;
+}
+
+// A media query as state, so the Atlas can swap its control cards for the phone chip bar and sheet.
+function useMedia(q) {
+  const [m, setM] = useState(() => window.matchMedia(q).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(q), on = () => setM(mq.matches);
+    on();
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, [q]);
+  return m;
+}
+const PHONE_Q = "(max-width:699px)";
+
+// A modal surface (the phone Filters sheet and the Key / Scale picker): focus moves in and is kept in, Escape or the
+// backdrop closes it, and focus goes back to the control that opened it.
+function Dialog({ label, onClose, kind, children }) {
+  const ref = React.useRef(null), close = React.useRef(onClose);
+  close.current = onClose;
+  useEffect(() => {
+    const el = ref.current, prev = document.activeElement, ov = document.body.style.overflow;
+    el.focus();
+    document.body.style.overflow = "hidden";
+    const onKey = (e) => {
+      if (e.key === "Escape") { e.preventDefault(); close.current(); return; }
+      if (e.key !== "Tab") return;
+      const fs = [...el.querySelectorAll("button, select")].filter((b) => !b.disabled && b.tabIndex >= 0);
+      if (!fs.length) return;
+      const i = fs.indexOf(document.activeElement);
+      if (e.shiftKey ? i <= 0 : i === fs.length - 1) { e.preventDefault(); fs[e.shiftKey ? fs.length - 1 : 0].focus(); }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = ov; if (prev && prev.focus) prev.focus(); };
+  }, []);
+  return (
+    <div className="aback" onClick={() => onClose()}>
+      <div ref={ref} role="dialog" aria-modal="true" aria-label={label} tabIndex={-1} className={kind} onClick={(e) => e.stopPropagation()}>{children}</div>
+    </div>
+  );
+}
+
+// The tuning switcher slot in the head (Atlas mock-up): Standard only for now; Drop D is listed and unavailable until the
+// tunings layer (app-structure plan, steps 5 and 8).
+function TuningMenu({ phone }) {
+  const [open, setOpen] = useState(false);
+  const ref = React.useRef(null);
+  useEffect(() => {
+    if (!open) return undefined;
+    const down = (e) => { if (!ref.current.contains(e.target)) setOpen(false); };
+    const key = (e) => { if (e.key === "Escape") { setOpen(false); ref.current.querySelector("button").focus(); } };
+    document.addEventListener("pointerdown", down);
+    document.addEventListener("keydown", key);
+    return () => { document.removeEventListener("pointerdown", down); document.removeEventListener("keydown", key); };
+  }, [open]);
+  return (
+    <div ref={ref} className="tuning">
+      <Btn onClick={() => setOpen((o) => !o)} aria-haspopup="menu" aria-expanded={open}>{phone ? "Tuning: Standard" : "Standard tuning"}<span aria-hidden="true" className="text-muted" style={{ marginLeft: 6 }}>▾</span></Btn>
+      {open && (
+        <div role="menu" aria-label="Tuning" className="tmenu">
+          <button role="menuitemradio" aria-checked="true" className="titem" onClick={() => setOpen(false)}><span style={{ fontWeight: 700 }}>Standard</span><span className="text-muted">E A D G B E</span><span aria-hidden="true" style={{ marginLeft: "auto" }}>✓</span></button>
+          <button role="menuitemradio" aria-checked="false" aria-disabled="true" disabled className="titem" style={{ opacity: 0.5, cursor: "default" }}><span style={{ fontWeight: 700 }}>Drop D</span><span className="text-muted">D A D G B E</span><span className="text-muted" style={{ marginLeft: "auto" }}>Later</span></button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// A card's neck: the window's cells in its colour, chord tones larger when asked, the root with an ink centre; strings
+// outside the Strings filter as open circles. Spans only, so the whole neck can sit inside the card's button.
+function MiniNeck({ card, labelMode, big, str, lg }) {
+  const { sc, p, cells, start, cols } = card;
+  const rowH = lg ? 34 : 28, d1 = lg ? 26 : 22, d2 = lg ? 22 : 18, fs = lg ? 12 : 11, col = POS_COLOR[p.letter];
+  const hit = {};
+  cells.forEach((c) => { hit[c.s * 100 + c.f] = c; });
+  const out = [];
+  for (let s = 0; s < 6; s++) {
+    const off = str !== null && (s < str || s > str + 2);
+    out.push(<span key={"l" + s} className="mn-c" style={{ height: rowH, fontSize: 11, fontWeight: 600, color: off ? THEME.muted : THEME.text }}>{STRING_LABELS[s]}</span>);
+    for (let f = start; f < start + cols; f++) {
+      const c = hit[s * 100 + f];
+      let dot = null;
+      if (c) {
+        const pc = (OPEN[s] + f) % 12, iv = (((pc - sc.root) % 12) + 12) % 12, isRoot = iv === 0, isCT = sc.ct.has(iv);
+        const sz = isRoot || !big || isCT ? d1 : d2, lab = labelMode === "name" ? sc.name(pc) : labelMode === "degree" ? sc.deg(iv) : "";
+        const data = { "data-c": `${s}-${f}`, "data-gap": c.gap ? "1" : undefined, "data-off": off ? "1" : undefined, title: `${sc.name(pc)} · ${sc.deg(iv)}` };
+        dot = off
+          ? <span {...data} className="mn-d" style={{ width: sz, height: sz, border: `${isRoot ? 3 : 1.5}px solid ${THEME.edge}`, color: THEME.muted, fontSize: fs, fontWeight: 500, zIndex: 2 }}>{lab}</span>
+          : isRoot
+            ? <span {...data} className="mn-d" style={{ width: sz, height: sz, background: col, zIndex: 5 }}><span className="mn-d" style={{ width: sz - 6, height: sz - 6, background: THEME.ink, color: THEME.text, fontSize: fs, fontWeight: 800 }}>{lab}</span></span>
+            : <span {...data} className="mn-d" style={{ width: sz, height: sz, background: col, color: THEME.ink, fontSize: fs, fontWeight: big && isCT ? 800 : 500, zIndex: isCT ? 3 : 2 }}>{lab}</span>;
+      }
+      out.push(
+        <span key={s + "-" + f} className="mn-c" style={{ height: rowH, borderRight: f === 0 ? `4px solid ${THEME.nut}` : `1.5px solid ${THEME.line}`, background: f === 0 ? THEME.track : undefined }}>
+          <span className="mn-s" style={{ height: STRING_GAUGE[s], marginTop: -STRING_GAUGE[s] / 2 }} />
+          {dot}
+        </span>
+      );
+    }
+  }
+  out.push(<span key="n" />);
+  for (let f = start; f < start + cols; f++) out.push(<span key={"n" + f} className="mn-c" style={{ height: 16, fontSize: 11, color: MARKERS[f] ? THEME.text : THEME.muted, fontWeight: MARKERS[f] ? 700 : 400 }}>{f}</span>);
+  return <span className="mneck" aria-hidden="true"><span className="mn-g" style={{ gridTemplateColumns: `16px repeat(${cols}, minmax(0, 1fr))` }}>{out}</span></span>;
+}
+
+// The neck map (mock-up, canvas comments of 18 Nov): the whole neck as a slim strip above the cards. With no card chosen it
+// shows the scale in CAGED colours, half and half where two windows share a note, as the Neck does in All. A chosen or
+// hovered card lights its window in every copy on the neck, gap fill included, and the rest go to open circles; the ruler
+// names each window's span.
+function NeckMap({ sc, p, str, phone, note }) {
+  const posList = AT_POS(sc.keyMode);
+  const baseOf = (q) => (((sc.root - 4 + q.off) % 12) + 12) % 12;
+  const inPos = (f, q) => ((((f - baseOf(q)) % 12) + 12) % 12) <= q.w;
+  const gaps = p && sc.show === "scale" ? gapCells(sc.root, sc.set, p) : null;
+  const inWin = (s, f) => inPos(f, p) || (gaps !== null && (gaps.has(s * 12 + (f % 12)) || gaps.cut.has(s * 100 + f)));
+  const spans = [];
+  posList.forEach((q) => {
+    for (let c = baseOf(q) - 12; c <= FRETS; c += 12) {
+      const a = Math.max(0, c), z = Math.min(FRETS, c + q.w);
+      if (z >= a) spans.push({ q, a, z, clipped: a !== c || z !== c + q.w });
+    }
+  });
+  spans.sort((x, y) => x.a - y.a || x.z - y.z);
+  const ends = [];
+  spans.forEach((sp) => {
+    let l = ends.findIndex((e) => e < sp.a);
+    if (l < 0) { l = ends.length; ends.push(-1); }
+    ends[l] = sp.z; sp.lane = l;
+  });
+  const lanes = Math.max(2, ends.length), rowH = 16, dot = phone ? 9 : 11;
+  const cellsOut = [];
+  for (let s = 0; s < 6; s++) {
+    const off = str !== null && (s < str || s > str + 2);
+    cellsOut.push(<div key={"l" + s} className="nm-c" style={{ gridRow: s + 1, gridColumn: 1, height: rowH, fontSize: 11, color: THEME.muted }}>{STRING_LABELS[s]}</div>);
+    for (let f = 0; f <= FRETS; f++) {
+      const iv = (((OPEN[s] + f - sc.root) % 12) + 12) % 12;
+      let mark = null;
+      if (sc.set.has(iv)) {
+        const isRoot = iv === 0, on = !off && (p ? inWin(s, f) : true);
+        let fill = null;
+        if (on && p) fill = POS_COLOR[p.letter];
+        else if (on) {
+          const hits = posList.filter((q) => inPos(f, q)).sort((a, b) => ((((f - baseOf(b)) % 12) + 12) % 12) - ((((f - baseOf(a)) % 12) + 12) % 12)).map((q) => POS_COLOR[q.letter]);
+          fill = hits.length > 1 ? `linear-gradient(135deg, ${hits[0]} 0 50%, ${hits[1]} 50% 100%)` : hits[0];
+        }
+        mark = fill
+          ? <span data-m={`${s}-${f}`} className="mn-d" style={{ width: dot + (isRoot ? 2 : 0), height: dot + (isRoot ? 2 : 0), background: fill, zIndex: 2 }}>{isRoot && <span style={{ width: dot - 4, height: dot - 4, borderRadius: "50%", background: THEME.ink }} />}</span>
+          : <span className="mn-d" style={{ width: dot, height: dot, border: `${isRoot ? 2 : 1}px solid ${THEME.edge}`, background: THEME.panel2, zIndex: 1 }} />;
+      }
+      cellsOut.push(
+        <div key={s + "-" + f} className="nm-c" style={{ gridRow: s + 1, gridColumn: f + 2, height: rowH, borderRight: f === 0 ? `3px solid ${THEME.nut}` : `1px solid ${THEME.line}` }}>
+          <span className="mn-s" style={{ height: 1, marginTop: -0.5 }} />
+          {mark}
+        </div>
+      );
+    }
+  }
+  return (
+    <section className="nmap" aria-label="Neck map">
+      <div className="nm-head"><h2>Neck map</h2><span data-mapnote className="text-xs text-muted">{note}</span></div>
+      <div role="img" aria-label={`The whole neck. ${note}`} className="nm-g" style={{ gridTemplateColumns: `14px ${COL_PX.map((n) => `minmax(0, ${n}fr)`).join(" ")}` }}>
+        {cellsOut}
+        {Array.from({ length: FRETS + 1 }, (_, f) => (!phone || MARKERS[f]) && (
+          <div key={"n" + f} className="nm-c" style={{ gridRow: 7, gridColumn: f + 2, height: rowH, fontSize: 11, overflow: "visible", color: MARKERS[f] ? THEME.text : THEME.muted, fontWeight: MARKERS[f] ? 700 : 400 }}>{f}</div>
+        ))}
+        {Array.from({ length: lanes }, (_, l) => <div key={"rl" + l} style={{ gridRow: 8 + l, gridColumn: 1, height: 18 }} />)}
+        {spans.map((sp) => {
+          const on = !p || sp.q.num === p.num, c = on ? POS_COLOR[sp.q.letter] : THEME.line, side = on && p ? 2 : 1;
+          return (
+            <div key={`r${sp.q.num}-${sp.a}`} data-mruler={`${sp.q.num} ${sp.q.letter}`} data-on={on && p ? "1" : undefined} className="nm-r"
+              style={{ gridRow: 8 + sp.lane, gridColumn: `${sp.a + 2} / ${sp.z + 3}`, color: on && p ? THEME.text : THEME.muted, fontWeight: on && p ? 700 : 400,
+                borderBottom: `${on && p ? 2 : 1}px solid ${c}`, borderLeft: sp.clipped && sp.a === 0 ? "none" : `${side}px solid ${c}`, borderRight: sp.clipped && sp.z === FRETS ? "none" : `${side}px solid ${c}` }}>
+              {phone ? sp.q.letter : `${sp.q.num} ${sp.q.letter}`}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function AtlasPage({ cfg, update, at, setAt, labelMode, setLabelMode, onOpen }) {
+  const { keyRoot, keyMode, mode } = cfg, { am, show, by, pos, from, str, up, ct, size, lit } = at;
+  const phone = useMedia(PHONE_Q);
+  const [hov, setHov] = useState(null);
+  const [sheet, setSheet] = useState(false);
+  const [pick, setPick] = useState(false);
+  const [open, setOpen] = useState("");
+  const set = (p) => setAt((a) => ({ ...a, ...p }));
+  const cards = useMemo(() => atCards(cfg, at), [keyRoot, keyMode, mode, cfg.keySpell, show, by, pos, from, up]);
+  const mapOn = at.map === null ? !phone : at.map;
+  const litCard = cards.find((c) => c.id === lit) || null, target = cards.find((c) => c.id === hov) || litCard;
+
+  // Names. The Key grid spells each root as the Neck would for the scale shown; Lay out by Mode spells it by the key
+  // (parent keys as the Modes page does), since the scale changes from card to card.
+  const vc = normSpell({ ...cfg, scope: by === "mode" ? "pentatonic" : show });
+  const keyCell = (i) => (by === "mode" && from === "parent" ? MODE_REF.order[i] : accs(spellAt(i === keyRoot ? neckLetter(vc) : autoLetter(i, vc), i)));
+  const type = atType(show, keyMode, mode), Type = type[0].toUpperCase() + type.slice(1);
+  const win = `window ${pos} ${AT_POS("major").find((p) => p.num === pos).letter}`;
+  const noun = by === "mode" ? "modes" : by === "key" ? "keys" : "windows";
+  const scaleName = by === "mode" ? (from === "parent" ? `Modes of ${keyCell(keyRoot)} major` : `${keyCell(keyRoot)} modes`) : by === "key" ? `${Type}, 12 keys` : `${keyCell(keyRoot)} ${type}`;
+  const labNote = labelMode === "name" ? " · note names" : labelMode === "none" ? " · no labels" : "";
+  const summary = (by === "mode" ? `${keyCell(keyRoot)}${from === "parent" ? " major" : ""} · 7 modes, ${from === "parent" ? "same notes" : "same root"} · ${win}`
+    : by === "key" ? `${Type} · 12 keys · ${win}`
+    : `${keyCell(keyRoot)} ${type} · ${cards.length} windows`) + labNote;
+  const heading = by === "mode" ? [from === "parent" ? `Modes of ${keyCell(keyRoot)} major (parent)` : `Modes of ${keyCell(keyRoot)} (parallel)`, from === "parent" ? "notes fixed, root changes" : "root fixed, notes change"]
+    : by === "key" ? ["Keys", "C up to B"] : ["Positions", "low fret to high"];
+  const chips = [str !== null && [`Strings ${SET_NAME[str]}`, () => set({ str: null })], up && ["Also 12 up", () => set({ up: false })]].filter(Boolean);
+  const clear = () => set({ str: null, up: false });
+
+  // The neck map shows the hovered or chosen card. With none, Position shows the scale with every window; Mode and Key,
+  // where each card is another scale, show the first card, or the current key's card.
+  const home = by === "position" ? null : by === "key" ? cards.find((c) => c.sc.root === keyRoot) : cards[0];
+  const mapSc = target ? target.sc : home ? home.sc : atScale(keyRoot, keyMode, show, mode, cfg.keySpell);
+  const tapWord = phone ? "Tap" : "Hover or tap";
+  const mapNote = target ? `Showing ${target.title.replace(" · 12 up", "")}${by === "position" ? "" : `, ${win}`}` : home ? `Showing ${home.title}, every window. ${tapWord} a card to light its window` : `${tapWord} a card to light its window`;
+
+  // Control rows, shared by the cards (tablet and desktop), the Filters sheet and the Key / Scale picker (phone).
+  const keyGrid = (
+    <Track label="Key" cols={6}>{NOTES_SHARP.map((n, i) => <Seg key={i} tone="gold" disabled={by === "key"} active={keyRoot === i} onClick={() => update({ root: i, keyRoot: i, ...keepChord(cfg, keyMode) })}>{keyCell(i)}</Seg>)}</Track>
+  );
+  const majMin = (
+    <Track label="Major or minor" cols={2}>{[["major","Major"],["minor","Minor"]].map(([t, l]) => <Seg key={t} tone="gold" disabled={by === "mode"} active={keyMode === t} onClick={() => update({ keyMode: t, root: keyRoot, ...keepChord(cfg, t), mode: keyMode === t && MODE_Q(mode) === t ? mode : t === "major" ? "ionian" : "aeolian" })}>{l}</Seg>)}</Track>
+  );
+  const showRow = (
+    <Row label="Show">
+      <Track label="Show" cols={3}>{AT_SHOW.map(([k, l]) => <Seg key={k} active={show === k} onClick={() => set({ show: k, by: k !== "scale" && by === "mode" ? "position" : by })}>{l}</Seg>)}</Track>
+    </Row>
+  );
+  const modeRows = by === "mode" ? (
+    <Row label="Modes from">
+      <Track label="Modes from" cols={2}>{[["root","Same root"],["parent","Parent key"]].map(([k, l]) => <Seg key={k} active={from === k} onClick={() => set({ from: k })}>{l}</Seg>)}</Track>
+    </Row>
+  ) : show === "scale" ? [["Mode", MODES, 4], ["Other scales", OTHER_SCALES, 2]].map(([lab, list, n]) => (
+    <Row key={lab} label={lab}>
+      <Track label={lab} cols={n}>{list.map(([k, l]) => <Seg key={k} active={mode === k} onClick={() => {
+        const q = MODE_Q(k);
+        update(q === keyMode ? { mode: k } : { mode: k, keyMode: q, root: keyRoot, ...keepChord(cfg, q) });
+      }}>{l}</Seg>)}</Track>
+    </Row>
+  )) : null;
+  const byRows = (
+    <React.Fragment>
+      <Row>
+        <Track label="Lay out by" cols={3}>{AT_BY.map(([k, l]) => <Seg key={k} active={by === k} disabled={k === "mode" && show !== "scale"} onClick={() => set({ by: k, lit: null })}>{l}</Seg>)}</Track>
+      </Row>
+      {show !== "scale" && <p className="text-xs text-muted" style={{ margin: 0 }}>Mode is for Show: Scale.</p>}
+      {by !== "position" && (
+        <Row label="Position">
+          <Track label="Position" cols={5}>{AT_POS("major").map((p) => <Seg key={p.num} active={pos === p.num} onClick={() => set({ pos: p.num })} pos={POS_COLOR[p.letter]} aria-label={`${p.num} ${p.letter}`}><span aria-hidden="true" style={{ fontSize: 11, fontWeight: 500, marginRight: 3 }}>{p.num}</span>{p.letter}</Seg>)}</Track>
+        </Row>
+      )}
+    </React.Fragment>
+  );
+  const filterRows = (
+    <React.Fragment>
+      <Row label="Strings">
+        <Track label="Strings" cols={5}>
+          <Seg active={str === null} onClick={() => set({ str: null })}>All</Seg>
+          {SET_NAME.map((l, g) => <Seg key={g} active={str === g} onClick={() => set({ str: g })}>{l}</Seg>)}
+        </Track>
+      </Row>
+      <Row label="Copies">
+        <Track label="Copies" cols={2}>{[[false,"Lowest"],[true,"Also 12 up"]].map(([v, l]) => <Seg key={l} active={up === v} onClick={() => set({ up: v })}>{l}</Seg>)}</Track>
+      </Row>
+      <Row label="Chord tones">
+        <Track label="Chord tones" cols={2}>{[["larger","Larger"],["same","Same size"]].map(([k, l]) => <Seg key={k} active={ct === k} onClick={() => set({ ct: k })}>{l}</Seg>)}</Track>
+      </Row>
+    </React.Fragment>
+  );
+  const displayRows = (
+    <React.Fragment>
+      <Row label="Labels">
+        <Track label="Labels" cols={3}>{[["degree","Degrees"],["name","Notes"],["none","None"]].map(([k, l]) => <Seg key={k} active={labelMode === k} onClick={() => setLabelMode(k)}>{l}</Seg>)}</Track>
+      </Row>
+      <Row label="Card size">
+        <Track label="Card size" cols={2}>{[["standard","Standard"],["large","Large"]].map(([k, l]) => <Seg key={k} active={size === k} onClick={() => set({ size: k })}>{l}</Seg>)}</Track>
+      </Row>
+    </React.Fragment>
+  );
+  const drop = <span aria-hidden="true" className="text-muted" style={{ marginLeft: 6 }}>▾</span>;
+
+  return (
+    <div>
+      <div className="amode">
+        <Track label="Atlas mode" cols={2}>{[["scales","Scales"],["chords","Chords"]].map(([k, l]) => <Seg key={k} active={am === k} onClick={() => set({ am: k })}>{l}</Seg>)}</Track>
+      </div>
+      {am === "chords" ? (
+        <section className="card" aria-label="Chords" style={{ marginTop: 8, maxWidth: 760 }}>
+          <h2>Chords mode is coming next</h2>
+          <p className="text-sm text-body" style={{ margin: 0, lineHeight: 1.5 }}>A chord by name, shown as its shapes: CAGED forms, closed triads, drop 2 and drop 3 voicings and shells. It is not built yet; Scales is ready.</p>
+        </section>
+      ) : (
+        <React.Fragment>
+          {phone ? (
+            <div className="abar" role="group" aria-label="Atlas controls">
+              <Btn onClick={() => setSheet(true)} aria-haspopup="dialog" aria-label={`Filters${chips.length ? `, ${chips.length} active` : ""}`}>
+                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke={THEME.text} strokeWidth="1.6" strokeLinecap="round" style={{ marginRight: 6, verticalAlign: "-3px" }}><path d="M2 4h12M4.5 8h7M7 12h2" /></svg>
+                Filters{chips.length > 0 && <span className="abadge">{chips.length}</span>}
+              </Btn>
+              <Btn data-pill onClick={() => setPick(true)} aria-haspopup="dialog">{scaleName}{drop}</Btn>
+              <Btn onClick={() => setSheet(true)} aria-haspopup="dialog">By {by}</Btn>
+              {chips.map(([t, rm]) => (
+                <button key={t} onClick={rm} aria-label={`Remove ${t}`} className="chip flex items-center gap-1.5 px-2 rounded-lg text-xs transition-colors" style={{ background: THEME.ctl, border: `1px solid ${THEME.edge}`, color: THEME.text, fontWeight: 500, flex: "none" }}>
+                  {t}<span aria-hidden="true" className="text-muted">✕</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="agroups">
+              <Card title="Scale">
+                <Row label="Key">{keyGrid}</Row>
+                <Row>{majMin}</Row>
+                {showRow}
+                {modeRows}
+              </Card>
+              <Card title="Lay out by">{byRows}</Card>
+              <Card title="Filter">{filterRows}</Card>
+              <Card title="Display">{displayRows}</Card>
+            </div>
+          )}
+
+          <div className="asum">
+            <div className="asum-l">
+              <span data-summary aria-live="polite" className="text-sm font-semibold text-body">{summary}</span>
+              {!phone && chips.map(([t, rm]) => (
+                <button key={t} onClick={rm} aria-label={`Remove ${t}`} className="chip flex items-center gap-1.5 px-2 rounded-lg text-xs transition-colors" style={{ background: THEME.ctl, border: `1px solid ${THEME.edge}`, color: THEME.text, fontWeight: 500, flex: "none" }}>
+                  {t}<span aria-hidden="true" className="text-muted">✕</span>
+                </button>
+              ))}
+            </div>
+            <Btn onClick={() => set({ map: !mapOn })} aria-pressed={mapOn}>Neck map</Btn>
+          </div>
+
+          {mapOn && <NeckMap sc={mapSc} p={target ? target.p : null} str={str} phone={phone} note={mapNote} />}
+
+          <section aria-labelledby="atlas-cards" style={{ marginTop: 16 }}>
+            <h2 id="atlas-cards" className="ahead">{heading[0]}<span className="text-muted" style={{ fontWeight: 500, fontSize: 12.5 }}>{cards.length}</span><span className="text-muted" style={{ fontWeight: 600, fontSize: 12.5 }}>{heading[1]}</span></h2>
+            <div className={"acards" + (size === "large" ? " lg" : "")}>
+              {cards.map((c) => {
+                const on = c.id === lit;
+                return (
+                  <div key={c.id} data-card={c.id} data-lit={on ? "1" : undefined} className={"acard" + (on ? " lit" : "")} onClick={() => set({ lit: on ? null : c.id })}
+                    onPointerEnter={(e) => { if (e.pointerType === "mouse") setHov(c.id); }} onPointerLeave={() => setHov((h) => (h === c.id ? null : h))}>
+                    <button className="acard-hit" aria-pressed={on} aria-label={`${c.title}, frets ${c.lo} to ${c.hi}`}>
+                      <span className="acard-top"><span data-title style={{ fontSize: 14, fontWeight: 700, color: THEME.text, whiteSpace: "nowrap" }}>{c.title}</span><span data-frets className="text-xs text-muted" style={{ whiteSpace: "nowrap" }}>frets {c.lo}–{c.hi}</span></span>
+                      <MiniNeck card={c} labelMode={labelMode} big={ct === "larger"} str={str} lg={size === "large"} />
+                    </button>
+                    <div className="acard-foot">
+                      <span className="atag" style={{ boxShadow: `inset 0 -3px 0 ${POS_COLOR[c.p.letter]}`, color: THEME.text, fontWeight: 600 }}>{c.p.num} {c.p.letter}</span>
+                      {c.tags.map((t) => <span key={t} className="atag">{t}</span>)}
+                      <button data-open={c.id} onClick={(e) => { e.stopPropagation(); onOpen(c, str); }} aria-label={`${c.title} on the neck`} className="btn text-sm text-link underline" style={{ padding: "0 4px", marginLeft: "auto" }}>On the neck</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* Phone: the Key / Scale picker from the chip bar, and the Filters sheet with every control (mock-up frames). */}
+          {phone && pick && (
+            <Dialog label="Key and scale" kind="apop" onClose={() => setPick(false)}>
+              <div className="flex items-center"><h2 className="adlg-h">{scaleName}</h2><Btn onClick={() => setPick(false)}>Done</Btn></div>
+              <Row label="Key">{keyGrid}</Row>
+              <Row>{majMin}</Row>
+              {showRow}
+              {modeRows}
+            </Dialog>
+          )}
+          {phone && sheet && (
+            <Dialog label="Filters" kind="asheet" onClose={() => setSheet(false)}>
+              <div aria-hidden="true" className="agrip" />
+              <div className="flex items-center" style={{ padding: "8px 16px 0" }}><h2 className="adlg-h">Filters</h2><Btn onClick={clear} disabled={!chips.length}>Reset</Btn></div>
+              <div className="asheet-body">
+                <section className="asec" aria-label="Scale">
+                  <h3>Scale</h3>
+                  {/* The one-row picker (canvas comment, 18 Nov): Key and Scale each open their grid below the row. */}
+                  <div className="apick2">
+                    <Btn onClick={() => setOpen(open === "key" ? "" : "key")} aria-expanded={open === "key"} disabled={by === "key"} className="btn text-sm transition-colors apbtn"><span className="text-muted" style={{ fontWeight: 500 }}>Key</span><span style={{ fontWeight: 700, marginLeft: "auto" }}>{by === "key" ? "All 12" : keyCell(keyRoot)}</span>{drop}</Btn>
+                    <Btn onClick={() => setOpen(open === "scale" ? "" : "scale")} aria-expanded={open === "scale"} className="btn text-sm transition-colors apbtn"><span className="text-muted" style={{ fontWeight: 500 }}>Scale</span><span style={{ fontWeight: 700, marginLeft: "auto", overflow: "hidden", textOverflow: "ellipsis" }}>{by === "mode" ? "7 modes" : show === "scale" ? SCALE_LABEL[mode] : AT_SHOW.find(([k]) => k === show)[1]}</span>{drop}</Btn>
+                  </div>
+                  {open === "key" && <Row>{keyGrid}</Row>}
+                  {open === "scale" && <React.Fragment>{showRow}{modeRows}</React.Fragment>}
+                  <Row>{majMin}</Row>
+                </section>
+                <section className="asec" aria-label="Lay out by"><h3>Lay out by</h3>{byRows}</section>
+                <section className="asec" aria-label="Filter"><h3>Filter</h3>{filterRows}</section>
+                <section className="asec" aria-label="Display"><h3>Display</h3>{displayRows}</section>
+              </div>
+              <div style={{ padding: "12px 16px 16px", borderTop: `1px solid ${THEME.line}` }}>
+                <Btn data-show onClick={() => setSheet(false)} className="btn text-sm transition-colors ashow">Show {cards.length} {noun}</Btn>
+              </div>
+            </Dialog>
+          )}
+        </React.Fragment>
+      )}
+    </div>
+  );
+}
+
+// URL state (UX-18, Round 7): page, key and the Neck, Chords, Modes and Atlas state, as query parameters. A value at its default is
 // left out, so the plain address is the default view. Help is not in the URL. Notes are C, Db … B with s for sharp (Fs, Cs).
 const NOTE_TOK = ["C","Db","D","Eb","E","F","Gb","G","Ab","A","Bb","B"];
 const NOTE_IN = (v) => { const t = String(v).replace(/s$/, "#"); const i = NOTE_TOK.indexOf(t); return i >= 0 ? i : NOTES_SHARP.indexOf(t); };
@@ -1273,7 +1825,7 @@ const ARP_KEYS = ["triad", ...QUAL_COMMON.map(([k]) => k).filter((k) => k !== "m
 const listIn = (lo, hi) => (v) => { const a = v.split(".").map(intIn(lo, hi)); return a.every((x) => x !== undefined) && new Set(a).size === a.length ? a : undefined; };
 // [parameter, state part, field, default, encode, decode]
 const URL_FIELDS = [
-  ["p", "top", "page", "neck", String, oneOf("neck", "chords", "modes")],
+  ["p", "top", "page", "neck", String, oneOf("neck", "chords", "modes", "atlas")],
   ["key", "cfg", "keyRoot", 0, null, NOTE_IN],
   ["mode", "cfg", "keyMode", "major", String, oneOf("major", "minor")],
   ["show", "cfg", "scope", "pentatonic", String, oneOf("arpeggio", "pentatonic", "blended", "blues", "scale")],
@@ -1308,12 +1860,27 @@ const URL_FIELDS = [
   ["findmode", "md", "lkMode", "", (v) => String(+v + 1), (v) => { const n = intIn(1, 7)(v); return n === undefined ? undefined : String(n - 1); }],
   ["hit", "md", "hit", null, (v) => String(v + 1), (v) => { const n = intIn(1, 7)(v); return n === undefined ? undefined : n - 1; }],
   ["open", "md", "open", [], (v) => v.map((i) => i + 1).join("."), (v) => { const a = listIn(1, 7)(v); return a && a.map((i) => i - 1); }],
+  // Atlas (Round 11). Key, Major / Minor, Mode and Labels are the Neck's parameters above. map is written only once Neck map
+  // has been switched by hand; without it the map is on, except on a phone. lit is the lit card: a window number, a mode
+  // or a key, with u for its copy 12 up.
+  ["atlas", "at", "am", "scales", String, oneOf("scales", "chords")],
+  ["ashow", "at", "show", "scale", String, oneOf("scale", "pentatonic", "blues")],
+  ["by", "at", "by", "position", String, oneOf("position", "mode", "key")],
+  ["apos", "at", "pos", 2, String, intIn(1, 5)],
+  ["from", "at", "from", "root", String, oneOf("root", "parent")],
+  ["astr", "at", "str", null, (v) => STR_TOK[v], (v) => (STR_TOK.includes(v) ? STR_TOK.indexOf(v) : undefined)],
+  ["copies", "at", "up", false, () => "12", (v) => (v === "12" ? true : undefined)],
+  ["tones", "at", "ct", "larger", String, oneOf("larger", "same")],
+  ["size", "at", "size", "standard", String, oneOf("standard", "large")],
+  ["map", "at", "map", null, (v) => (v ? "on" : "off"), (v) => ({ on: true, off: false })[v]],
+  ["lit", "at", "lit", null, String, (v) => (/^[A-Za-z0-9]{1,12}$/.test(v) ? v : undefined)],
 ];
 const URL_DEFAULT = {
   top: { page: "neck", labelMode: "degree", isolate: false, ghost: false, dotColour: "caged", more: false },
   cfg: { root: 0, tonality: "major", scope: "pentatonic", arp: "triad", pos: null, focus: [], keyRoot: 0, keyMode: "major", arpMode: "diatonic", diaLabel: "key", strGroup: null, mode: "ionian", keySpell: null },
   ch: { deg: 0, strSet: 0, inv: 0, numFrom: "key", scaleBehind: false, sev: false, strSet7: 0, inv7: 0, drop3: false, strSet3: 0, inv3: 0, harm: false },
   md: { parent: 0, view: "notes", hit: null, lkRoot: "", lkMode: "", open: [] },
+  at: { am: "scales", show: "scale", by: "position", pos: 2, from: "root", str: null, up: false, ct: "larger", size: "standard", map: null, lit: null },
 };
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 // More is open by default when the chosen Any chord quality is in it; more=1 or more=0 records any other choice.
@@ -1330,7 +1897,7 @@ function stateToQuery(st) {
 }
 function queryToState(search) {
   const q = new URLSearchParams(search);
-  const st = { top: { ...URL_DEFAULT.top }, cfg: { ...URL_DEFAULT.cfg }, ch: { ...URL_DEFAULT.ch }, md: { ...URL_DEFAULT.md } };
+  const st = { top: { ...URL_DEFAULT.top }, cfg: { ...URL_DEFAULT.cfg }, ch: { ...URL_DEFAULT.ch }, md: { ...URL_DEFAULT.md }, at: { ...URL_DEFAULT.at } };
   URL_FIELDS.forEach(([k, part, f, d, , dec]) => {
     if (!q.has(k)) return;
     const v = dec(q.get(k));
@@ -1346,6 +1913,8 @@ function queryToState(search) {
   // A hand-edited link: a quality with a 3rd takes its own Major / Minor, as a click would.
   if (st.cfg.arp !== "triad" && QUAL_T[st.cfg.arp]) st.cfg.tonality = QUAL_T[st.cfg.arp];
   st.top.more = q.get("more") === "1" ? true : q.get("more") === "0" ? false : moreDefault(st.cfg);
+  // Lay out by Mode is for Show: Scale; a hand-edited link with another Show falls back to Position, as the control does.
+  if (st.at.by === "mode" && st.at.show !== "scale") st.at.by = "position";
   return st;
 }
 const URL_INIT = typeof location !== "undefined" ? queryToState(location.search) : queryToState("");
@@ -1367,23 +1936,28 @@ function FretboardTrainer() {
   // Modes page state (Round 6): its own parent key (a major key, index = pitch class), Notes / Numbers, the reverse
   // lookup and the rows opened for details. It does not change the key on Neck or Chords until a row link is used.
   const [md, setMd] = useState(URL_INIT.md);
+  // Atlas page state (Round 11): Show, Lay out by, the filters and the lit card. Key, Major / Minor and Mode live in cfg.
+  const [at, setAt] = useState(URL_INIT.at);
+  // Set by On the neck on an Atlas card: the Neck page then shows the way back. Any other page choice drops it.
+  const [fromAtlas, setFromAtlas] = useState(null);
+  const phone = useMedia(PHONE_Q);
   // The URL follows the state: a page change adds a history step, so Back returns to the previous page; any other change
   // replaces the current step. Back and Forward restore the state the step held (Round 7).
   const lastPage = React.useRef(page);
   useEffect(() => {
-    const st = { top: { page, labelMode, isolate, ghost, dotColour, more }, cfg, ch, md };
+    const st = { top: { page, labelMode, isolate, ghost, dotColour, more }, cfg, ch, md, at };
     const url = location.pathname + stateToQuery(st) + location.hash;
     const push = lastPage.current !== page;
     lastPage.current = page;
     if (url === location.pathname + location.search + location.hash && !push) return;
     try { history[push ? "pushState" : "replaceState"](null, "", url); } catch (e) { /* a sandboxed frame: the URL stays */ }
-  }, [page, labelMode, isolate, ghost, dotColour, more, cfg, ch, md]);
+  }, [page, labelMode, isolate, ghost, dotColour, more, cfg, ch, md, at]);
   useEffect(() => {
     const onPop = () => {
       const st = queryToState(location.search);
       lastPage.current = st.top.page;
       setPage(st.top.page); setLabelMode(st.top.labelMode); setIsolate(st.top.isolate); setGhost(st.top.ghost); setDotColour(st.top.dotColour); setMore(st.top.more);
-      setCfgRaw(st.cfg); setCh(st.ch); setMd(st.md); setHelp(false);
+      setCfgRaw(st.cfg); setCh(st.ch); setMd(st.md); setAt(st.at); setHelp(false); setFromAtlas(null);
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
@@ -1426,6 +2000,7 @@ function FretboardTrainer() {
       setIsolate(false);
     }
     setHelp(false);
+    setFromAtlas(null);
     setPage("neck");
   };
   // A Modes row link lands on the Neck page in the state that Key (the mode root), then Show → Scale, then Mode would give
@@ -1442,28 +2017,55 @@ function FretboardTrainer() {
     setHelp(false);
     setPage("neck");
   };
-  // Clear: filters only; Key and Show stay (decision 12 = a).
+  // On the neck, from an Atlas card (Round 11): the Neck page on the card's key, scale, position and strings, as those
+  // controls would set them; Focus and Notes: Chord tones are cleared so the Neck shows what the card showed. The card's
+  // root letter goes with it, as from a Modes row (Round 9).
+  const openCard = (card, str) => {
+    const { sc } = card;
+    setCfg((c) => {
+      const mode = sc.show === "scale" ? sc.mode : MODE_Q(c.mode) === sc.keyMode ? c.mode : sc.keyMode === "major" ? "ionian" : "aeolian";
+      return { ...c, root: sc.root, keyRoot: sc.root, keyMode: sc.keyMode, ...keepChord(c, sc.keyMode), scope: sc.show, mode, pos: card.p.num, strGroup: str, focus: [], keySpell: sc.letter };
+    });
+    setIsolate(false);
+    setFromAtlas({ label: `${card.title}, frets ${card.lo}–${card.hi}` });
+    setHelp(false);
+    setPage("neck");
+  };
+  // Clear: filters only; Key and Show stay (decision 12 = a). On the Atlas it clears the Atlas filters, Strings and Also 12 up;
+  // the scale, Lay out by and Display stay (mock-up feedback, item 8).
   const anyFilter = cfg.pos !== null || cfg.strGroup !== null || cfg.focus.length > 0 || isolate;
-  const clearAll = () => { up({ pos: null, strGroup: null, focus: [] }); setIsolate(false); };
+  const atFilter = at.am === "scales" && (at.str !== null || at.up);
+  const clearAll = () => {
+    if (page === "atlas") { setAt((a) => ({ ...a, str: null, up: false })); return; }
+    up({ pos: null, strGroup: null, focus: [] }); setIsolate(false);
+  };
 
   return (
     <div className="w-full" style={{ background: THEME.bg, color: THEME.text }}>
       <div className="p-4">
-      {/* One 44 px head (IA-03): plain text title (decision 15 = a), the page switch (IA-review, mock-up A), Copy link, Help and Clear.
-          On a phone the switch takes its own row. A page choice closes Help; Clear acts on the Neck page only. */}
+      {/* One 44 px head (IA-03): plain text title (decision 15 = a), the page switch (IA-review, mock-up A), Tuning (Round 11),
+          Copy link, Help and Clear. On a phone the switch takes its own row and Tuning and Copy link the next. A page choice
+          closes Help; Clear acts on the Neck page and on the Atlas. */}
       <header className="head">
         <h1 className="text-xl font-bold text-body" style={{ margin: 0, whiteSpace: "nowrap" }}>Fretboard Trainer</h1>
         <nav className="pagenav" aria-label="Pages">
-          <Track label="Page" cols={3}>{[["neck","Neck"],["chords","Chords"],["modes","Modes"]].map(([k,l]) => <Seg key={k} active={page === k && !help} onClick={() => { setPage(k); setHelp(false); }}>{l}</Seg>)}</Track>
+          <Track label="Page" cols={4}>{[["neck","Neck"],["chords","Chords"],["modes","Modes"],["atlas","Atlas"]].map(([k,l]) => <Seg key={k} active={page === k && !help} onClick={() => { setPage(k); setHelp(false); setFromAtlas(null); }}>{l}</Seg>)}</Track>
         </nav>
-        <div className="hbtns">
-          <Btn onClick={copyLink} aria-live="polite" className="btn copyl text-sm transition-colors">{copied || "Copy link"}</Btn>
-          <Btn onClick={() => setHelp((h) => !h)} aria-pressed={help} className="btn hb hb1 text-sm transition-colors">Help</Btn>
-          <Btn onClick={clearAll} disabled={!anyFilter || page !== "neck"} className="btn hb text-sm transition-colors">Clear</Btn>
+        <div className="hrow2">
+          <TuningMenu phone={phone} />
+          <div className="hbtns">
+            <Btn onClick={copyLink} aria-live="polite" className="btn copyl text-sm transition-colors">{copied || "Copy link"}</Btn>
+            <Btn onClick={() => setHelp((h) => !h)} aria-pressed={help} className="btn hb hb1 text-sm transition-colors">Help</Btn>
+            <Btn onClick={clearAll} disabled={page === "neck" ? !anyFilter : page === "atlas" ? !atFilter : true} className="btn hb text-sm transition-colors">Clear</Btn>
+          </div>
         </div>
       </header>
 
-      {help ? <Help onExample={applyPreset} /> : page === "neck" ? <Board cfg={cfg} update={up} globals={globals} /> : page === "chords" ? <ChordsPage cfg={cfg} update={up} ch={ch} setCh={setCh} /> : <ModesPage md={md} setMd={setMd} onNeck={showMode} />}
+      {help ? <Help onExample={applyPreset} />
+        : page === "neck" ? <Board cfg={cfg} update={up} globals={globals} back={fromAtlas && { label: fromAtlas.label, go: () => { setFromAtlas(null); setPage("atlas"); } }} />
+        : page === "chords" ? <ChordsPage cfg={cfg} update={up} ch={ch} setCh={setCh} />
+        : page === "modes" ? <ModesPage md={md} setMd={setMd} onNeck={showMode} />
+        : <AtlasPage cfg={cfg} update={up} at={at} setAt={setAt} labelMode={labelMode} setLabelMode={setLabelMode} onOpen={openCard} />}
       </div>
     </div>
   );
