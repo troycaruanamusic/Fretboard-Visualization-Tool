@@ -7,8 +7,9 @@ import { DEG_LABEL, DEG_OVERRIDE, MODE_NAME, KEY_DEG, MODES, OTHER_SCALES, MODE_
 import { accs, spellAt, keySpelling, autoLetter, neckLetter } from "../../core/spelling.js";
 import { QUAL_COMMON, QUAL_MORE, QUAL_IN_MORE, QUAL_T, QUAL_NAME, DIATONIC } from "../../core/chords.js";
 import { Seg, Track, Row, Card, Btn } from "../../core/ui.jsx";
-import { MARKERS, colPx } from "./guitar.js";
-import { NEUTRAL_CT, NEUTRAL_OTHER, POS_COLOR, HATCH, POS_MAJOR, POS_MINOR, CAGED_ANCHOR } from "./caged.js";
+import { MARKERS, colPx, inlayAt } from "./guitar.js";
+import { NEUTRAL_CT, NEUTRAL_OTHER, POS_COLOR, POS_TINT, HATCH, POS_MAJOR, POS_MINOR, CAGED_ANCHOR } from "./caged.js";
+import { ringMask } from "../../core/marker.js";
 import { keepChord } from "./state.js";
 
 // Window gap fill (SH-21, 22, 25 to 28, 30). In the lowest complete copy of window p, the layer's pitches run low to high;
@@ -198,17 +199,16 @@ export function Board({ tuning, cfg, update, globals, back = null }) {
       }
       // Fill: the position colour inside a single position. With no position and in All, Dot colour decides (Round 6b):
       // CAGED gives each note its window's colour, half and half on a diagonal where two windows share it, the lower window
-      // top left (as v0.25); Neutral gives the value step (DS-05). The root (R3) has an ink centre and a rim in the same
-      // colour or colours; gold where no position colour applies.
+      // top left (as v0.25); Neutral gives the value step (DS-05). The root (Round 15) is filled, with a gap and an outer ring in the same
+      // colour or colours.
       let posFill = activePos && inWin(s, f) ? POS_COLOR[activePos.letter] : null;
       if (!activePos && caged) {
         const hits = posList.filter((p) => inPos(f, p)).sort((a, b) => phase(f, b) - phase(f, a)).map((p) => POS_COLOR[p.letter]);
         posFill = hits.length > 1 ? `linear-gradient(135deg, ${hits[0]} 0 50%, ${hits[1]} 50% 100%)` : hits[0] || null;
       }
       const fill = posFill || (isCT ? NEUTRAL_CT : NEUTRAL_OTHER);
-      const rim = posFill || THEME.sel;
       const sz = isRoot || isCT ? dotBig : dotBase;
-      // A nut substitute is hatched in its position colour; on a root the hatch is on the rim, the ink centre stays.
+      // A nut substitute is hatched in its position colour; on a root the hatch runs through the centre and the ring.
       const isSub = !interlock && subs !== null && subs.has(s * 100 + f);
       const hatch = (c) => `repeating-linear-gradient(135deg, ${c} 0 3px, ${HATCH[activePos.letter]} 3px 6px)`;
       // Filtered-out notes are monochrome open circles, not faded dots (DS-01): edge ring, muted label. The root keeps a
@@ -216,14 +216,12 @@ export function Board({ tuning, cfg, update, globals, back = null }) {
       const ring = (w) => `${w}px ${isSub ? "dashed" : "solid"} ${THEME.edge}`;
       const face = dim
         ? { background: "transparent", border: ring(isRoot ? 3 : 1.5), color: THEME.muted }
-        : isRoot
-          ? { background: isSub ? hatch(rim) : rim, color: THEME.text }
-          : { background: isSub ? hatch(fill) : fill, color: THEME.ink };
+        : { background: isSub ? hatch(fill) : fill, color: THEME.ink };
       // All with Neutral dots: a faint tint of each window behind its frets, split where two windows meet (decision 6 = b).
       // With CAGED dots the dots carry the colour, so there is no tint (Round 6b). The ruler names the windows.
       let tint;
       if (interlock && !caged) {
-        const hits = posList.filter((p) => inPos(f, p)).sort((a, b) => phase(f, b) - phase(f, a)).map((p) => POS_COLOR[p.letter] + "1F");
+        const hits = posList.filter((p) => inPos(f, p)).sort((a, b) => phase(f, b) - phase(f, a)).map((p) => POS_TINT[p.letter]);
         if (hits.length) tint = hits.length > 1 ? `linear-gradient(90deg, ${hits[0]} 0 50%, ${hits[1]} 50% 100%)` : `linear-gradient(${hits[0]}, ${hits[0]})`;
       }
       const cellBg = [tint, f === 0 && THEME.track].filter(Boolean).join(", ") || undefined;
@@ -231,14 +229,13 @@ export function Board({ tuning, cfg, update, globals, back = null }) {
       const tappable = inScope && !interlock;
       const title = `${noteName(pc)} · ${fdeg(iv)}`;
       cells.push(
-        <div key={f} data-fret={s === 0 ? f : undefined} onClick={tappable ? () => update({ focus: toggle(activeFocus, iv) }) : undefined} className="relative flex items-center justify-center" style={{ height: cellH, borderRight: f === 0 ? `5px solid ${THEME.nut}` : `2px solid ${THEME.line}`, background: cellBg, cursor: tappable ? "pointer" : undefined }}>
+        <div key={f} data-fret={s === 0 ? f : undefined} onClick={tappable ? () => update({ focus: toggle(activeFocus, iv) }) : undefined} className="relative flex items-center justify-center" style={{ height: cellH, borderRight: f === 0 ? `5px solid ${THEME.nut}` : `2px solid ${THEME.fret}`, background: cellBg, cursor: tappable ? "pointer" : undefined }}>
+          {inlayAt(tuning.strings, s, f) && <span className="inlay" style={{ width: 11, height: 11 }} />}
           <div className="absolute left-0 right-0" style={{ top: "50%", transform: "translateY(-50%)", height: tuning.gauges[s], background: THEME.edge }} />
           {inScope && (isRoot && !dim ? (
-            <button tabIndex={-1} disabled={interlock} className="relative rounded-full flex items-center justify-center transition-all" style={{ width: sz, height: sz, background: face.background, zIndex: 5, cursor: interlock ? "default" : "pointer" }} title={title}>
-              <div className="rounded-full flex items-center justify-center" style={{ width: sz - 8, height: sz - 8, background: THEME.ink, color: face.color, fontSize: fontPx, fontWeight: 800 }}>{labelOf(pc, iv)}</div>
-            </button>
+            <button tabIndex={-1} disabled={interlock} data-ring="1" className="fdot relative rounded-full flex items-center justify-center transition-all" style={{ width: sz + 2, height: sz + 2, background: face.background, color: face.color, fontSize: fontPx, fontWeight: 800, ...ringMask(2, 2), zIndex: 5, cursor: interlock ? "default" : "pointer" }} title={title}>{labelOf(pc, iv)}</button>
           ) : (
-            <button tabIndex={-1} disabled={interlock} className="relative rounded-full flex items-center justify-center transition-all" style={{ width: sz, height: sz, fontSize: fontPx, fontWeight: isRoot || isCT ? 800 : 500, ...face, zIndex: isRoot ? 5 : isCT ? 3 : 2, cursor: interlock ? "default" : "pointer" }} title={title}>{labelOf(pc, iv)}</button>
+            <button tabIndex={-1} disabled={interlock} className={(dim ? "" : "fdot ") + "relative rounded-full flex items-center justify-center transition-all"} style={{ width: sz, height: sz, fontSize: fontPx, fontWeight: isRoot || isCT ? 800 : 500, ...face, zIndex: isRoot ? 5 : isCT ? 3 : 2, cursor: interlock ? "default" : "pointer" }} title={title}>{labelOf(pc, iv)}</button>
           ))}
           {/* Chromatic notes are bare labels with no circle, so a circle always means "in the set" (DS-06). */}
           {!inScope && ghost && (

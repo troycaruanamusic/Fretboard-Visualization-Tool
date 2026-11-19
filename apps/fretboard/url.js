@@ -40,7 +40,6 @@ const URL_FIELDS = [
   ["set3", "ch", "strSet3", 0, (v) => STR3_TOK[v], (v) => (STR3_TOK.includes(v) ? STR3_TOK.indexOf(v) : undefined)],
   ["inv3", "ch", "inv3", 0, String, intIn(0, 3)],
   ["minor", "ch", "harm", false, () => "harmonic", (v) => (v === "harmonic" ? true : undefined)],
-  ["cnum", "ch", "numFrom", "key", String, oneOf("key", "chord")],
   ["behind", "ch", "scaleBehind", false, () => "shown", (v) => (v === "shown" ? true : undefined)],
   ["parent", "md", "parent", 0, (v) => noteTok(v), NOTE_IN],
   ["mview", "md", "view", "notes", String, oneOf("notes", "numbers")],
@@ -79,7 +78,7 @@ const URL_FIELDS = [
 const URL_DEFAULT = {
   top: { page: "neck", labelMode: "degree", isolate: false, ghost: false, dotColour: "caged", more: false },
   cfg: { root: 0, tonality: "major", scope: "pentatonic", arp: "triad", pos: null, focus: [], keyRoot: 0, keyMode: "major", arpMode: "diatonic", diaLabel: "key", strGroup: null, mode: "ionian", keySpell: null },
-  ch: { deg: 0, strSet: 0, inv: 0, numFrom: "key", scaleBehind: false, sev: false, strSet7: 0, inv7: 0, drop3: false, strSet3: 0, inv3: 0, harm: false },
+  ch: { deg: 0, strSet: 0, inv: 0, scaleBehind: false, sev: false, strSet7: 0, inv7: 0, drop3: false, strSet3: 0, inv3: 0, harm: false },
   md: { parent: 0, view: "notes", hit: null, lkRoot: "", lkMode: "", open: [] },
   at: { am: "scales", show: "scale", by: "position", pos: 2, from: "root", str: null, up: false, ct: "larger", size: "standard", map: null, lit: null,
     croot: 0, cq: "major", cby: "family", vt: CH_TYPE_KEYS, cinv: null, frets: "any", cset: null, copen: "allow", span: 4, cup: false, clit: null },

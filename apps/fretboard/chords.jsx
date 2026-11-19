@@ -6,8 +6,10 @@ import { DEG_LABEL, DEG_OVERRIDE, KEY_DEG, MODE_IV, MODE_Q, KEY_DEG_HM } from ".
 import { accs, keySpelling, uniAcc, hmSpelling } from "../../core/spelling.js";
 import { DIATONIC, INV_NAME, INV_NAME7, CH_Q, DIATONIC7, DROP2, DROP3 } from "../../core/chords.js";
 import { Seg, Track, Row, Card, Btn } from "../../core/ui.jsx";
-import { MARKERS, colPx, SET_NAME } from "./guitar.js";
-import { NEUTRAL_CT } from "./caged.js";
+import { MARKERS, colPx, SET_NAME, inlayAt } from "./guitar.js";
+import { POS_COLOR, formFill, formName } from "./caged.js";
+import { chordForms } from "./chordshapes.js";
+import { ringMask, outlineMask } from "../../core/marker.js";
 import { keepChord } from "./state.js";
 
 const SET_NAME7 = ["1–4", "2–5", "3–6"];
@@ -58,11 +60,13 @@ function seventhLadder(tuning, keyRoot, keyMode, g, inv, drop = 2, harm = false)
   });
 }
 
+// Chord qualities whose CAGED form is read from the minor windows (Round 15).
+const MINOR_Q = new Set(["min", "dim", "m7", "m7b5", "mmaj7", "dim7"]);
 // Characters after a name's break point in the strip (Round 10): C♯m | (maj7), G♭ | maj7♯5.
 const STRIP_BREAK = { mmaj7: 6, maj7s5: 6 };
-// The chord strip: numeral, name and frets per chord, a radio group with ◀ ▶ either side. Arrow keys move and choose
+// The chord strip: numeral, name and CAGED form per chord, a radio group with ◀ ▶ either side. Arrow keys move and choose
 // inside it; on the page, ← and → step the chord when focus is not in another control group (Round 5).
-function ChordStrip({ ladder, deg, setDeg, nameOf }) {
+function ChordStrip({ ladder, deg, setDeg, nameOf, forms }) {
   const ref = React.useRef(null);
   const step = (d) => setDeg((deg + d + 7) % 7);
   const onKeyDown = (e) => {
@@ -80,7 +84,7 @@ function ChordStrip({ ladder, deg, setDeg, nameOf }) {
       <div ref={ref} className="striptrack" role="radiogroup" aria-label="Chords in the key" onKeyDown={onKeyDown}>
         {ladder.map((c, k) => (
           <button key={c.rn} role="radio" aria-checked={k === deg} tabIndex={k === deg ? 0 : -1} onClick={() => setDeg(k)} className="stripcell transition-colors"
-            aria-label={`${c.rn}, ${nameOf(c)}, frets ${c.frets.join(" ")}`}
+            aria-label={`${c.rn}, ${nameOf(c)}${forms[k].length ? ", " + formName(forms[k]) : ""}`}
             style={{ background: k === deg ? THEME.ctlHover : "transparent", boxShadow: k === deg ? `0 0 0 1.5px ${THEME.text}` : "none", color: k === deg ? THEME.text : THEME.muted }}>
             <span style={{ fontSize: 14, fontWeight: 700, color: THEME.text }}>{c.rn}</span>
             {/* m(maj7) and maj7♯5 (Round 10) can be too wide for a phone cell: they may break before "(maj7)" or "maj7♯5",
@@ -93,12 +97,8 @@ function ChordStrip({ ladder, deg, setDeg, nameOf }) {
                 </span>
               );
             })() : <span style={{ fontSize: 12.5, fontWeight: k === deg ? 700 : 500 }}>{nameOf(c)}</span>}
-            {c.frets.length === 4 ? (
-              // Sevenths: four frets may not fit a narrow cell on one line; they then break between the pairs (Round 8).
-              <span data-frets style={{ fontSize: 11, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", color: THEME.muted, whiteSpace: "normal", textAlign: "center", lineHeight: 1.25 }}>
-                <span style={{ whiteSpace: "nowrap" }}>{c.frets.slice(0, 2).join(" ")}</span> <span style={{ whiteSpace: "nowrap" }}>{c.frets.slice(2).join(" ")}</span>
-              </span>
-            ) : <span style={{ fontSize: 11, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", color: THEME.muted }}>{c.frets.join(" ")}</span>}
+            {/* The shape's CAGED form, underlined in its colour (split for two); no form, no line. */}
+            <span data-form style={{ fontSize: 11, color: THEME.muted, minHeight: 15, lineHeight: "13px", paddingBottom: 2, backgroundImage: forms[k].length ? formUnderline(forms[k]) : "none", backgroundRepeat: "no-repeat", backgroundPosition: "bottom", backgroundSize: "100% 2px" }}>{formName(forms[k])}</span>
           </button>
         ))}
       </div>
@@ -107,9 +107,11 @@ function ChordStrip({ ladder, deg, setDeg, nameOf }) {
   );
 }
 
-export function ChordsPage({ tuning, cfg, update, ch, setCh }) {
+const formUnderline = (fs) => (fs.length > 1 ? `linear-gradient(90deg, ${POS_COLOR[fs[0]]} 0 50%, ${POS_COLOR[fs[1]]} 50% 100%)` : `linear-gradient(${POS_COLOR[fs[0]]}, ${POS_COLOR[fs[0]]})`);
+
+export function ChordsPage({ tuning, cfg, update, ch, setCh, labelMode, setLabelMode }) {
   const { keyRoot, keyMode, arp, arpMode, mode } = cfg;
-  const { deg, strSet, inv, numFrom, scaleBehind, sev, strSet7, inv7, drop3, strSet3, inv3, harm } = ch;
+  const { deg, strSet, inv, scaleBehind, sev, strSet7, inv7, drop3, strSet3, inv3, harm } = ch;
   // Triads, drop-2 and drop-3 sevenths each keep their own string set and inversion (Rounds 8 and 10).
   const d3 = sev && drop3, hm = sev && harm && keyMode === "minor";
   const g = sev ? (drop3 ? strSet3 : strSet7) : strSet, iv = sev ? (drop3 ? inv3 : inv7) : inv;
@@ -119,11 +121,14 @@ export function ChordsPage({ tuning, cfg, update, ch, setCh }) {
   // accs: as uniAcc, with 𝄪 for the raised 7th of G♯ harmonic minor (F𝄪).
   const nameOf = (c) => accs(keySp[c.root].name) + CH_Q[c.q][1];
   const cur = ladder[deg];
+  // Each shape's CAGED form (Round 15), from its own root.
+  const forms = useMemo(() => ladder.map((c) => chordForms(c.root, MINOR_Q.has(c.q) ? "minor" : "major", c.q, c.cells)), [ladder]);
   const kDeg = hm ? KEY_DEG_HM : KEY_DEG[keyMode];
-  // Numbers from Key: key degrees (minor 1 2 ♭3 4 5 ♭6 ♭7; harmonic minor 7). From Chord: each shape from its own root
-  // (R 3 5, ♭3, ♭5; ♯5 in maj7♯5, 𝄫7 in dim7).
+  // Labels (Round 15, shared with the Neck and Atlas): Degrees from the chord's own root (R 3 5, ♭3, ♭5; ♯5 in maj7♯5,
+  // 𝄫7 in dim7), note names, or none. The numerals above the neck carry the key function.
   const label = (pc, chordRoot, q) => {
-    if (numFrom === "key") return kDeg[(((pc - keyRoot) % 12) + 12) % 12];
+    if (labelMode === "none") return "";
+    if (labelMode === "name") return accs(keySp[pc].name);
     const d = (((pc - chordRoot) % 12) + 12) % 12;
     return (DEG_OVERRIDE[q] && DEG_OVERRIDE[q][d]) || DEG_LABEL[d];
   };
@@ -168,27 +173,27 @@ export function ChordsPage({ tuning, cfg, update, ch, setCh }) {
       let dot = null;
       if (hit) {
         const isRoot = pc === hit.c.root;
-        const lab = label(pc, hit.c.root, hit.c.q);
+        const lab = hit.k === deg ? label(pc, hit.c.root, hit.c.q) : "";
         const title = `${hit.c.rn} ${nameOf(hit.c)} · ${accs(keySp[pc].name)}`;
+        const fill = formFill(forms[hit.k]);
         if (hit.k === deg) {
-          // The chosen shape: neutral light dots with ink labels; its root is R3, a dark centre with a gold rim (Round 5).
+          // The chosen shape: filled in its CAGED form colour with ink labels; its root has the ring (Round 15).
           dot = isRoot ? (
-            <div data-shape={hit.k} data-chosen="1" data-root="1" title={title} className="relative rounded-full flex items-center justify-center" style={{ width: 30, height: 30, background: THEME.sel, zIndex: 5 }}>
-              <div className="rounded-full flex items-center justify-center" style={{ width: 22, height: 22, background: THEME.ink, color: THEME.text, fontSize: fontPx, fontWeight: 800 }}>{lab}</div>
-            </div>
+            <div data-shape={hit.k} data-chosen="1" data-root="1" title={title} className="fdot relative rounded-full flex items-center justify-center" style={{ width: 32, height: 32, background: fill, color: THEME.ink, fontSize: fontPx, fontWeight: 800, zIndex: 5, ...ringMask(2, 2) }}>{lab}</div>
           ) : (
-            <div data-shape={hit.k} data-chosen="1" title={title} className="relative rounded-full flex items-center justify-center" style={{ width: 30, height: 30, background: NEUTRAL_CT, color: THEME.ink, fontSize: fontPx, fontWeight: 800, zIndex: 3 }}>{lab}</div>
+            <div data-shape={hit.k} data-chosen="1" title={title} className="fdot relative rounded-full flex items-center justify-center" style={{ width: 30, height: 30, background: fill, color: THEME.ink, fontSize: fontPx, fontWeight: 800, zIndex: 3 }}>{lab}</div>
           );
         } else {
-          // The other six: outlined, text-colour labels; a root has the heavier ring, as a dimmed root does on the Neck page.
-          dot = <div data-shape={hit.k} data-root={isRoot ? "1" : undefined} title={title} className="relative rounded-full flex items-center justify-center" style={{ width: 26, height: 26, background: THEME.panel2, border: `${isRoot ? 3 : 2}px solid ${THEME.edge}`, color: THEME.text, fontSize: fontPx, fontWeight: 500, zIndex: 2 }}>{lab}</div>;
+          // The other six: outlined in their form colour, no labels; a root has the heavier outline.
+          dot = <div data-shape={hit.k} data-root={isRoot ? "1" : undefined} title={title} className="relative rounded-full" style={{ width: 26, height: 26, background: forms[hit.k].length ? fill : THEME.edge, zIndex: 2, ...outlineMask(isRoot ? 3.5 : 2) }} />;
         }
       } else if (scaleBehind && onSet(s) && inKey(pc)) {
         // Scale behind: the key's other notes on the set as bare labels, like Other notes on the Neck page.
         dot = <div data-behind="1" className="relative" style={{ color: THEME.muted, fontSize: 11, fontWeight: 600 }} title={accs(keySp[pc].name)}>{label(pc, cur.root, cur.q)}</div>;
       }
       cells.push(
-        <div key={f} data-fret={s === 0 ? f : undefined} className="relative flex items-center justify-center" style={{ gridRow: s + 2, gridColumn: f + 2, height: cellH, borderRight: f === 0 ? `5px solid ${THEME.nut}` : `2px solid ${THEME.line}`, background: f === 0 ? THEME.track : undefined }}>
+        <div key={f} data-fret={s === 0 ? f : undefined} className="relative flex items-center justify-center" style={{ gridRow: s + 2, gridColumn: f + 2, height: cellH, borderRight: f === 0 ? `5px solid ${THEME.nut}` : `2px solid ${THEME.fret}`, background: f === 0 ? THEME.track : undefined }}>
+          {inlayAt(tuning.strings, s, f) && <span className="inlay" style={{ width: 11, height: 11 }} />}
           <div className="absolute left-0 right-0" style={{ top: "50%", transform: "translateY(-50%)", height: tuning.gauges[s], background: THEME.edge }} />
           {dot}
         </div>
@@ -226,7 +231,7 @@ export function ChordsPage({ tuning, cfg, update, ch, setCh }) {
             ))}
           </div>
         </div>
-        <ChordStrip ladder={ladder} deg={deg} setDeg={setDeg} nameOf={nameOf} />
+        <ChordStrip ladder={ladder} deg={deg} setDeg={setDeg} nameOf={nameOf} forms={forms} />
       </div>
 
       <div className="cgroups mt-3">
@@ -256,8 +261,8 @@ export function ChordsPage({ tuning, cfg, update, ch, setCh }) {
             <Row label="Inversion">
               <Track label="Inversion" cols={sev ? 4 : 3}>{["Root", "1st", "2nd", "3rd"].slice(0, sev ? 4 : 3).map((l, i) => <Seg key={i} active={iv === i} onClick={() => opt(sev ? (drop3 ? "inv3" : "inv7") : "inv", i)}>{l}</Seg>)}</Track>
             </Row>
-            <Row label="Numbers from">
-              <Track label="Numbers from" cols={2}>{[["key","Key"],["chord","Chord"]].map(([k,l]) => <Seg key={k} active={numFrom === k} onClick={() => opt("numFrom", k)}>{l}</Seg>)}</Track>
+            <Row label="Labels">
+              <Track label="Labels" cols={3}>{[["degree", "Degrees"], ["name", "Notes"], ["none", "None"]].map(([k, l]) => <Seg key={k} active={labelMode === k} onClick={() => setLabelMode(k)}>{l}</Seg>)}</Track>
             </Row>
             <Row label="Scale behind">
               <Track label="Scale behind" cols={2}>{[[false,"Hidden"],[true,"Shown"]].map(([v,l]) => <Seg key={l} active={scaleBehind === v} onClick={() => opt("scaleBehind", v)}>{l}</Seg>)}</Track>

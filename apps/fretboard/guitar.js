@@ -11,3 +11,7 @@ export function colPx(frets) {
 // Three-string set names, top string first. These and the drop-2 / drop-3 sets assume six strings; they are redesigned with
 // the other tunings (plan step 8).
 export const SET_NAME = ["1–3", "2–4", "3–5", "4–6"];
+// Inlays (Round 15): a single dot sits on the line between the middle strings (3 and 4 on six), the double at 12 between
+// strings 2–3 and 4–5. Cell (s, f) carries the dot on its lower edge, so the dot sits between string s and s + 1.
+const inlayRows = (strings, n) => n === 2 ? [Math.floor(strings / 2) - 2, Math.floor(strings / 2)] : [Math.floor(strings / 2) - 1];
+export const inlayAt = (strings, s, f) => !!MARKERS[f] && inlayRows(strings, MARKERS[f]).includes(s);

@@ -7,7 +7,8 @@ import { accs, spellAt, autoLetter, neckLetter, normSpell } from "../../core/spe
 import { NOTE_TOK } from "../../core/link.js";
 import { Seg, Track, Row, Card, Btn, useMedia, PHONE_Q, Dialog } from "../../core/ui.jsx";
 import { atType, atScale, CardGrid, AtlasCard } from "../../core/atlas.jsx";
-import { MARKERS, colPx, SET_NAME } from "./guitar.js";
+import { MARKERS, colPx, SET_NAME, inlayAt } from "./guitar.js";
+import { ringMask } from "../../core/marker.js";
 import { POS_COLOR, POS_MAJOR, POS_MINOR, CAGED_ANCHOR } from "./caged.js";
 import { keepChord } from "./state.js";
 import { gapCells } from "./neck.jsx";
@@ -110,11 +111,12 @@ function MiniNeck({ tuning, card, labelMode, big, str, lg }) {
         dot = off
           ? <span {...data} className="mn-d" style={{ width: sz, height: sz, border: `${isRoot ? 3 : 1.5}px solid ${THEME.edge}`, color: THEME.muted, fontSize: fs, fontWeight: 500, zIndex: 2 }}>{lab}</span>
           : isRoot
-            ? <span {...data} className="mn-d" style={{ width: sz, height: sz, background: col, zIndex: 5 }}><span className="mn-d" style={{ width: sz - 6, height: sz - 6, background: THEME.ink, color: THEME.text, fontSize: fs, fontWeight: 800 }}>{lab}</span></span>
-            : <span {...data} className="mn-d" style={{ width: sz, height: sz, background: col, color: THEME.ink, fontSize: fs, fontWeight: big && isCT ? 800 : 500, zIndex: isCT ? 3 : 2 }}>{lab}</span>;
+            ? <span {...data} data-ring="1" className="mn-d fdot" style={{ width: sz + 4, height: sz + 4, background: col, color: THEME.ink, fontSize: fs, fontWeight: 800, zIndex: 5, ...ringMask(2, 1.5) }}>{lab}</span>
+            : <span {...data} className="mn-d fdot" style={{ width: sz, height: sz, background: col, color: THEME.ink, fontSize: fs, fontWeight: big && isCT ? 800 : 500, zIndex: isCT ? 3 : 2 }}>{lab}</span>;
       }
       out.push(
-        <span key={s + "-" + f} className="mn-c" style={{ height: rowH, borderRight: f === 0 ? `4px solid ${THEME.nut}` : `1.5px solid ${THEME.line}`, background: f === 0 ? THEME.track : undefined }}>
+        <span key={s + "-" + f} className="mn-c" style={{ height: rowH, borderRight: f === 0 ? `4px solid ${THEME.nut}` : `2px solid ${THEME.fret}`, background: f === 0 ? THEME.track : undefined }}>
+          {inlayAt(tuning.strings, s, f) && <span className="inlay" style={{ width: lg ? 9 : 8, height: lg ? 9 : 8 }} />}
           <span className="mn-s" style={{ height: tuning.gauges[s], marginTop: -tuning.gauges[s] / 2 }} />
           {dot}
         </span>
@@ -167,11 +169,11 @@ function NeckMap({ tuning, sc, p, str, phone, note }) {
           fill = hits.length > 1 ? `linear-gradient(135deg, ${hits[0]} 0 50%, ${hits[1]} 50% 100%)` : hits[0];
         }
         mark = fill
-          ? <span data-m={`${s}-${f}`} className="mn-d" style={{ width: dot + (isRoot ? 2 : 0), height: dot + (isRoot ? 2 : 0), background: fill, zIndex: 2 }}>{isRoot && <span style={{ width: dot - 4, height: dot - 4, borderRadius: "50%", background: THEME.ink }} />}</span>
+          ? <span data-m={`${s}-${f}`} className="mn-d fdot" style={{ width: dot + (isRoot ? 4 : 0), height: dot + (isRoot ? 4 : 0), background: fill, zIndex: 2, ...(isRoot ? ringMask(1.5, 1) : {}) }} />
           : <span className="mn-d" style={{ width: dot, height: dot, border: `${isRoot ? 2 : 1}px solid ${THEME.edge}`, background: THEME.panel2, zIndex: 1 }} />;
       }
       cellsOut.push(
-        <div key={s + "-" + f} className="nm-c" style={{ gridRow: s + 1, gridColumn: f + 2, height: rowH, borderRight: f === 0 ? `3px solid ${THEME.nut}` : `1px solid ${THEME.line}` }}>
+        <div key={s + "-" + f} className="nm-c" style={{ gridRow: s + 1, gridColumn: f + 2, height: rowH, borderRight: f === 0 ? `3px solid ${THEME.nut}` : `1px solid ${THEME.fret}` }}>
           <span className="mn-s" style={{ height: 1, marginTop: -0.5 }} />
           {mark}
         </div>

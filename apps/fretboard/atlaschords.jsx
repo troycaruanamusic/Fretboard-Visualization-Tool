@@ -6,8 +6,9 @@ import { THEME } from "../../core/theme.js";
 import { QUAL_COMMON, QUAL_MORE, QUAL_IN_MORE } from "../../core/chords.js";
 import { Seg, Track, Row, Card, Btn, useMedia, PHONE_Q, Dialog } from "../../core/ui.jsx";
 import { CardGrid, AtlasCard } from "../../core/atlas.jsx";
-import { MARKERS } from "./guitar.js";
-import { POS_COLOR, NEUTRAL_CT } from "./caged.js";
+import { MARKERS, inlayAt } from "./guitar.js";
+import { POS_COLOR, formFill, formName } from "./caged.js";
+import { ringMask } from "../../core/marker.js";
 import { CH_TYPES, CH_QUALS, CH_TYPE_DEF, CH_FRETS, INV_LABEL, chAvail, chIvs, chName, chRootName, chordCards, chFilter, chSections, strLabel } from "./chordshapes.js";
 
 const CH_BY = [["family", "Family"], ["inversion", "Inversion"], ["strings", "Strings"], ["position", "Position"]];
@@ -26,7 +27,8 @@ const BATCH = { phone: 12, wide: 24 };
 function ChordNeck({ tuning, card, labelMode, lg }) {
   const { cells, start, cols } = card;
   const rowH = lg ? 34 : 28, d1 = lg ? 26 : 22, fs = lg ? 12 : 11;
-  const col = card.kind === "caged" ? POS_COLOR[card.form] : NEUTRAL_CT, rim = card.kind === "caged" ? col : THEME.sel;
+  // Every shape in its CAGED form colour (Round 15), split where two forms hold it, neutral where none does.
+  const col = formFill(card.forms);
   const hit = {};
   cells.forEach((c) => { hit[c.s * 100 + c.f] = c; });
   const out = [];
@@ -40,11 +42,12 @@ function ChordNeck({ tuning, card, labelMode, lg }) {
         const lab = labelMode === "name" ? card.name(pc) : labelMode === "degree" ? card.deg(c.iv) : "";
         const data = { "data-c": `${s}-${f}`, title: `${card.name(pc)} · ${card.deg(c.iv)}` };
         dot = isRoot
-          ? <span {...data} className="mn-d" style={{ width: d1, height: d1, background: rim, zIndex: 5 }}><span className="mn-d" style={{ width: d1 - 6, height: d1 - 6, background: THEME.ink, color: THEME.text, fontSize: fs, fontWeight: 800 }}>{lab}</span></span>
-          : <span {...data} className="mn-d" style={{ width: d1, height: d1, background: col, color: THEME.ink, fontSize: fs, fontWeight: 800, zIndex: 3 }}>{lab}</span>;
+          ? <span {...data} data-ring="1" className="mn-d fdot" style={{ width: d1 + 4, height: d1 + 4, background: col, color: THEME.ink, fontSize: fs, fontWeight: 800, zIndex: 5, ...ringMask(2, 1.5) }}>{lab}</span>
+          : <span {...data} className="mn-d fdot" style={{ width: d1, height: d1, background: col, color: THEME.ink, fontSize: fs, fontWeight: 800, zIndex: 3 }}>{lab}</span>;
       }
       out.push(
-        <span key={s + "-" + f} className="mn-c" style={{ height: rowH, borderRight: f === 0 ? `4px solid ${THEME.nut}` : `1.5px solid ${THEME.line}`, background: f === 0 ? THEME.track : undefined }}>
+        <span key={s + "-" + f} className="mn-c" style={{ height: rowH, borderRight: f === 0 ? `4px solid ${THEME.nut}` : `2px solid ${THEME.fret}`, background: f === 0 ? THEME.track : undefined }}>
+          {inlayAt(tuning.strings, s, f) && <span className="inlay" style={{ width: lg ? 9 : 8, height: lg ? 9 : 8 }} />}
           <span className="mn-s" style={{ height: tuning.gauges[s], marginTop: -tuning.gauges[s] / 2 }} />
           {dot}
         </span>
@@ -55,6 +58,13 @@ function ChordNeck({ tuning, card, labelMode, lg }) {
   for (let f = start; f < start + cols; f++) out.push(<span key={"n" + f} className="mn-c" style={{ height: 16, fontSize: 11, color: MARKERS[f] ? THEME.text : THEME.muted, fontWeight: MARKERS[f] ? 700 : 400 }}>{f}</span>);
   return <span className="mneck" aria-hidden="true"><span className="mn-g" style={{ gridTemplateColumns: `16px repeat(${cols}, minmax(0, 1fr))` }}>{out}</span></span>;
 }
+// A card's head line (Round 15): the shape's tones, low string to high, as degrees or (Labels: Notes) note names.
+function tonesOf(card, labelMode) {
+  const low = [...card.cells].sort((a, b) => b.s - a.s);
+  return low.map((c) => (labelMode === "name" ? card.name((card.root + c.iv) % 12) : card.deg(c.iv))).join(" ");
+}
+// The form tag's underline in its colour, split where two forms hold the shape.
+const formLine = (fs) => (fs.length > 1 ? `linear-gradient(90deg, ${POS_COLOR[fs[0]]} 0 50%, ${POS_COLOR[fs[1]]} 50% 100%)` : `linear-gradient(${POS_COLOR[fs[0]]}, ${POS_COLOR[fs[0]]})`);
 // Six fret columns or more, the shape centred with the spare column above it (the Scales cards' rule).
 function frame(tuning, cells) {
   const fs = cells.map((c) => c.f), lo = Math.min(...fs), hi = Math.max(...fs);
@@ -248,8 +258,9 @@ export function ChordsMode({ tuning, at, setAt, labelMode, setLabelMode, onOpen 
           {sec.shown.map((c) => {
             const on = c.id === clit;
             return (
-              <AtlasCard key={c.id} card={c} sub={c.sub} on={on} onToggle={() => set({ clit: on ? null : c.id })} setHov={() => {}} onOpen={() => onOpen(c)}
-                mark={c.mark} markColour={c.kind === "caged" ? POS_COLOR[c.form] : null}>
+              <AtlasCard key={c.id} card={c} sub={tonesOf(c, labelMode)} on={on} onToggle={() => set({ clit: on ? null : c.id })} setHov={() => {}} onOpen={() => onOpen(c)}
+                mark={c.mark} markColour={c.kind === "caged" ? POS_COLOR[c.form] : null}
+                formTag={c.kind !== "caged" && c.forms.length ? { label: formName(c.forms), line: formLine(c.forms) } : null}>
                 <ChordNeck tuning={tuning} card={c} labelMode={labelMode} lg={size === "large"} />
               </AtlasCard>
             );

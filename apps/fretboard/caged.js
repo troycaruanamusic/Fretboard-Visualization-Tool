@@ -1,13 +1,35 @@
-// Fretboard Trainer · CAGED windows and dot colours.
-// Neutral dots (DS-05): a value step, chord tones light and other scale tones muted, both with ink labels.
-export const NEUTRAL_CT = "#E3E9F0", NEUTRAL_OTHER = "#A9B6C4";
-
-// Calmer CAGED set (decision 7 = b), all with ink labels (DS-04).
-export const POS_COLOR = {C:"#E5766B",A:"#E9A15C",G:"#DDD05A",E:"#7FA8E6",D:"#7CC68D"};
-// Nut-substitute hatch: the second stripe per position colour, 1.5:1 against it; ink labels stay at 4.6:1 or more on both stripes.
-export const HATCH = {C:"#efa9a2",A:"#bb834e",G:"#b3aa4d",E:"#b6cdf1",D:"#c5e6cd"};
+// Fretboard Trainer · CAGED windows, dot colours and chord forms.
+// Colours are theme variables (Round 15; values per theme in design.css). Neutral dots (DS-05): a value step, chord tones
+// light and other scale tones muted, both with ink labels.
+export const NEUTRAL_CT = "var(--n-ct)", NEUTRAL_OTHER = "var(--n-other)";
+const LETTERS5 = ["C", "A", "G", "E", "D"];
+// Calmer CAGED set (decision 7 = b), all with ink labels (DS-04); deeper shades in Light and High contrast.
+export const POS_COLOR = Object.fromEntries(LETTERS5.map((L) => [L, `var(--c-${L})`]));
+// Nut-substitute hatch: the second stripe per position colour.
+export const HATCH = Object.fromEntries(LETTERS5.map((L) => [L, `var(--h-${L})`]));
+// The All view's 12 % column tint, per position colour.
+export const POS_TINT = Object.fromEntries(LETTERS5.map((L) => [L, `color-mix(in srgb, var(--c-${L}) 12%, transparent)`]));
 // Window offsets count from the pitch class of standard tuning's low E (4). Kept as a CAGED constant, not read from the
 // tuning, so drop D can keep the standard windows; other tunings' windows are designed at plan step 8.
 export const CAGED_ANCHOR = 4;
 export const POS_MAJOR = [{num:1,letter:"C",off:4,w:3},{num:2,letter:"A",off:6,w:3},{num:3,letter:"G",off:9,w:3},{num:4,letter:"E",off:-1,w:3},{num:5,letter:"D",off:1,w:4}];
 export const POS_MINOR = [{num:1,letter:"C",off:4,w:4},{num:2,letter:"A",off:7,w:3},{num:3,letter:"G",off:9,w:3},{num:4,letter:"E",off:0,w:3},{num:5,letter:"D",off:2,w:3}];
+
+// CAGED form of a chord voicing (Round 15): the windows of the chord's own root that hold every note of the shape, the
+// window whose low edge sits nearest below the shape's lowest note first. cells: [{s, f}].
+export function cagedFit(root, ton, cells) {
+  const list = ton === "minor" ? POS_MINOR : POS_MAJOR;
+  const ph = (f, p) => (((f - root + CAGED_ANCHOR - p.off) % 12) + 12) % 12;
+  const lo = Math.min(...cells.map((c) => c.f));
+  return list.filter((p) => cells.every((c) => ph(c.f, p) <= p.w)).sort((a, b) => ph(lo, b) - ph(lo, a)).map((p) => p.letter);
+}
+// A shape in no window of its own major / minor takes the other set's windows, for colour only.
+export function cagedForms(root, ton, cells) {
+  const f = cagedFit(root, ton, cells);
+  return f.length ? f : cagedFit(root, ton === "minor" ? "major" : "minor", cells);
+}
+// One form: its colour; two: a diagonal split; none: neutral.
+export const formFill = (forms, neutral = NEUTRAL_CT) => forms.length > 1
+  ? `linear-gradient(135deg, ${POS_COLOR[forms[0]]} 0 50%, ${POS_COLOR[forms[1]]} 50% 100%)`
+  : forms.length ? POS_COLOR[forms[0]] : neutral;
+export const formName = (forms) => forms.length ? forms.join("/") + " form" : "";
