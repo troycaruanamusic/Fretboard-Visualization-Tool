@@ -156,7 +156,7 @@ function NeckMap({ tuning, sc, p, str, phone, note }) {
   const cellsOut = [];
   for (let s = 0; s < tuning.strings; s++) {
     const off = str !== null && (s < str || s > str + 2);
-    cellsOut.push(<div key={"l" + s} className="nm-c" style={{ gridRow: s + 1, gridColumn: 1, height: rowH, fontSize: 11, color: THEME.muted }}>{tuning.labels[s]}</div>);
+    cellsOut.push(<div key={"l" + s} className="nm-c" style={{ gridRow: s + 2, gridColumn: 1, height: rowH, fontSize: 11, color: THEME.muted }}>{tuning.labels[s]}</div>);
     for (let f = 0; f <= tuning.frets; f++) {
       const iv = (((tuning.open[s] + f - sc.root) % 12) + 12) % 12;
       let mark = null;
@@ -173,7 +173,7 @@ function NeckMap({ tuning, sc, p, str, phone, note }) {
           : <span className="mn-d" style={{ width: dot, height: dot, border: `${isRoot ? 2 : 1}px solid ${THEME.edge}`, background: THEME.panel2, zIndex: 1 }} />;
       }
       cellsOut.push(
-        <div key={s + "-" + f} className="nm-c" style={{ gridRow: s + 1, gridColumn: f + 2, height: rowH, borderRight: f === 0 ? `3px solid ${THEME.nut}` : `1px solid ${THEME.fret}` }}>
+        <div key={s + "-" + f} className="nm-c" style={{ gridRow: s + 2, gridColumn: f + 2, height: rowH, borderRight: f === 0 ? `3px solid ${THEME.nut}` : `1px solid ${THEME.fret}` }}>
           <span className="mn-s" style={{ height: 1, marginTop: -0.5 }} />
           {mark}
         </div>
@@ -184,16 +184,22 @@ function NeckMap({ tuning, sc, p, str, phone, note }) {
     <section className="nmap" aria-label="Neck map">
       <div className="nm-head"><h2>Neck map</h2><span data-mapnote className="text-xs text-muted">{note}</span></div>
       <div role="img" aria-label={`The whole neck. ${note}`} className="nm-g" style={{ gridTemplateColumns: `14px ${colPx(tuning.frets).map((n) => `minmax(0, ${n}fr)`).join(" ")}` }}>
+        {/* Fret markers (Round 15): small guide dots above the neck, single at 3 5 7 9 15 17 19 21 and a pair at 12. */}
+        {Object.entries(MARKERS).filter(([f]) => +f <= tuning.frets).map(([f, n]) => (
+          <div key={"i" + f} data-minlay={f} className="nm-c" aria-hidden="true" style={{ gridRow: 1, gridColumn: +f + 2, height: 9, gap: 3 }}>
+            {Array.from({ length: n }, (_, i) => <span key={i} style={{ width: 4, height: 4, borderRadius: "50%", background: THEME.edge }} />)}
+          </div>
+        ))}
         {cellsOut}
         {Array.from({ length: tuning.frets + 1 }, (_, f) => (!phone || MARKERS[f]) && (
-          <div key={"n" + f} className="nm-c" style={{ gridRow: tuning.strings + 1, gridColumn: f + 2, height: rowH, fontSize: 11, overflow: "visible", color: MARKERS[f] ? THEME.text : THEME.muted, fontWeight: MARKERS[f] ? 700 : 400 }}>{f}</div>
+          <div key={"n" + f} className="nm-c" style={{ gridRow: tuning.strings + 2, gridColumn: f + 2, height: rowH, fontSize: 11, overflow: "visible", color: MARKERS[f] ? THEME.text : THEME.muted, fontWeight: MARKERS[f] ? 700 : 400 }}>{f}</div>
         ))}
-        {Array.from({ length: lanes }, (_, l) => <div key={"rl" + l} style={{ gridRow: tuning.strings + 2 + l, gridColumn: 1, height: 18 }} />)}
+        {Array.from({ length: lanes }, (_, l) => <div key={"rl" + l} style={{ gridRow: tuning.strings + 3 + l, gridColumn: 1, height: 18 }} />)}
         {spans.map((sp) => {
           const on = !p || sp.q.num === p.num, c = on ? POS_COLOR[sp.q.letter] : THEME.line, side = on && p ? 2 : 1;
           return (
             <div key={`r${sp.q.num}-${sp.a}`} data-mruler={`${sp.q.num} ${sp.q.letter}`} data-on={on && p ? "1" : undefined} className="nm-r"
-              style={{ gridRow: tuning.strings + 2 + sp.lane, gridColumn: `${sp.a + 2} / ${sp.z + 3}`, color: on && p ? THEME.text : THEME.muted, fontWeight: on && p ? 700 : 400,
+              style={{ gridRow: tuning.strings + 3 + sp.lane, gridColumn: `${sp.a + 2} / ${sp.z + 3}`, color: on && p ? THEME.text : THEME.muted, fontWeight: on && p ? 700 : 400,
                 borderBottom: `${on && p ? 2 : 1}px solid ${c}`, borderLeft: sp.clipped && sp.a === 0 ? "none" : `${side}px solid ${c}`, borderRight: sp.clipped && sp.z === tuning.frets ? "none" : `${side}px solid ${c}` }}>
               {phone ? sp.q.letter : `${sp.q.num} ${sp.q.letter}`}
             </div>
