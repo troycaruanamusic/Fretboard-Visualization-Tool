@@ -2,8 +2,8 @@
 Guitar Fretboard Visualization Tool: the Fretboard Trainer, and the shared core the planned trainer apps will build on.
 
 ## Layout
-- `core/`: shared by every app. Note names and keys, spelling, scales and modes (with the NNS modal reference data), chord formulas, the link-format readers, the design system (`design.css`, tokens and controls) and the Atlas card grid. A core module never imports app code; the build fails if one does.
-- `apps/fretboard/`: the Fretboard Trainer (guitar). Its page template, CSS, guitar and CAGED data, the four pages, URL state and the app shell.
+- `core/`: shared by every app. Note names and keys, spelling, scales and modes (with the NNS modal reference data), chord formulas, the link-format readers, the design system (`design.css`, tokens and controls), the Atlas card grid and the tuning object (`tuning.js`: strings, open pitches, labels, gauges and fret count). A core module never imports app code; the build fails if one does.
+- `apps/fretboard/`: the Fretboard Trainer (guitar). Its page template, CSS, guitar tunings (`tunings.js`, Standard for now), guitar and CAGED data, the four pages, URL state and the app shell.
 - `build.mjs`: builds each app into one self-contained HTML file, `dist/<app>/index.html`.
 
 ## Build
