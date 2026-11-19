@@ -7,23 +7,23 @@ import { DEG_LABEL, DEG_OVERRIDE, MODE_NAME, KEY_DEG, MODES, OTHER_SCALES, MODE_
 import { accs, spellAt, keySpelling, autoLetter, neckLetter } from "../../core/spelling.js";
 import { QUAL_COMMON, QUAL_MORE, QUAL_IN_MORE, QUAL_T, QUAL_NAME, DIATONIC } from "../../core/chords.js";
 import { Seg, Track, Row, Card, Btn } from "../../core/ui.jsx";
-import { OPEN, OPEN_ABS, STRING_LABELS, STRING_GAUGE, FRETS, MARKERS, COL_PX } from "./guitar.js";
-import { NEUTRAL_CT, NEUTRAL_OTHER, POS_COLOR, HATCH, POS_MAJOR, POS_MINOR } from "./caged.js";
+import { MARKERS, colPx } from "./guitar.js";
+import { NEUTRAL_CT, NEUTRAL_OTHER, POS_COLOR, HATCH, POS_MAJOR, POS_MINOR, CAGED_ANCHOR } from "./caged.js";
 import { keepChord } from "./state.js";
 
 // Window gap fill (SH-21, 22, 25 to 28, 30). In the lowest complete copy of window p, the layer's pitches run low to high;
 // each pitch missing between the lowest and highest takes the nearest on-board cell outside the window, a tie going above.
 // Returns keys s * 12 + (fret mod 12), so the fill repeats with the window 12 frets up or down, as inPos does.
 const GAP_CACHE = new Map();
-export function gapCells(root, set, p) {
+export function gapCells(tuning, root, set, p) {
   const ivs = [...set].sort((a, b) => a - b);
-  const id = `${root}|${ivs.join(",")}|${p.off}|${p.w}`;
+  const id = `${tuning.id}|${root}|${ivs.join(",")}|${p.off}|${p.w}`;
   if (GAP_CACHE.has(id)) return GAP_CACHE.get(id);
-  const base = (((root - 4 + p.off) % 12) + 12) % 12;
+  const base = (((root - CAGED_ANCHOR + p.off) % 12) + 12) % 12;
   const top = base + p.w;
   const inSet = (m) => set.has((((m - root) % 12) + 12) % 12);
   const have = new Set();
-  for (let s = 0; s < 6; s++) for (let f = base; f <= top; f++) if (inSet(OPEN_ABS[s] + f)) have.add(OPEN_ABS[s] + f);
+  for (let s = 0; s < tuning.strings; s++) for (let f = base; f <= top; f++) if (inSet(tuning.openAbs[s] + f)) have.add(tuning.openAbs[s] + f);
   const out = new Set(), cut = new Set();
   out.cut = cut;
   if (have.size) {
@@ -31,9 +31,9 @@ export function gapCells(root, set, p) {
     for (let m = lo + 1; m < hi; m++) {
       if (!inSet(m) || have.has(m)) continue;
       let best = null;
-      for (let s = 0; s < 6; s++) {
-        const f = m - OPEN_ABS[s];
-        if (f < 0 || f > FRETS || (f >= base && f <= top)) continue;
+      for (let s = 0; s < tuning.strings; s++) {
+        const f = m - tuning.openAbs[s];
+        if (f < 0 || f > tuning.frets || (f >= base && f <= top)) continue;
         const d = f < base ? base - f : f - top;
         if (!best || d < best.d || (d === best.d && f > top)) best = { s, f, d };
       }
@@ -41,12 +41,12 @@ export function gapCells(root, set, p) {
       out.add(best.s * 12 + (best.f % 12));
       // A full copy 12 or 24 frets up whose fill would land past the last fret takes the nearest on-board cell outside it
       // instead, which is below it (Round 4b, open item 3 = b). Kept as exact cells (s * 100 + fret) so no other copy changes.
-      for (let k = 12; top + k <= FRETS; k += 12) {
-        if (best.f + k <= FRETS) continue;
+      for (let k = 12; top + k <= tuning.frets; k += 12) {
+        if (best.f + k <= tuning.frets) continue;
         let alt = null;
-        for (let s = 0; s < 6; s++) {
-          const f = m + k - OPEN_ABS[s];
-          if (f < 0 || f > FRETS || (f >= base + k && f <= top + k)) continue;
+        for (let s = 0; s < tuning.strings; s++) {
+          const f = m + k - tuning.openAbs[s];
+          if (f < 0 || f > tuning.frets || (f >= base + k && f <= top + k)) continue;
           const d = f < base + k ? base + k - f : f - top - k;
           if (!alt || d < alt.d || (d === alt.d && f > top + k)) alt = { s, f, d };
         }
@@ -61,20 +61,20 @@ export function gapCells(root, set, p) {
 // Nut substitutes. A cell of the window's lower copy (12 frets down, gap fill included) that falls below the nut is played at
 // the same pitch on the next lower string, where that cell is not already in the window; the low E string has none.
 // Returns keys s * 100 + fret for the substitute cells.
-function nutSubs(root, set, p, gaps) {
-  const base = (((root - 4 + p.off) % 12) + 12) % 12;
+function nutSubs(tuning, root, set, p, gaps) {
+  const base = (((root - CAGED_ANCHOR + p.off) % 12) + 12) % 12;
   const lo = base - 12, out = new Set();
   if (lo + p.w < 0) return out;
   const inWinAt = (s, f) => ((((f - base) % 12) + 12) % 12) <= p.w || (gaps !== null && gaps.has(s * 12 + (((f % 12) + 12) % 12)));
-  for (let s = 0; s < 5; s++) for (let f = lo - 1; f < 0; f++) {
-    if (!set.has((((OPEN_ABS[s] + f - root) % 12) + 12) % 12) || !inWinAt(s, f)) continue;
-    const g = f + OPEN_ABS[s] - OPEN_ABS[s + 1];
+  for (let s = 0; s < tuning.strings - 1; s++) for (let f = lo - 1; f < 0; f++) {
+    if (!set.has((((tuning.openAbs[s] + f - root) % 12) + 12) % 12) || !inWinAt(s, f)) continue;
+    const g = f + tuning.openAbs[s] - tuning.openAbs[s + 1];
     if (g >= 0 && !inWinAt(s + 1, g)) out.add((s + 1) * 100 + g);
   }
   return out;
 }
 
-export function Board({ cfg, update, globals, back = null }) {
+export function Board({ tuning, cfg, update, globals, back = null }) {
   const { scope, arp, pos, focus, keyRoot, keyMode, arpMode, diaLabel, strGroup, mode } = cfg;
   const { labelMode, isolate, ghost, dotColour, more, setLabelMode, setIsolate, setGhost, setDotColour, setMore } = globals;
   const caged = dotColour === "caged";
@@ -92,13 +92,13 @@ export function Board({ cfg, update, globals, back = null }) {
   const interlock = pos === "all";
   const activePos = typeof pos === "number" ? posList.find((p) => p.num === pos) : null;
   // Gap fill applies to the Scale and Chord layers in a single position only; Pentatonic, Blues, Major and minor and All are unchanged.
-  const gaps = useMemo(() => (activePos && (scope === "scale" || scope === "arpeggio") ? gapCells(root, scopeSet, activePos) : null), [activePos, scope, root, scopeSet]);
+  const gaps = useMemo(() => (activePos && (scope === "scale" || scope === "arpeggio") ? gapCells(tuning, root, scopeSet, activePos) : null), [tuning, activePos, scope, root, scopeSet]);
   // Nut substitutes apply to every layer in a single position; All is unchanged.
-  const subs = useMemo(() => (activePos ? nutSubs(root, scopeSet, activePos, gaps) : null), [activePos, root, scopeSet, gaps]);
+  const subs = useMemo(() => (activePos ? nutSubs(tuning, root, scopeSet, activePos, gaps) : null), [tuning, activePos, root, scopeSet, gaps]);
   // Focus keeps only degrees that can be lit in the current position, strings and Isolate; one that leaves is dropped (UX-13). Interlock ignores focus (UX-14).
   const litSet = new Set();
-  for (let s = 0; s < 6; s++) for (let f = 0; f <= FRETS; f++) {
-    const iv = (((OPEN[s] + f - root) % 12) + 12) % 12;
+  for (let s = 0; s < tuning.strings; s++) for (let f = 0; f <= tuning.frets; f++) {
+    const iv = (((tuning.open[s] + f - root) % 12) + 12) % 12;
     if (scopeSet.has(iv) && (interlock || !isolate || ctSet.has(iv)) && (strGroup === null || (s >= strGroup && s <= strGroup + 2)) && (!activePos || inWin(s, f))) litSet.add(iv);
   }
   const activeFocus = interlock ? [] : focus.filter((iv) => litSet.has(iv));
@@ -120,28 +120,28 @@ export function Board({ cfg, update, globals, back = null }) {
   const noteName = (pc) => accs(spellName(pc));
 
   function inPos(f, p) {
-    const base = (((root - 4 + p.off) % 12) + 12) % 12;
+    const base = (((root - CAGED_ANCHOR + p.off) % 12) + 12) % 12;
     return ((((f - base) % 12) + 12) % 12) <= p.w;
   }
   // A gap-fill cell and a nut substitute count as inside the active position.
   function inWin(s, f) { return inPos(f, activePos) || (gaps !== null && (gaps.has(s * 12 + (f % 12)) || gaps.cut.has(s * 100 + f))) || (subs !== null && subs.has(s * 100 + f)); }
-  const phase = (f, p) => { const b = (((root - 4 + p.off) % 12) + 12) % 12; return ((((f - b) % 12) + 12) % 12); };
+  const phase = (f, p) => { const b = (((root - CAGED_ANCHOR + p.off) % 12) + 12) % 12; return ((((f - b) % 12) + 12) % 12); };
 
   // One size: the neck fits the width when full-size dots fit, and scrolls below that (RS-01); the View control is gone.
   const cellH = 46;
   const dotBig = 30;
   const dotBase = 24;
   const fontPx = 11; // nothing under 11 px (BR-05)
-  const COLS = `30px ${COL_PX.map((n) => `minmax(${n}px, ${n}fr)`).join(" ")}`;
+  const COLS = `30px ${colPx(tuning.frets).map((n) => `minmax(${n}px, ${n}fr)`).join(" ")}`;
 
   // Position ruler (DS-03): each window copy on the neck as a labelled span. In All, spans take two lanes so that
   // overlapping windows never share one; a single position uses the first lane.
   const ruler = useMemo(() => {
     const spans = [];
     posList.forEach((p) => {
-      const b = (((root - 4 + p.off) % 12) + 12) % 12;
-      for (let c = b - 12; c <= FRETS; c += 12) {
-        const a = Math.max(0, c), z = Math.min(FRETS, c + p.w);
+      const b = (((root - CAGED_ANCHOR + p.off) % 12) + 12) % 12;
+      for (let c = b - 12; c <= tuning.frets; c += 12) {
+        const a = Math.max(0, c), z = Math.min(tuning.frets, c + p.w);
         if (z >= a) spans.push({ p, a, z, clipped: a !== c || z !== c + p.w });
       }
     });
@@ -153,20 +153,20 @@ export function Board({ cfg, update, globals, back = null }) {
       ends[l] = sp.z; sp.lane = l;
     });
     return { spans, lanes: Math.max(2, ends.length) };
-  }, [posList, root]);
+  }, [tuning, posList, root]);
 
   // Scroll to the chosen position when the neck scrolls (RS-03 part): the window's main copy, one fret either side, centred.
   const scrollRef = React.useRef(null);
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || !activePos || el.scrollWidth <= el.clientWidth) return;
-    const b = (((root - 4 + activePos.off) % 12) + 12) % 12;
-    const lo = el.querySelector(`[data-fret="${Math.max(0, b - 1)}"]`), hi = el.querySelector(`[data-fret="${Math.min(FRETS, b + activePos.w + 1)}"]`);
+    const b = (((root - CAGED_ANCHOR + activePos.off) % 12) + 12) % 12;
+    const lo = el.querySelector(`[data-fret="${Math.max(0, b - 1)}"]`), hi = el.querySelector(`[data-fret="${Math.min(tuning.frets, b + activePos.w + 1)}"]`);
     if (!lo || !hi) return;
     const box = el.getBoundingClientRect(), l = lo.getBoundingClientRect().left - box.left + el.scrollLeft, r = hi.getBoundingClientRect().right - box.left + el.scrollLeft;
     const smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     el.scrollTo({ left: Math.max(0, (l + r) / 2 - el.clientWidth / 2), behavior: smooth ? "smooth" : "auto" });
-  }, [pos, root, tonality]);
+  }, [tuning, pos, root, tonality]);
   const keyRel = scope === "arpeggio" && arpMode === "diatonic" && diaLabel === "key";
   const degLabel = (pc, iv) => {
     if (keyRel) {
@@ -183,8 +183,8 @@ export function Board({ cfg, update, globals, back = null }) {
 
   const renderRow = (s) => {
     const cells = [];
-    for (let f = 0; f <= FRETS; f++) {
-      const pc = (OPEN[s] + f) % 12;
+    for (let f = 0; f <= tuning.frets; f++) {
+      const pc = (tuning.open[s] + f) % 12;
       const iv = ((pc - root) % 12 + 12) % 12;
       const inScope = scopeSet.has(iv);
       const isRoot = iv === 0;
@@ -232,7 +232,7 @@ export function Board({ cfg, update, globals, back = null }) {
       const title = `${noteName(pc)} · ${fdeg(iv)}`;
       cells.push(
         <div key={f} data-fret={s === 0 ? f : undefined} onClick={tappable ? () => update({ focus: toggle(activeFocus, iv) }) : undefined} className="relative flex items-center justify-center" style={{ height: cellH, borderRight: f === 0 ? `5px solid ${THEME.nut}` : `2px solid ${THEME.line}`, background: cellBg, cursor: tappable ? "pointer" : undefined }}>
-          <div className="absolute left-0 right-0" style={{ top: "50%", transform: "translateY(-50%)", height: STRING_GAUGE[s], background: THEME.edge }} />
+          <div className="absolute left-0 right-0" style={{ top: "50%", transform: "translateY(-50%)", height: tuning.gauges[s], background: THEME.edge }} />
           {inScope && (isRoot && !dim ? (
             <button tabIndex={-1} disabled={interlock} className="relative rounded-full flex items-center justify-center transition-all" style={{ width: sz, height: sz, background: face.background, zIndex: 5, cursor: interlock ? "default" : "pointer" }} title={title}>
               <div className="rounded-full flex items-center justify-center" style={{ width: sz - 8, height: sz - 8, background: THEME.ink, color: face.color, fontSize: fontPx, fontWeight: 800 }}>{labelOf(pc, iv)}</div>
@@ -249,7 +249,7 @@ export function Board({ cfg, update, globals, back = null }) {
     }
     return (
       <div key={s} className="contents">
-        <div className="flex items-center justify-center text-xs font-semibold text-muted" style={{ height: cellH }}>{STRING_LABELS[s]}</div>
+        <div className="flex items-center justify-center text-xs font-semibold text-muted" style={{ height: cellH }}>{tuning.labels[s]}</div>
         {cells}
       </div>
     );
@@ -291,22 +291,22 @@ export function Board({ cfg, update, globals, back = null }) {
         </div>
         <div ref={scrollRef} className="overflow-x-auto pb-2 rounded-xl" style={{ background: THEME.panel2 }}>
           <div className="grid p-3" style={{ gridTemplateColumns: COLS, width: "100%", minWidth: "min-content" }}>
-            {[0,1,2,3,4,5].map(renderRow)}
+            {Array.from({ length: tuning.strings }, (_, s) => renderRow(s))}
             <div />
             {/* Fret numbers: muted; marker frets bold in text. The marker-dot row is gone (DS-07). */}
-            {Array.from({ length: FRETS + 1 }, (_, f) => (
+            {Array.from({ length: tuning.frets + 1 }, (_, f) => (
               <div key={"n" + f} className="flex items-center justify-center text-xs" style={{ height: 24, color: MARKERS[f] ? THEME.text : THEME.muted, fontWeight: MARKERS[f] ? 700 : 400 }}>{f}</div>
             ))}
             {/* Position ruler (DS-03, A11y-W3): names each window span in text, always in two or more lanes so spans never
                 overlap. Low-key grey where a position is not chosen; colour for the chosen position and in All (Round 6b). */}
-            {Array.from({ length: ruler.lanes }, (_, l) => <div key={"rl" + l} style={{ gridRow: 8 + l, gridColumn: 1, height: 22 }} />)}
+            {Array.from({ length: ruler.lanes }, (_, l) => <div key={"rl" + l} style={{ gridRow: tuning.strings + 2 + l, gridColumn: 1, height: 22 }} />)}
             {ruler.spans.map((sp) => {
               const on = interlock || (activePos !== null && sp.p.num === activePos.num);
               const c = on ? POS_COLOR[sp.p.letter] : THEME.line, side = on ? 2 : 1;
               return (
                 <div key={`r${sp.p.num}-${sp.a}`} data-ruler={`${sp.p.num} ${sp.p.letter}`} data-on={on ? "1" : undefined} className={"flex items-end justify-center text-xs " + (on ? "font-semibold text-body" : "text-muted")}
-                  style={{ gridRow: 8 + sp.lane, gridColumn: `${sp.a + 2} / ${sp.z + 3}`, height: 22, margin: "0 2px", paddingBottom: 3, whiteSpace: "nowrap", overflow: "hidden",
-                    borderBottom: `${on ? 3 : 1}px solid ${c}`, borderLeft: sp.clipped && sp.a === 0 ? "none" : `${side}px solid ${c}`, borderRight: sp.clipped && sp.z === FRETS ? "none" : `${side}px solid ${c}` }}>
+                  style={{ gridRow: tuning.strings + 2 + sp.lane, gridColumn: `${sp.a + 2} / ${sp.z + 3}`, height: 22, margin: "0 2px", paddingBottom: 3, whiteSpace: "nowrap", overflow: "hidden",
+                    borderBottom: `${on ? 3 : 1}px solid ${c}`, borderLeft: sp.clipped && sp.a === 0 ? "none" : `${side}px solid ${c}`, borderRight: sp.clipped && sp.z === tuning.frets ? "none" : `${side}px solid ${c}` }}>
                   {sp.p.num} {sp.p.letter}
                 </div>
               );

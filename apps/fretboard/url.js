@@ -5,6 +5,7 @@ import { MODES, OTHER_SCALES } from "../../core/scales.js";
 import { spellAt, normSpell } from "../../core/spelling.js";
 import { QUAL_COMMON, QUAL_MORE, QUAL_IN_MORE, QUAL_T } from "../../core/chords.js";
 import { NOTE_IN, noteTok, oneOf, intIn, listIn } from "../../core/link.js";
+import { CH_QUALS, CH_TYPE_KEYS, CH_FRETS, chIvs } from "./chordshapes.js";
 
 const STR_TOK = ["13", "24", "35", "46"];
 const STR7_TOK = ["14", "25", "36"];
@@ -61,13 +62,27 @@ const URL_FIELDS = [
   ["size", "at", "size", "standard", String, oneOf("standard", "large")],
   ["map", "at", "map", null, (v) => (v ? "on" : "off"), (v) => ({ on: true, off: false })[v]],
   ["lit", "at", "lit", null, String, (v) => (/^[A-Za-z0-9]{1,12}$/.test(v) ? v : undefined)],
+  // Atlas Chords mode (Round 14): its own chord (root and quality), Lay out by, voicing types (listed in their button order;
+  // all on is the default), the filters and the lit card (a shape id: kind, strings, inversion, u for its copy 12 up).
+  ["achord", "at", "croot", 0, (v) => noteTok(v), NOTE_IN],
+  ["aq", "at", "cq", "major", String, oneOf(...CH_QUALS.map(([k]) => k))],
+  ["cby", "at", "cby", "family", String, oneOf("family", "inversion", "strings", "position")],
+  ["vt", "at", "vt", CH_TYPE_KEYS, (v) => (v.length ? v.join(".") : "none"), (v) => (v === "none" ? [] : ((a) => (a.every((t) => CH_TYPE_KEYS.includes(t)) && new Set(a).size === a.length ? CH_TYPE_KEYS.filter((t) => a.includes(t)) : undefined))(v.split(".")))],
+  ["ainv", "at", "cinv", null, (v) => ["root", "1", "2", "3"][v], (v) => { const i = ["root", "1", "2", "3"].indexOf(v); return i < 0 ? undefined : i; }],
+  ["frets", "at", "frets", "any", String, oneOf(...CH_FRETS.map(([k]) => k).filter((k) => k !== "any"))],
+  ["aset", "at", "cset", null, String, (v) => (/^[1-6]{3,6}$/.test(v) && [...v].every((d, i) => !i || d > v[i - 1]) ? v : undefined)],
+  ["aopen", "at", "copen", "allow", String, oneOf("none")],
+  ["span", "at", "span", 4, String, intIn(3, 6)],
+  ["acopies", "at", "cup", false, () => "12", (v) => (v === "12" ? true : undefined)],
+  ["clit", "at", "clit", null, String, (v) => (/^[A-Za-z0-9]{1,12}$/.test(v) ? v : undefined)],
 ];
 const URL_DEFAULT = {
   top: { page: "neck", labelMode: "degree", isolate: false, ghost: false, dotColour: "caged", more: false },
   cfg: { root: 0, tonality: "major", scope: "pentatonic", arp: "triad", pos: null, focus: [], keyRoot: 0, keyMode: "major", arpMode: "diatonic", diaLabel: "key", strGroup: null, mode: "ionian", keySpell: null },
   ch: { deg: 0, strSet: 0, inv: 0, numFrom: "key", scaleBehind: false, sev: false, strSet7: 0, inv7: 0, drop3: false, strSet3: 0, inv3: 0, harm: false },
   md: { parent: 0, view: "notes", hit: null, lkRoot: "", lkMode: "", open: [] },
-  at: { am: "scales", show: "scale", by: "position", pos: 2, from: "root", str: null, up: false, ct: "larger", size: "standard", map: null, lit: null },
+  at: { am: "scales", show: "scale", by: "position", pos: 2, from: "root", str: null, up: false, ct: "larger", size: "standard", map: null, lit: null,
+    croot: 0, cq: "major", cby: "family", vt: CH_TYPE_KEYS, cinv: null, frets: "any", cset: null, copen: "allow", span: 4, cup: false, clit: null },
 };
 // More is open by default when the chosen Any chord quality is in it; more=1 or more=0 records any other choice.
 const moreDefault = (c) => c.scope === "arpeggio" && c.arpMode === "quality" && QUAL_IN_MORE(c.arp);
@@ -101,6 +116,8 @@ export function queryToState(search) {
   st.top.more = q.get("more") === "1" ? true : q.get("more") === "0" ? false : moreDefault(st.cfg);
   // Lay out by Mode is for Show: Scale; a hand-edited link with another Show falls back to Position, as the control does.
   if (st.at.by === "mode" && st.at.show !== "scale") st.at.by = "position";
+  // A 3-note chord has no 3rd inversion; the control drops it, so a hand-edited link does too.
+  if (st.at.cinv === 3 && chIvs(st.at.cq).length === 3) st.at.cinv = null;
   return st;
 }
 export const URL_INIT = typeof location !== "undefined" ? queryToState(location.search) : queryToState("");

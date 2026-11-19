@@ -7,13 +7,14 @@ import { accs, spellAt, autoLetter, neckLetter, normSpell } from "../../core/spe
 import { NOTE_TOK } from "../../core/link.js";
 import { Seg, Track, Row, Card, Btn, useMedia, PHONE_Q, Dialog } from "../../core/ui.jsx";
 import { atType, atScale, CardGrid, AtlasCard } from "../../core/atlas.jsx";
-import { OPEN, OPEN_ABS, STRING_LABELS, STRING_GAUGE, FRETS, MARKERS, COL_PX, SET_NAME } from "./guitar.js";
-import { POS_COLOR, POS_MAJOR, POS_MINOR } from "./caged.js";
+import { MARKERS, colPx, SET_NAME } from "./guitar.js";
+import { POS_COLOR, POS_MAJOR, POS_MINOR, CAGED_ANCHOR } from "./caged.js";
 import { keepChord } from "./state.js";
 import { gapCells } from "./neck.jsx";
+import { ChordsMode } from "./atlaschords.jsx";
 
 // Atlas page (Round 11, Atlas review and mock-up of 18 Nov): a scale as a grid of small necks, one card per shape. Scales mode
-// is built here; Chords mode follows. Key, Major / Minor and Mode are the Neck's (cfg), and Labels is the Neck's Labels, so
+// is built here; Chords mode (Round 14) is atlaschords.jsx. Key, Major / Minor and Mode are the Neck's (cfg), and Labels is the Neck's Labels, so
 // the four pages stay on one key; Show, Lay out by and the filters are the Atlas's own (at).
 const AT_SHOW = [["scale","Scale"],["pentatonic","Pentatonic"],["blues","Blues"]];
 const AT_BY = [["position","Position"],["mode","Mode"],["key","Key"]];
@@ -23,50 +24,50 @@ const AT_POS = (km) => (km === "major" ? POS_MAJOR : POS_MINOR);
 // gap fill of gapCells as exact cells: each pitch missing between the copy's lowest and highest takes the nearest on-board
 // cell outside the lowest copy, a tie going above; the upper copy takes the same cell 12 frets up or, where that passes the
 // last fret, the nearest on-board cell outside the upper copy.
-function atCells(root, set, p, k, fill) {
-  const base = (((root - 4 + p.off) % 12) + 12) % 12, top = base + p.w;
+function atCells(tuning, root, set, p, k, fill) {
+  const base = (((root - CAGED_ANCHOR + p.off) % 12) + 12) % 12, top = base + p.w;
   const inSet = (m) => set.has((((m - root) % 12) + 12) % 12);
   const near = (m, b, t) => {
     let best = null;
-    for (let s = 0; s < 6; s++) {
-      const f = m - OPEN_ABS[s];
-      if (f < 0 || f > FRETS || (f >= b && f <= t)) continue;
+    for (let s = 0; s < tuning.strings; s++) {
+      const f = m - tuning.openAbs[s];
+      if (f < 0 || f > tuning.frets || (f >= b && f <= t)) continue;
       const d = f < b ? b - f : f - t;
       if (!best || d < best.d || (d === best.d && f > t)) best = { s, f, d };
     }
     return best;
   };
   const cells = [], have = new Set();
-  for (let s = 0; s < 6; s++) for (let f = base; f <= top; f++) if (inSet(OPEN_ABS[s] + f)) { have.add(OPEN_ABS[s] + f); cells.push({ s, f: f + k, gap: false }); }
+  for (let s = 0; s < tuning.strings; s++) for (let f = base; f <= top; f++) if (inSet(tuning.openAbs[s] + f)) { have.add(tuning.openAbs[s] + f); cells.push({ s, f: f + k, gap: false }); }
   if (fill && have.size) {
     const lo = Math.min(...have), hi = Math.max(...have);
     for (let m = lo + 1; m < hi; m++) {
       if (!inSet(m) || have.has(m)) continue;
       let g = near(m, base, top);
-      if (g && k) g = g.f + k <= FRETS ? { s: g.s, f: g.f + k } : near(m + k, base + k, top + k);
+      if (g && k) g = g.f + k <= tuning.frets ? { s: g.s, f: g.f + k } : near(m + k, base + k, top + k);
       if (g) cells.push({ s: g.s, f: g.f, gap: true });
     }
   }
   return cells;
 }
 // A card's neck: six fret columns (more if the dots span more), the dots centred with the spare column above them.
-function atFrame(cells) {
+function atFrame(tuning, cells) {
   const fs = cells.map((c) => c.f), lo = Math.min(...fs), hi = Math.max(...fs);
   const span = hi - lo + 1, cols = Math.max(6, span);
-  return { lo, hi, cols, start: Math.max(0, Math.min(FRETS - cols + 1, lo - Math.floor((cols - span) / 2))) };
+  return { lo, hi, cols, start: Math.max(0, Math.min(tuning.frets - cols + 1, lo - Math.floor((cols - span) / 2))) };
 }
 // The cards for the current state. Position: the five windows of the scale, low fret to high. Mode: the seven modes in one
 // window number, from the same root or from the parent major key (each mode in its own window of that number; root letters
 // as the Modes page spells them). Key: the scale in one window in all 12 keys, C up to B. Also 12 up adds each window's copy
 // 12 frets higher where all of it fits on the neck.
-function atCards(cfg, at) {
+function atCards(tuning, cfg, at) {
   const { keyRoot, keyMode, mode } = cfg, { show, by, pos, from, up } = at;
   const out = [];
   const add = (id, title, sc, p, tags) => [0, 12].forEach((k) => {
-    const base = (((sc.root - 4 + p.off) % 12) + 12) % 12;
-    if (k && (!up || base + p.w + k > FRETS)) return;
-    const cells = atCells(sc.root, sc.set, p, k, sc.show === "scale");
-    out.push({ id: id + (k ? "u" : ""), title: title + (k ? " · 12 up" : ""), sc, p, k, at: base + k, cells, tags, ...atFrame(cells) });
+    const base = (((sc.root - CAGED_ANCHOR + p.off) % 12) + 12) % 12;
+    if (k && (!up || base + p.w + k > tuning.frets)) return;
+    const cells = atCells(tuning, sc.root, sc.set, p, k, sc.show === "scale");
+    out.push({ id: id + (k ? "u" : ""), title: title + (k ? " · 12 up" : ""), sc, p, k, at: base + k, cells, tags, ...atFrame(tuning, cells) });
   });
   const typeTag = show === "scale" ? SCALE_LABEL[mode] : `${keyMode} ${show}`;
   if (by === "mode") {
@@ -90,20 +91,20 @@ function atCards(cfg, at) {
 
 // A card's neck: the window's cells in its colour, chord tones larger when asked, the root with an ink centre; strings
 // outside the Strings filter as open circles. Spans only, so the whole neck can sit inside the card's button.
-function MiniNeck({ card, labelMode, big, str, lg }) {
+function MiniNeck({ tuning, card, labelMode, big, str, lg }) {
   const { sc, p, cells, start, cols } = card;
   const rowH = lg ? 34 : 28, d1 = lg ? 26 : 22, d2 = lg ? 22 : 18, fs = lg ? 12 : 11, col = POS_COLOR[p.letter];
   const hit = {};
   cells.forEach((c) => { hit[c.s * 100 + c.f] = c; });
   const out = [];
-  for (let s = 0; s < 6; s++) {
+  for (let s = 0; s < tuning.strings; s++) {
     const off = str !== null && (s < str || s > str + 2);
-    out.push(<span key={"l" + s} className="mn-c" style={{ height: rowH, fontSize: 11, fontWeight: 600, color: off ? THEME.muted : THEME.text }}>{STRING_LABELS[s]}</span>);
+    out.push(<span key={"l" + s} className="mn-c" style={{ height: rowH, fontSize: 11, fontWeight: 600, color: off ? THEME.muted : THEME.text }}>{tuning.labels[s]}</span>);
     for (let f = start; f < start + cols; f++) {
       const c = hit[s * 100 + f];
       let dot = null;
       if (c) {
-        const pc = (OPEN[s] + f) % 12, iv = (((pc - sc.root) % 12) + 12) % 12, isRoot = iv === 0, isCT = sc.ct.has(iv);
+        const pc = (tuning.open[s] + f) % 12, iv = (((pc - sc.root) % 12) + 12) % 12, isRoot = iv === 0, isCT = sc.ct.has(iv);
         const sz = isRoot || !big || isCT ? d1 : d2, lab = labelMode === "name" ? sc.name(pc) : labelMode === "degree" ? sc.deg(iv) : "";
         const data = { "data-c": `${s}-${f}`, "data-gap": c.gap ? "1" : undefined, "data-off": off ? "1" : undefined, title: `${sc.name(pc)} · ${sc.deg(iv)}` };
         dot = off
@@ -114,7 +115,7 @@ function MiniNeck({ card, labelMode, big, str, lg }) {
       }
       out.push(
         <span key={s + "-" + f} className="mn-c" style={{ height: rowH, borderRight: f === 0 ? `4px solid ${THEME.nut}` : `1.5px solid ${THEME.line}`, background: f === 0 ? THEME.track : undefined }}>
-          <span className="mn-s" style={{ height: STRING_GAUGE[s], marginTop: -STRING_GAUGE[s] / 2 }} />
+          <span className="mn-s" style={{ height: tuning.gauges[s], marginTop: -tuning.gauges[s] / 2 }} />
           {dot}
         </span>
       );
@@ -129,16 +130,16 @@ function MiniNeck({ card, labelMode, big, str, lg }) {
 // shows the scale in CAGED colours, half and half where two windows share a note, as the Neck does in All. A chosen or
 // hovered card lights its window in every copy on the neck, gap fill included, and the rest go to open circles; the ruler
 // names each window's span.
-function NeckMap({ sc, p, str, phone, note }) {
+function NeckMap({ tuning, sc, p, str, phone, note }) {
   const posList = AT_POS(sc.keyMode);
-  const baseOf = (q) => (((sc.root - 4 + q.off) % 12) + 12) % 12;
+  const baseOf = (q) => (((sc.root - CAGED_ANCHOR + q.off) % 12) + 12) % 12;
   const inPos = (f, q) => ((((f - baseOf(q)) % 12) + 12) % 12) <= q.w;
-  const gaps = p && sc.show === "scale" ? gapCells(sc.root, sc.set, p) : null;
+  const gaps = p && sc.show === "scale" ? gapCells(tuning, sc.root, sc.set, p) : null;
   const inWin = (s, f) => inPos(f, p) || (gaps !== null && (gaps.has(s * 12 + (f % 12)) || gaps.cut.has(s * 100 + f)));
   const spans = [];
   posList.forEach((q) => {
-    for (let c = baseOf(q) - 12; c <= FRETS; c += 12) {
-      const a = Math.max(0, c), z = Math.min(FRETS, c + q.w);
+    for (let c = baseOf(q) - 12; c <= tuning.frets; c += 12) {
+      const a = Math.max(0, c), z = Math.min(tuning.frets, c + q.w);
       if (z >= a) spans.push({ q, a, z, clipped: a !== c || z !== c + q.w });
     }
   });
@@ -151,11 +152,11 @@ function NeckMap({ sc, p, str, phone, note }) {
   });
   const lanes = Math.max(2, ends.length), rowH = 16, dot = phone ? 9 : 11;
   const cellsOut = [];
-  for (let s = 0; s < 6; s++) {
+  for (let s = 0; s < tuning.strings; s++) {
     const off = str !== null && (s < str || s > str + 2);
-    cellsOut.push(<div key={"l" + s} className="nm-c" style={{ gridRow: s + 1, gridColumn: 1, height: rowH, fontSize: 11, color: THEME.muted }}>{STRING_LABELS[s]}</div>);
-    for (let f = 0; f <= FRETS; f++) {
-      const iv = (((OPEN[s] + f - sc.root) % 12) + 12) % 12;
+    cellsOut.push(<div key={"l" + s} className="nm-c" style={{ gridRow: s + 1, gridColumn: 1, height: rowH, fontSize: 11, color: THEME.muted }}>{tuning.labels[s]}</div>);
+    for (let f = 0; f <= tuning.frets; f++) {
+      const iv = (((tuning.open[s] + f - sc.root) % 12) + 12) % 12;
       let mark = null;
       if (sc.set.has(iv)) {
         const isRoot = iv === 0, on = !off && (p ? inWin(s, f) : true);
@@ -180,18 +181,18 @@ function NeckMap({ sc, p, str, phone, note }) {
   return (
     <section className="nmap" aria-label="Neck map">
       <div className="nm-head"><h2>Neck map</h2><span data-mapnote className="text-xs text-muted">{note}</span></div>
-      <div role="img" aria-label={`The whole neck. ${note}`} className="nm-g" style={{ gridTemplateColumns: `14px ${COL_PX.map((n) => `minmax(0, ${n}fr)`).join(" ")}` }}>
+      <div role="img" aria-label={`The whole neck. ${note}`} className="nm-g" style={{ gridTemplateColumns: `14px ${colPx(tuning.frets).map((n) => `minmax(0, ${n}fr)`).join(" ")}` }}>
         {cellsOut}
-        {Array.from({ length: FRETS + 1 }, (_, f) => (!phone || MARKERS[f]) && (
-          <div key={"n" + f} className="nm-c" style={{ gridRow: 7, gridColumn: f + 2, height: rowH, fontSize: 11, overflow: "visible", color: MARKERS[f] ? THEME.text : THEME.muted, fontWeight: MARKERS[f] ? 700 : 400 }}>{f}</div>
+        {Array.from({ length: tuning.frets + 1 }, (_, f) => (!phone || MARKERS[f]) && (
+          <div key={"n" + f} className="nm-c" style={{ gridRow: tuning.strings + 1, gridColumn: f + 2, height: rowH, fontSize: 11, overflow: "visible", color: MARKERS[f] ? THEME.text : THEME.muted, fontWeight: MARKERS[f] ? 700 : 400 }}>{f}</div>
         ))}
-        {Array.from({ length: lanes }, (_, l) => <div key={"rl" + l} style={{ gridRow: 8 + l, gridColumn: 1, height: 18 }} />)}
+        {Array.from({ length: lanes }, (_, l) => <div key={"rl" + l} style={{ gridRow: tuning.strings + 2 + l, gridColumn: 1, height: 18 }} />)}
         {spans.map((sp) => {
           const on = !p || sp.q.num === p.num, c = on ? POS_COLOR[sp.q.letter] : THEME.line, side = on && p ? 2 : 1;
           return (
             <div key={`r${sp.q.num}-${sp.a}`} data-mruler={`${sp.q.num} ${sp.q.letter}`} data-on={on && p ? "1" : undefined} className="nm-r"
-              style={{ gridRow: 8 + sp.lane, gridColumn: `${sp.a + 2} / ${sp.z + 3}`, color: on && p ? THEME.text : THEME.muted, fontWeight: on && p ? 700 : 400,
-                borderBottom: `${on && p ? 2 : 1}px solid ${c}`, borderLeft: sp.clipped && sp.a === 0 ? "none" : `${side}px solid ${c}`, borderRight: sp.clipped && sp.z === FRETS ? "none" : `${side}px solid ${c}` }}>
+              style={{ gridRow: tuning.strings + 2 + sp.lane, gridColumn: `${sp.a + 2} / ${sp.z + 3}`, color: on && p ? THEME.text : THEME.muted, fontWeight: on && p ? 700 : 400,
+                borderBottom: `${on && p ? 2 : 1}px solid ${c}`, borderLeft: sp.clipped && sp.a === 0 ? "none" : `${side}px solid ${c}`, borderRight: sp.clipped && sp.z === tuning.frets ? "none" : `${side}px solid ${c}` }}>
               {phone ? sp.q.letter : `${sp.q.num} ${sp.q.letter}`}
             </div>
           );
@@ -201,7 +202,7 @@ function NeckMap({ sc, p, str, phone, note }) {
   );
 }
 
-export function AtlasPage({ cfg, update, at, setAt, labelMode, setLabelMode, onOpen }) {
+export function AtlasPage({ tuning, cfg, update, at, setAt, labelMode, setLabelMode, onOpen, onOpenChord }) {
   const { keyRoot, keyMode, mode } = cfg, { am, show, by, pos, from, str, up, ct, size, lit } = at;
   const phone = useMedia(PHONE_Q);
   const [hov, setHov] = useState(null);
@@ -209,7 +210,7 @@ export function AtlasPage({ cfg, update, at, setAt, labelMode, setLabelMode, onO
   const [pick, setPick] = useState(false);
   const [open, setOpen] = useState("");
   const set = (p) => setAt((a) => ({ ...a, ...p }));
-  const cards = useMemo(() => atCards(cfg, at), [keyRoot, keyMode, mode, cfg.keySpell, show, by, pos, from, up]);
+  const cards = useMemo(() => atCards(tuning, cfg, at), [tuning, keyRoot, keyMode, mode, cfg.keySpell, show, by, pos, from, up]);
   const mapOn = at.map === null ? !phone : at.map;
   const litCard = cards.find((c) => c.id === lit) || null, target = cards.find((c) => c.id === hov) || litCard;
 
@@ -308,10 +309,7 @@ export function AtlasPage({ cfg, update, at, setAt, labelMode, setLabelMode, onO
         <Track label="Atlas mode" cols={2}>{[["scales","Scales"],["chords","Chords"]].map(([k, l]) => <Seg key={k} active={am === k} onClick={() => set({ am: k })}>{l}</Seg>)}</Track>
       </div>
       {am === "chords" ? (
-        <section className="card" aria-label="Chords" style={{ marginTop: 8, maxWidth: 760 }}>
-          <h2>Chords mode is coming next</h2>
-          <p className="text-sm text-body" style={{ margin: 0, lineHeight: 1.5 }}>A chord by name, shown as its shapes: CAGED forms, closed triads, drop 2 and drop 3 voicings and shells. It is not built yet; Scales is ready.</p>
-        </section>
+        <ChordsMode tuning={tuning} at={at} setAt={setAt} labelMode={labelMode} setLabelMode={setLabelMode} onOpen={onOpenChord} />
       ) : (
         <React.Fragment>
           {phone ? (
@@ -354,7 +352,7 @@ export function AtlasPage({ cfg, update, at, setAt, labelMode, setLabelMode, onO
             <Btn onClick={() => set({ map: !mapOn })} aria-pressed={mapOn}>Neck map</Btn>
           </div>
 
-          {mapOn && <NeckMap sc={mapSc} p={target ? target.p : null} str={str} phone={phone} note={mapNote} />}
+          {mapOn && <NeckMap tuning={tuning} sc={mapSc} p={target ? target.p : null} str={str} phone={phone} note={mapNote} />}
 
           <CardGrid heading={heading} count={cards.length} large={size === "large"}>
             {cards.map((c) => {
@@ -362,7 +360,7 @@ export function AtlasPage({ cfg, update, at, setAt, labelMode, setLabelMode, onO
               return (
                 <AtlasCard key={c.id} card={c} on={on} onToggle={() => set({ lit: on ? null : c.id })} setHov={setHov} onOpen={() => onOpen(c, str)}
                   mark={<React.Fragment>{c.p.num} {c.p.letter}</React.Fragment>} markColour={POS_COLOR[c.p.letter]}>
-                  <MiniNeck card={c} labelMode={labelMode} big={ct === "larger"} str={str} lg={size === "large"} />
+                  <MiniNeck tuning={tuning} card={c} labelMode={labelMode} big={ct === "larger"} str={str} lg={size === "large"} />
                 </AtlasCard>
               );
             })}
