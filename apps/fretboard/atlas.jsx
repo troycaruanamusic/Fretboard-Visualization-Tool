@@ -11,9 +11,10 @@ import { MARKERS, colPx, SET_NAME } from "./guitar.js";
 import { POS_COLOR, POS_MAJOR, POS_MINOR, CAGED_ANCHOR } from "./caged.js";
 import { keepChord } from "./state.js";
 import { gapCells } from "./neck.jsx";
+import { ChordsMode } from "./atlaschords.jsx";
 
 // Atlas page (Round 11, Atlas review and mock-up of 18 Nov): a scale as a grid of small necks, one card per shape. Scales mode
-// is built here; Chords mode follows. Key, Major / Minor and Mode are the Neck's (cfg), and Labels is the Neck's Labels, so
+// is built here; Chords mode (Round 14) is atlaschords.jsx. Key, Major / Minor and Mode are the Neck's (cfg), and Labels is the Neck's Labels, so
 // the four pages stay on one key; Show, Lay out by and the filters are the Atlas's own (at).
 const AT_SHOW = [["scale","Scale"],["pentatonic","Pentatonic"],["blues","Blues"]];
 const AT_BY = [["position","Position"],["mode","Mode"],["key","Key"]];
@@ -201,7 +202,7 @@ function NeckMap({ tuning, sc, p, str, phone, note }) {
   );
 }
 
-export function AtlasPage({ tuning, cfg, update, at, setAt, labelMode, setLabelMode, onOpen }) {
+export function AtlasPage({ tuning, cfg, update, at, setAt, labelMode, setLabelMode, onOpen, onOpenChord }) {
   const { keyRoot, keyMode, mode } = cfg, { am, show, by, pos, from, str, up, ct, size, lit } = at;
   const phone = useMedia(PHONE_Q);
   const [hov, setHov] = useState(null);
@@ -308,10 +309,7 @@ export function AtlasPage({ tuning, cfg, update, at, setAt, labelMode, setLabelM
         <Track label="Atlas mode" cols={2}>{[["scales","Scales"],["chords","Chords"]].map(([k, l]) => <Seg key={k} active={am === k} onClick={() => set({ am: k })}>{l}</Seg>)}</Track>
       </div>
       {am === "chords" ? (
-        <section className="card" aria-label="Chords" style={{ marginTop: 8, maxWidth: 760 }}>
-          <h2>Chords mode is coming next</h2>
-          <p className="text-sm text-body" style={{ margin: 0, lineHeight: 1.5 }}>A chord by name, shown as its shapes: CAGED forms, closed triads, drop 2 and drop 3 voicings and shells. It is not built yet; Scales is ready.</p>
-        </section>
+        <ChordsMode tuning={tuning} at={at} setAt={setAt} labelMode={labelMode} setLabelMode={setLabelMode} onOpen={onOpenChord} />
       ) : (
         <React.Fragment>
           {phone ? (

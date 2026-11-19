@@ -13,6 +13,9 @@ import { AtlasPage } from "./atlas.jsx";
 import { TuningMenu } from "./head.jsx";
 import { STANDARD } from "./tunings.js";
 import { stateToQuery, queryToState, URL_INIT } from "./url.js";
+import { QUAL_IN_MORE } from "../../core/chords.js";
+import { chTon } from "./chordshapes.js";
+import { CH_FILTER_DEFAULT, chAnyFilter } from "./atlaschords.jsx";
 
 function FretboardTrainer() {
   // The tuning every page draws from (tunings layer). Standard only, so it is not yet state or part of the link.
@@ -34,6 +37,7 @@ function FretboardTrainer() {
   // lookup and the rows opened for details. It does not change the key on Neck or Chords until a row link is used.
   const [md, setMd] = useState(URL_INIT.md);
   // Atlas page state (Round 11): Show, Lay out by, the filters and the lit card. Key, Major / Minor and Mode live in cfg.
+  // Chords mode (Round 14) keeps its own chord, layout, voicing types, filters and lit card here too.
   const [at, setAt] = useState(URL_INIT.at);
   // Set by On the neck on an Atlas card: the Neck page then shows the way back. Any other page choice drops it.
   const [fromAtlas, setFromAtlas] = useState(null);
@@ -128,12 +132,26 @@ function FretboardTrainer() {
     setHelp(false);
     setPage("neck");
   };
+  // On the neck, from a chord card (Round 14, mock-up item 5, TC 19 Nov): the Neck page on Any chord with the card's root and
+  // quality, Show: Chord, and the card's CAGED window as Position where one window holds the whole shape (else no Position).
+  // Strings, Focus and Notes: Chord tones are cleared; More opens when the quality is in it, as the Any chord button does.
+  const openChord = (card) => {
+    const tri = card.q === "major" || card.q === "minor", arp = tri ? "triad" : card.q;
+    setCfg((c) => ({ ...c, scope: "arpeggio", arpMode: "quality", arp, tonality: chTon(card.q), root: card.root, pos: card.pos, strGroup: null, focus: [] }));
+    setIsolate(false);
+    if (QUAL_IN_MORE(arp)) setMore(true);
+    setFromAtlas({ label: `${card.title}, ${card.sub}` });
+    setHelp(false);
+    setPage("neck");
+  };
   // Clear: filters only; Key and Show stay (decision 12 = a). On the Atlas it clears the Atlas filters, Strings and Also 12 up;
   // the scale, Lay out by and Display stay (mock-up feedback, item 8).
   const anyFilter = cfg.pos !== null || cfg.strGroup !== null || cfg.focus.length > 0 || isolate;
-  const atFilter = at.am === "scales" && (at.str !== null || at.up);
+  // In Chords mode it clears the chord filters (Inversion, Frets, Copies, String set, Open strings, Max span); the chord,
+  // Lay out by, the voicing types and Display stay.
+  const atFilter = at.am === "scales" ? at.str !== null || at.up : chAnyFilter(at);
   const clearAll = () => {
-    if (page === "atlas") { setAt((a) => ({ ...a, str: null, up: false })); return; }
+    if (page === "atlas") { setAt((a) => (a.am === "scales" ? { ...a, str: null, up: false } : { ...a, ...CH_FILTER_DEFAULT })); return; }
     up({ pos: null, strGroup: null, focus: [] }); setIsolate(false);
   };
 
@@ -162,7 +180,7 @@ function FretboardTrainer() {
         : page === "neck" ? <Board tuning={tuning} cfg={cfg} update={up} globals={globals} back={fromAtlas && { label: fromAtlas.label, go: () => { setFromAtlas(null); setPage("atlas"); } }} />
         : page === "chords" ? <ChordsPage tuning={tuning} cfg={cfg} update={up} ch={ch} setCh={setCh} />
         : page === "modes" ? <ModesPage md={md} setMd={setMd} onNeck={showMode} />
-        : <AtlasPage tuning={tuning} cfg={cfg} update={up} at={at} setAt={setAt} labelMode={labelMode} setLabelMode={setLabelMode} onOpen={openCard} />}
+        : <AtlasPage tuning={tuning} cfg={cfg} update={up} at={at} setAt={setAt} labelMode={labelMode} setLabelMode={setLabelMode} onOpen={openCard} onOpenChord={openChord} />}
       </div>
     </div>
   );

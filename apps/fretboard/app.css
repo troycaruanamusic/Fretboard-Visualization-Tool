@@ -81,3 +81,5 @@
   .apick2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%}
   .apbtn{display:flex;align-items:center;gap:6px;width:100%;min-width:0}
   .ashow{width:100%}
+  /* Chords mode's phone picker (mock-up frame): the More groups as rows that open their grid. */
+  .apgrp{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:44px;width:100%;border-top:1px solid #334252;font-size:.875rem;color:#E3E9F0;text-align:left}

@@ -23,26 +23,31 @@ export function atScale(root, keyMode, show, mode, letter) {
 // The Atlas card grid (Round 12, moved from the Fretboard app's Atlas page): the heading with its count and note, then the
 // cards. Each card lights on a tap and previews on mouse hover; its picture (the app's small neck) sits inside the card's
 // button with the title and span; the footer holds the window tag in its colour, the tags, and the "On the neck" link.
-export function CardGrid({ heading, count, large, children }) {
+// Chords mode (Round 14) lays out several grids, one per section: each takes its own id, and a heading with no note.
+export function CardGrid({ heading, count, large, children, id = "atlas-cards" }) {
   return (
-    <section aria-labelledby="atlas-cards" style={{ marginTop: 16 }}>
-      <h2 id="atlas-cards" className="ahead">{heading[0]}<span className="text-muted" style={{ fontWeight: 500, fontSize: 12.5 }}>{count}</span><span className="text-muted" style={{ fontWeight: 600, fontSize: 12.5 }}>{heading[1]}</span></h2>
+    <section aria-labelledby={id} style={{ marginTop: 16 }}>
+      <h2 id={id} className="ahead">{heading[0]}<span className="text-muted" style={{ fontWeight: 500, fontSize: 12.5 }}>{count}</span>{heading[1] && <span className="text-muted" style={{ fontWeight: 600, fontSize: 12.5 }}>{heading[1]}</span>}</h2>
       <div className={"acards" + (large ? " lg" : "")}>
         {children}
       </div>
     </section>
   );
 }
-export function AtlasCard({ card: c, on, onToggle, setHov, onOpen, mark, markColour, children }) {
+// A chord card (Round 14) passes sub, its fret string (x 3 2 0 1 0), in place of the span, and no mark colour for the
+// neutral voicing types.
+export function AtlasCard({ card: c, on, onToggle, setHov, onOpen, mark, markColour, children, sub = null }) {
   return (
     <div data-card={c.id} data-lit={on ? "1" : undefined} className={"acard" + (on ? " lit" : "")} onClick={onToggle}
       onPointerEnter={(e) => { if (e.pointerType === "mouse") setHov(c.id); }} onPointerLeave={() => setHov((h) => (h === c.id ? null : h))}>
-      <button className="acard-hit" aria-pressed={on} aria-label={`${c.title}, frets ${c.lo} to ${c.hi}`}>
-        <span className="acard-top"><span data-title style={{ fontSize: 14, fontWeight: 700, color: THEME.text, whiteSpace: "nowrap" }}>{c.title}</span><span data-frets className="text-xs text-muted" style={{ whiteSpace: "nowrap" }}>frets {c.lo}–{c.hi}</span></span>
+      <button className="acard-hit" aria-pressed={on} aria-label={sub ? `${c.title}, ${sub}` : `${c.title}, frets ${c.lo} to ${c.hi}`}>
+        <span className="acard-top"><span data-title style={{ fontSize: 14, fontWeight: 700, color: THEME.text, whiteSpace: "nowrap" }}>{c.title}</span>{sub
+          ? <span data-frets className="text-xs text-muted" style={{ whiteSpace: "nowrap", letterSpacing: ".5px" }}>{sub}</span>
+          : <span data-frets className="text-xs text-muted" style={{ whiteSpace: "nowrap" }}>frets {c.lo}–{c.hi}</span>}</span>
         {children}
       </button>
       <div className="acard-foot">
-        <span className="atag" style={{ boxShadow: `inset 0 -3px 0 ${markColour}`, color: THEME.text, fontWeight: 600 }}>{mark}</span>
+        <span className="atag" style={{ boxShadow: markColour ? `inset 0 -3px 0 ${markColour}` : undefined, color: THEME.text, fontWeight: 600 }}>{mark}</span>
         {c.tags.map((t) => <span key={t} className="atag">{t}</span>)}
         <button data-open={c.id} onClick={(e) => { e.stopPropagation(); onOpen(); }} aria-label={`${c.title} on the neck`} className="btn text-sm text-link underline" style={{ padding: "0 4px", marginLeft: "auto" }}>On the neck</button>
       </div>
