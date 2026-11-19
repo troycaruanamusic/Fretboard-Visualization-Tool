@@ -11,9 +11,12 @@ import { ChordsPage } from "./chords.jsx";
 import { ModesPage } from "./modes.jsx";
 import { AtlasPage } from "./atlas.jsx";
 import { TuningMenu } from "./head.jsx";
+import { STANDARD } from "./tunings.js";
 import { stateToQuery, queryToState, URL_INIT } from "./url.js";
 
 function FretboardTrainer() {
+  // The tuning every page draws from (tunings layer). Standard only, so it is not yet state or part of the link.
+  const tuning = STANDARD;
   // Every value starts from the URL (Round 7); with no query it is the v0.30 default.
   const [page, setPage] = useState(URL_INIT.top.page);
   const [labelMode, setLabelMode] = useState(URL_INIT.top.labelMode);
@@ -146,7 +149,7 @@ function FretboardTrainer() {
           <Track label="Page" cols={4}>{[["neck","Neck"],["chords","Chords"],["modes","Modes"],["atlas","Atlas"]].map(([k,l]) => <Seg key={k} active={page === k && !help} onClick={() => { setPage(k); setHelp(false); setFromAtlas(null); }}>{l}</Seg>)}</Track>
         </nav>
         <div className="hrow2">
-          <TuningMenu phone={phone} />
+          <TuningMenu tuning={tuning} phone={phone} />
           <div className="hbtns">
             <Btn onClick={copyLink} aria-live="polite" className="btn copyl text-sm transition-colors">{copied || "Copy link"}</Btn>
             <Btn onClick={() => setHelp((h) => !h)} aria-pressed={help} className="btn hb hb1 text-sm transition-colors">Help</Btn>
@@ -156,10 +159,10 @@ function FretboardTrainer() {
       </header>
 
       {help ? <Help onExample={applyPreset} />
-        : page === "neck" ? <Board cfg={cfg} update={up} globals={globals} back={fromAtlas && { label: fromAtlas.label, go: () => { setFromAtlas(null); setPage("atlas"); } }} />
-        : page === "chords" ? <ChordsPage cfg={cfg} update={up} ch={ch} setCh={setCh} />
+        : page === "neck" ? <Board tuning={tuning} cfg={cfg} update={up} globals={globals} back={fromAtlas && { label: fromAtlas.label, go: () => { setFromAtlas(null); setPage("atlas"); } }} />
+        : page === "chords" ? <ChordsPage tuning={tuning} cfg={cfg} update={up} ch={ch} setCh={setCh} />
         : page === "modes" ? <ModesPage md={md} setMd={setMd} onNeck={showMode} />
-        : <AtlasPage cfg={cfg} update={up} at={at} setAt={setAt} labelMode={labelMode} setLabelMode={setLabelMode} onOpen={openCard} />}
+        : <AtlasPage tuning={tuning} cfg={cfg} update={up} at={at} setAt={setAt} labelMode={labelMode} setLabelMode={setLabelMode} onOpen={openCard} />}
       </div>
     </div>
   );

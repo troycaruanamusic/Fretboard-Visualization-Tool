@@ -6,7 +6,7 @@ import { DEG_LABEL, DEG_OVERRIDE, KEY_DEG, MODE_IV, MODE_Q, KEY_DEG_HM } from ".
 import { accs, keySpelling, uniAcc, hmSpelling } from "../../core/spelling.js";
 import { DIATONIC, INV_NAME, INV_NAME7, CH_Q, DIATONIC7, DROP2, DROP3 } from "../../core/chords.js";
 import { Seg, Track, Row, Card, Btn } from "../../core/ui.jsx";
-import { OPEN, OPEN_ABS, STRING_LABELS, STRING_GAUGE, FRETS, MARKERS, COL_PX, SET_NAME } from "./guitar.js";
+import { MARKERS, colPx, SET_NAME } from "./guitar.js";
 import { NEUTRAL_CT } from "./caged.js";
 import { keepChord } from "./state.js";
 
@@ -18,7 +18,7 @@ const SET_STRS = { 2: (g) => [g + 3, g + 2, g + 1, g], 3: (g) => [g + 4, g + 2, 
 // tone the inversion puts there; each higher string takes the next chord tone above (closed). I sits at its lowest place
 // on the neck and each chord climbs from the one below; a chord that would pass fret 21 drops an octave (Round 5).
 // Frets per shape are listed low string to high, as in the strip.
-function triadLadder(keyRoot, keyMode, g, inv) {
+function triadLadder(tuning, keyRoot, keyMode, g, inv) {
   const sc = MODE_IV[keyMode === "major" ? "ionian" : "aeolian"];
   const strs = [g + 2, g + 1, g];
   let prev = null;
@@ -28,18 +28,18 @@ function triadLadder(keyRoot, keyMode, g, inv) {
     const up = (p, pc) => { let m = p; while (((m % 12) + 12) % 12 !== pc) m++; return m; };
     const build = (b) => { const ps = [b]; order.slice(1).forEach((pc) => ps.push(up(ps[ps.length - 1] + 1, pc))); return ps; };
     let bass;
-    if (prev === null) { bass = up(OPEN_ABS[strs[0]] - 12, order[0]); while (build(bass).some((m, i) => m - OPEN_ABS[strs[i]] < 0)) bass += 12; }
+    if (prev === null) { bass = up(tuning.openAbs[strs[0]] - 12, order[0]); while (build(bass).some((m, i) => m - tuning.openAbs[strs[i]] < 0)) bass += 12; }
     else bass = up(prev + 1, order[0]);
     prev = bass;
-    let frets = build(bass).map((m, i) => m - OPEN_ABS[strs[i]]);
-    if (Math.max(...frets) > FRETS) frets = frets.map((f) => f - 12);
-    return { rn, root: pcs[0], q, cells: frets.map((f, i) => ({ s: strs[i], f, pc: (OPEN[strs[i]] + f) % 12 })), frets };
+    let frets = build(bass).map((m, i) => m - tuning.openAbs[strs[i]]);
+    if (Math.max(...frets) > tuning.frets) frets = frets.map((f) => f - 12);
+    return { rn, root: pcs[0], q, cells: frets.map((f, i) => ({ s: strs[i], f, pc: (tuning.open[strs[i]] + f) % 12 })), frets };
   });
 }
 // The seventh ladder on string set g (top string index: 0 = strings 1–4): as triadLadder, with the drop-2 order of the
 // inversion. Each tone is the next one above the string below, which gives the drop-2 spacing (bass to top under 2 octaves).
 // Drop-3 (Round 10) uses its own order and strings the same way; harm takes harmonic minor's sevenths (minor keys only).
-function seventhLadder(keyRoot, keyMode, g, inv, drop = 2, harm = false) {
+function seventhLadder(tuning, keyRoot, keyMode, g, inv, drop = 2, harm = false) {
   const sc = MODE_IV[harm ? "harmonic" : keyMode === "major" ? "ionian" : "aeolian"];
   const strs = SET_STRS[drop](g);
   let prev = null;
@@ -49,12 +49,12 @@ function seventhLadder(keyRoot, keyMode, g, inv, drop = 2, harm = false) {
     const up = (p, pc) => { let m = p; while (((m % 12) + 12) % 12 !== pc) m++; return m; };
     const build = (b) => { const ps = [b]; order.slice(1).forEach((pc) => ps.push(up(ps[ps.length - 1] + 1, pc))); return ps; };
     let bass;
-    if (prev === null) { bass = up(OPEN_ABS[strs[0]] - 12, order[0]); while (build(bass).some((m, i) => m - OPEN_ABS[strs[i]] < 0)) bass += 12; }
+    if (prev === null) { bass = up(tuning.openAbs[strs[0]] - 12, order[0]); while (build(bass).some((m, i) => m - tuning.openAbs[strs[i]] < 0)) bass += 12; }
     else bass = up(prev + 1, order[0]);
     prev = bass;
-    let frets = build(bass).map((m, i) => m - OPEN_ABS[strs[i]]);
-    if (Math.max(...frets) > FRETS) frets = frets.map((f) => f - 12);
-    return { rn, root: pcs[0], q, cells: frets.map((f, i) => ({ s: strs[i], f, pc: (OPEN[strs[i]] + f) % 12 })), frets };
+    let frets = build(bass).map((m, i) => m - tuning.openAbs[strs[i]]);
+    if (Math.max(...frets) > tuning.frets) frets = frets.map((f) => f - 12);
+    return { rn, root: pcs[0], q, cells: frets.map((f, i) => ({ s: strs[i], f, pc: (tuning.open[strs[i]] + f) % 12 })), frets };
   });
 }
 
@@ -107,14 +107,14 @@ function ChordStrip({ ladder, deg, setDeg, nameOf }) {
   );
 }
 
-export function ChordsPage({ cfg, update, ch, setCh }) {
+export function ChordsPage({ tuning, cfg, update, ch, setCh }) {
   const { keyRoot, keyMode, arp, arpMode, mode } = cfg;
   const { deg, strSet, inv, numFrom, scaleBehind, sev, strSet7, inv7, drop3, strSet3, inv3, harm } = ch;
   // Triads, drop-2 and drop-3 sevenths each keep their own string set and inversion (Rounds 8 and 10).
   const d3 = sev && drop3, hm = sev && harm && keyMode === "minor";
   const g = sev ? (drop3 ? strSet3 : strSet7) : strSet, iv = sev ? (drop3 ? inv3 : inv7) : inv;
   const setDeg = (d) => setCh((c) => ({ ...c, deg: d }));
-  const ladder = useMemo(() => (sev ? seventhLadder(keyRoot, keyMode, g, iv, d3 ? 3 : 2, hm) : triadLadder(keyRoot, keyMode, g, iv)), [keyRoot, keyMode, sev, g, iv, d3, hm]);
+  const ladder = useMemo(() => (sev ? seventhLadder(tuning, keyRoot, keyMode, g, iv, d3 ? 3 : 2, hm) : triadLadder(tuning, keyRoot, keyMode, g, iv)), [tuning, keyRoot, keyMode, sev, g, iv, d3, hm]);
   const keySp = useMemo(() => (hm ? hmSpelling(keyRoot) : keySpelling(keyRoot, keyMode)), [keyRoot, keyMode, hm]);
   // accs: as uniAcc, with 𝄪 for the raised 7th of G♯ harmonic minor (F𝄪).
   const nameOf = (c) => accs(keySp[c.root].name) + CH_Q[c.q][1];
@@ -138,12 +138,12 @@ export function ChordsPage({ cfg, update, ch, setCh }) {
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || el.scrollWidth <= el.clientWidth) return;
-    const lo = el.querySelector(`[data-fret="${Math.max(0, Math.min(...cur.frets) - 1)}"]`), hi = el.querySelector(`[data-fret="${Math.min(FRETS, Math.max(...cur.frets) + 1)}"]`);
+    const lo = el.querySelector(`[data-fret="${Math.max(0, Math.min(...cur.frets) - 1)}"]`), hi = el.querySelector(`[data-fret="${Math.min(tuning.frets, Math.max(...cur.frets) + 1)}"]`);
     if (!lo || !hi) return;
     const box = el.getBoundingClientRect(), l = lo.getBoundingClientRect().left - box.left + el.scrollLeft, r = hi.getBoundingClientRect().right - box.left + el.scrollLeft;
     const smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     el.scrollTo({ left: Math.max(0, (l + r) / 2 - el.clientWidth / 2), behavior: smooth ? "smooth" : "auto" });
-  }, [deg, sev, g, iv, d3, hm, keyRoot, keyMode]);
+  }, [tuning, deg, sev, g, iv, d3, hm, keyRoot, keyMode]);
 
   // ← and → step the chord from anywhere on the page except inside a control group, which keeps its own arrow keys.
   useEffect(() => {
@@ -159,11 +159,11 @@ export function ChordsPage({ cfg, update, ch, setCh }) {
   }, []);
 
   const cellH = 46, fontPx = 11;
-  const COLS = `30px ${COL_PX.map((n) => `minmax(${n}px, ${n}fr)`).join(" ")}`;
+  const COLS = `30px ${colPx(tuning.frets).map((n) => `minmax(${n}px, ${n}fr)`).join(" ")}`;
   const renderRow = (s) => {
     const cells = [];
-    for (let f = 0; f <= FRETS; f++) {
-      const pc = (OPEN[s] + f) % 12;
+    for (let f = 0; f <= tuning.frets; f++) {
+      const pc = (tuning.open[s] + f) % 12;
       const hit = cell[s * 100 + f];
       let dot = null;
       if (hit) {
@@ -189,14 +189,14 @@ export function ChordsPage({ cfg, update, ch, setCh }) {
       }
       cells.push(
         <div key={f} data-fret={s === 0 ? f : undefined} className="relative flex items-center justify-center" style={{ gridRow: s + 2, gridColumn: f + 2, height: cellH, borderRight: f === 0 ? `5px solid ${THEME.nut}` : `2px solid ${THEME.line}`, background: f === 0 ? THEME.track : undefined }}>
-          <div className="absolute left-0 right-0" style={{ top: "50%", transform: "translateY(-50%)", height: STRING_GAUGE[s], background: THEME.edge }} />
+          <div className="absolute left-0 right-0" style={{ top: "50%", transform: "translateY(-50%)", height: tuning.gauges[s], background: THEME.edge }} />
           {dot}
         </div>
       );
     }
     return (
       <div key={s} className="contents">
-        <div className="flex items-center justify-center text-xs font-semibold" style={{ gridRow: s + 2, gridColumn: 1, height: cellH, color: onSet(s) ? THEME.text : THEME.muted }}>{STRING_LABELS[s]}</div>
+        <div className="flex items-center justify-center text-xs font-semibold" style={{ gridRow: s + 2, gridColumn: 1, height: cellH, color: onSet(s) ? THEME.text : THEME.muted }}>{tuning.labels[s]}</div>
         {cells}
       </div>
     );
@@ -220,9 +220,9 @@ export function ChordsPage({ cfg, update, ch, setCh }) {
               <div key={"rn" + c.rn} data-numeral={k} className="flex items-end justify-center" style={{ gridRow: 1, gridColumn: `${Math.min(...c.frets) + 2} / ${Math.max(...c.frets) + 3}`, height: 22, paddingBottom: 2, fontSize: 12.5, fontWeight: 700, whiteSpace: "nowrap", color: k === deg ? THEME.text : THEME.muted }}>{c.rn}</div>
             ))}
             <div style={{ gridRow: 1, gridColumn: 1, height: 22 }} />
-            {[0,1,2,3,4,5].map(renderRow)}
-            {Array.from({ length: FRETS + 1 }, (_, f) => (
-              <div key={"n" + f} className="flex items-center justify-center text-xs" style={{ gridRow: 8, gridColumn: f + 2, height: 24, color: MARKERS[f] ? THEME.text : THEME.muted, fontWeight: MARKERS[f] ? 700 : 400 }}>{f}</div>
+            {Array.from({ length: tuning.strings }, (_, s) => renderRow(s))}
+            {Array.from({ length: tuning.frets + 1 }, (_, f) => (
+              <div key={"n" + f} className="flex items-center justify-center text-xs" style={{ gridRow: tuning.strings + 2, gridColumn: f + 2, height: 24, color: MARKERS[f] ? THEME.text : THEME.muted, fontWeight: MARKERS[f] ? 700 : 400 }}>{f}</div>
             ))}
           </div>
         </div>
