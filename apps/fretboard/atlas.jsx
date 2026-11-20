@@ -13,6 +13,7 @@ import { POS_COLOR, POS_MAJOR, POS_MINOR, CAGED_ANCHOR } from "./caged.js";
 import { keepChord } from "./state.js";
 import { gapCells } from "./neck.jsx";
 import { ChordsMode } from "./atlaschords.jsx";
+import { IdentifyMode } from "./atlasidentify.jsx";
 
 // Atlas page (Round 11, Atlas review and mock-up of 18 Nov): a scale as a grid of small necks, one card per shape. Scales mode
 // is built here; Chords mode (Round 14) is atlaschords.jsx. Key, Major / Minor and Mode are the Neck's (cfg), and Labels is the Neck's Labels, so
@@ -313,10 +314,14 @@ export function AtlasPage({ tuning, cfg, update, at, setAt, labelMode, setLabelM
 
   return (
     <div>
+      {/* Identify (Round 16) is the third mode, with its one-line note beside the switch on tablet and desktop. */}
       <div className="amode">
-        <Track label="Atlas mode" cols={2}>{[["scales","Scales"],["chords","Chords"]].map(([k, l]) => <Seg key={k} active={am === k} onClick={() => set({ am: k })}>{l}</Seg>)}</Track>
+        <Track label="Atlas mode" cols={3}>{[["scales","Scales"],["chords","Chords"],["identify","Identify"]].map(([k, l]) => <Seg key={k} active={am === k} onClick={() => set({ am: k })}>{l}</Seg>)}</Track>
+        {am === "identify" && !phone && <span className="text-sm text-muted" style={{ marginLeft: 12 }}>Tap frets to name a chord and see its shapes.</span>}
       </div>
-      {am === "chords" ? (
+      {am === "identify" ? (
+        <IdentifyMode tuning={tuning} at={at} setAt={setAt} labelMode={labelMode} setLabelMode={setLabelMode} onOpen={onOpenChord} />
+      ) : am === "chords" ? (
         <ChordsMode tuning={tuning} at={at} setAt={setAt} labelMode={labelMode} setLabelMode={setLabelMode} onOpen={onOpenChord} />
       ) : (
         <React.Fragment>

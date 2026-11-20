@@ -138,12 +138,13 @@ function FretboardTrainer() {
   // On the neck, from a chord card (Round 14, mock-up item 5, TC 19 Nov): the Neck page on Any chord with the card's root and
   // quality, Show: Chord, and the card's CAGED window as Position where one window holds the whole shape (else no Position).
   // Strings, Focus and Notes: Chord tones are cleared; More opens when the quality is in it, as the Any chord button does.
-  const openChord = (card) => {
+  // Identify's cards (Round 16) pass their own back note: the shape's name and frets, "C6/A, x 0 2 0 1 0".
+  const openChord = (card, label = null) => {
     const tri = card.q === "major" || card.q === "minor", arp = tri ? "triad" : card.q;
     setCfg((c) => ({ ...c, scope: "arpeggio", arpMode: "quality", arp, tonality: chTon(card.q), root: card.root, pos: card.pos, strGroup: null, focus: [] }));
     setIsolate(false);
     if (QUAL_IN_MORE(arp)) setMore(true);
-    setFromAtlas({ label: [card.title, card.mark, card.kind !== "caged" && card.forms.length ? card.forms.join("/") + " form" : ""].filter(Boolean).join(", ") });
+    setFromAtlas({ label: label || [card.title, card.mark, card.kind !== "caged" && card.forms.length ? card.forms.join("/") + " form" : ""].filter(Boolean).join(", ") });
     setHelp(false);
     setPage("neck");
   };
@@ -152,9 +153,10 @@ function FretboardTrainer() {
   const anyFilter = cfg.pos !== null || cfg.strGroup !== null || cfg.focus.length > 0 || isolate;
   // In Chords mode it clears the chord filters (Inversion, Frets, Copies, String set, Open strings, Max span); the chord,
   // Lay out by, the voicing types and Display stay.
-  const atFilter = at.am === "scales" ? at.str !== null || at.up : chAnyFilter(at);
+  // Identify has no filters, so Clear is off there (Clear shape clears the shape).
+  const atFilter = at.am === "scales" ? at.str !== null || at.up : at.am === "chords" ? chAnyFilter(at) : false;
   const clearAll = () => {
-    if (page === "atlas") { setAt((a) => (a.am === "scales" ? { ...a, str: null, up: false } : { ...a, ...CH_FILTER_DEFAULT })); return; }
+    if (page === "atlas") { if (at.am !== "identify") setAt((a) => (a.am === "scales" ? { ...a, str: null, up: false } : { ...a, ...CH_FILTER_DEFAULT })); return; }
     up({ pos: null, strGroup: null, focus: [] }); setIsolate(false);
   };
 

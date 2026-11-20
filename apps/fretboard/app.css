@@ -84,5 +84,27 @@
   .ashow{width:100%}
   /* Chords mode's phone picker (mock-up frame): the More groups as rows that open their grid. */
   .apgrp{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:44px;width:100%;border-top:1px solid var(--line);font-size:.875rem;color:var(--text);text-align:left}
+  /* Identify (Round 16, Identify mock-up): the tap board, the shape line, the names list and the link to Chords mode. */
+  .ihead{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+  .ihead h2{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px}
+  .ilabels{display:flex;align-items:center;gap:8px;margin-left:auto}
+  .itb{background:var(--panel2);border-radius:12px;overflow-x:auto}
+  .itb-g{display:grid;min-width:min-content;padding:8px 8px 4px}
+  .itb-str{position:sticky;left:0;z-index:6;background:var(--panel2);display:flex;align-items:center;justify-content:space-between;gap:4px;padding:0 8px 0 4px;font-size:13px;font-weight:600;color:var(--text)}
+  .itb-badge{min-width:22px;height:22px;padding:0 4px;border-radius:11px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+  .itb-c{position:relative;display:flex;align-items:center;justify-content:center;min-width:0;padding:0}
+  .itb-n{height:22px;display:flex;align-items:center;justify-content:center;font-size:12px}
+  .iinfo{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;font-size:13px;color:var(--muted)}
+  .iinfo b{color:var(--text)}
+  .inames{display:flex;flex-direction:column;gap:8px}
+  .iname{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;width:100%;min-height:52px;padding:8px 12px;border-radius:8px;text-align:left;color:var(--text);background:var(--panel2);border:1px solid var(--line)}
+  .iname:hover{border-color:var(--edge)}
+  .iname.on{background:var(--ctl-hover);border-color:transparent;box-shadow:0 0 0 1.5px var(--text)}
+  .iname-big{font-size:20px;font-weight:800;min-width:80px}
+  .iname-mid{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .iname-tags{display:flex;flex-wrap:wrap;gap:4px;margin-left:auto}
+  .ito{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:12px}
+  .iover{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0;list-style:none}
+  .iover .atag{height:30px;gap:6px;font-size:13px}
   /* Inlays (Round 15): the fret markers between strings, under the dots. */
   .inlay{position:absolute;left:50%;top:100%;transform:translate(-50%,-50%);border-radius:50%;background:var(--inlay);z-index:1;pointer-events:none}

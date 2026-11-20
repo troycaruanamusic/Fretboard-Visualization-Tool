@@ -24,7 +24,7 @@ const BATCH = { phone: 12, wide: 24 };
 
 // A chord card's neck: six fret columns (more if the shape spans more), as the Scales cards. CAGED forms in their form's
 // colour; the other shapes neutral, the root with a gold rim (mock-up, TC 18 Nov).
-function ChordNeck({ tuning, card, labelMode, lg }) {
+export function ChordNeck({ tuning, card, labelMode, lg }) {
   const { cells, start, cols } = card;
   const rowH = lg ? 34 : 28, d1 = lg ? 26 : 22, fs = lg ? 12 : 11;
   // Every shape in its CAGED form colour (Round 15), split where two forms hold it, neutral where none does.
@@ -59,14 +59,14 @@ function ChordNeck({ tuning, card, labelMode, lg }) {
   return <span className="mneck" aria-hidden="true"><span className="mn-g" style={{ gridTemplateColumns: `16px repeat(${cols}, minmax(0, 1fr))` }}>{out}</span></span>;
 }
 // A card's head line (Round 15): the shape's tones, low string to high, as degrees or (Labels: Notes) note names.
-function tonesOf(card, labelMode) {
+export function tonesOf(card, labelMode) {
   const low = [...card.cells].sort((a, b) => b.s - a.s);
   return low.map((c) => (labelMode === "name" ? card.name((card.root + c.iv) % 12) : card.deg(c.iv))).join(" ");
 }
 // The form tag's underline in its colour, split where two forms hold the shape.
-const formLine = (fs) => (fs.length > 1 ? `linear-gradient(90deg, ${POS_COLOR[fs[0]]} 0 50%, ${POS_COLOR[fs[1]]} 50% 100%)` : `linear-gradient(${POS_COLOR[fs[0]]}, ${POS_COLOR[fs[0]]})`);
+export const formLine = (fs) => (fs.length > 1 ? `linear-gradient(90deg, ${POS_COLOR[fs[0]]} 0 50%, ${POS_COLOR[fs[1]]} 50% 100%)` : `linear-gradient(${POS_COLOR[fs[0]]}, ${POS_COLOR[fs[0]]})`);
 // Six fret columns or more, the shape centred with the spare column above it (the Scales cards' rule).
-function frame(tuning, cells) {
+export function frame(tuning, cells) {
   const fs = cells.map((c) => c.f), lo = Math.min(...fs), hi = Math.max(...fs);
   const span = hi - lo + 1, cols = Math.max(6, span);
   return { cols, start: Math.max(0, Math.min(tuning.frets - cols + 1, lo - Math.floor((cols - span) / 2))) };

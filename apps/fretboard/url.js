@@ -6,6 +6,8 @@ import { spellAt, normSpell } from "../../core/spelling.js";
 import { QUAL_COMMON, QUAL_MORE, QUAL_IN_MORE, QUAL_T } from "../../core/chords.js";
 import { NOTE_IN, noteTok, oneOf, intIn, listIn } from "../../core/link.js";
 import { CH_QUALS, CH_TYPE_KEYS, CH_FRETS, chIvs } from "./chordshapes.js";
+import { STANDARD } from "./tunings.js";
+import { emptyShape, shapeTok, shapeIn } from "./identify.js";
 
 const STR_TOK = ["13", "24", "35", "46"];
 const STR7_TOK = ["14", "25", "36"];
@@ -50,7 +52,7 @@ const URL_FIELDS = [
   // Atlas (Round 11). Key, Major / Minor, Mode and Labels are the Neck's parameters above. map is written only once Neck map
   // has been switched by hand; without it the map is on, except on a phone. lit is the lit card: a window number, a mode
   // or a key, with u for its copy 12 up.
-  ["atlas", "at", "am", "scales", String, oneOf("scales", "chords")],
+  ["atlas", "at", "am", "scales", String, oneOf("scales", "chords", "identify")],
   ["ashow", "at", "show", "scale", String, oneOf("scale", "pentatonic", "blues")],
   ["by", "at", "by", "position", String, oneOf("position", "mode", "key")],
   ["apos", "at", "pos", 2, String, intIn(1, 5)],
@@ -74,6 +76,13 @@ const URL_FIELDS = [
   ["span", "at", "span", 4, String, intIn(3, 6)],
   ["acopies", "at", "cup", false, () => "12", (v) => (v === "12" ? true : undefined)],
   ["clit", "at", "clit", null, String, (v) => (/^[A-Za-z0-9]{1,12}$/.test(v) ? v : undefined)],
+  // Identify (Round 16): its own shape (frets low string to high, x muted: x.3.2.0.1.0) and the chosen name (root and
+  // quality: A.min7); with no name the shape's first name is chosen. Standard tuning until tunings are state (plan step 8).
+  ["ishape", "at", "ishape", emptyShape(STANDARD), shapeTok, (v) => shapeIn(v, STANDARD)],
+  ["iname", "at", "iname", null, (v) => { const [r, q] = v.split("."); return noteTok(+r) + "." + q; }, (v) => {
+    const m = /^([A-G][bs]?)\.([A-Za-z0-9]+)$/.exec(v), r = m ? NOTE_IN(m[1]) : -1;
+    return r >= 0 && CH_QUALS.some(([k]) => k === m[2]) ? `${r}.${m[2]}` : undefined;
+  }],
 ];
 const URL_DEFAULT = {
   top: { page: "neck", labelMode: "degree", isolate: false, ghost: false, dotColour: "caged", more: false },
@@ -81,7 +90,8 @@ const URL_DEFAULT = {
   ch: { deg: 0, strSet: 0, inv: 0, scaleBehind: false, sev: false, strSet7: 0, inv7: 0, drop3: false, strSet3: 0, inv3: 0, harm: false },
   md: { parent: 0, view: "notes", hit: null, lkRoot: "", lkMode: "", open: [] },
   at: { am: "scales", show: "scale", by: "position", pos: 2, from: "root", str: null, up: false, ct: "larger", size: "standard", map: null, lit: null,
-    croot: 0, cq: "major", cby: "family", vt: CH_TYPE_KEYS, cinv: null, frets: "any", cset: null, copen: "allow", span: 4, cup: false, clit: null },
+    croot: 0, cq: "major", cby: "family", vt: CH_TYPE_KEYS, cinv: null, frets: "any", cset: null, copen: "allow", span: 4, cup: false, clit: null,
+    ishape: emptyShape(STANDARD), iname: null },
 };
 // More is open by default when the chosen Any chord quality is in it; more=1 or more=0 records any other choice.
 const moreDefault = (c) => c.scope === "arpeggio" && c.arpMode === "quality" && QUAL_IN_MORE(c.arp);
