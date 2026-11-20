@@ -7,7 +7,7 @@ import { DEG_LABEL, DEG_OVERRIDE, scopeIntervals } from "../../core/scales.js";
 import { KEY_NAME, LETTERS } from "../../core/notes.js";
 import { accs, spellAt } from "../../core/spelling.js";
 import { QUAL_COMMON, QUAL_MORE, QUAL_T, DROP2, DROP3, INV_NAME7 } from "../../core/chords.js";
-import { POS_MAJOR, POS_MINOR, CAGED_ANCHOR } from "./caged.js";
+import { POS_MAJOR, POS_MINOR, CAGED_ANCHOR, cagedForms } from "./caged.js";
 
 // Voicing types: key, button label, short name (phone bar, summary). Buttons and cards use the standard terms in full
 // (TC, 19 Nov); the definitions sit under the buttons and in Help.
@@ -48,6 +48,21 @@ const CAGED = {
   maj7: { C: [X, 3, 2, 0, 0, 0], A: [X, 0, 2, 1, 2, 0], G: [3, 2, 0, 0, 0, 2], E: [0, 2, 1, 1, 0, 0], D: [X, X, 0, 2, 2, 2] },
   min7: { C: [X, 3, 1, 3, 1, X], A: [X, 0, 2, 0, 1, 0], G: [3, 1, 3, 0, 3, 3], E: [0, 2, 0, 0, 0, 0], D: [X, X, 0, 2, 1, 1] },
 };
+// CAGED form of any voicing (Round 15): the windows of the chord's root that hold the whole shape (cagedForms). Where two
+// hold it, the form whose standard grip shares the most notes with the shape wins; a tie keeps both. Qualities with no
+// grip of their own compare with the nearest one (GRIP_Q), else the grip of their Major / Minor.
+const GRIP_Q = { maj: "major", min: "minor", dim: "minor", m7: "min7", m7b5: "min7", mmaj7: "minor", maj7s5: "maj7", dim7: "minor" };
+export function chordForms(root, ton, q, cells) {
+  const cand = cagedForms(root, ton, cells);
+  if (cand.length < 2) return cand;
+  const tpl = CAGED[GRIP_Q[q] || q] || CAGED[ton];
+  const score = (L) => {
+    const t = root - CAGED_HOME[L], g = tpl[L];
+    return cells.filter((c) => { const gf = g[g.length - 1 - c.s]; return gf !== null && (((gf + t - c.f) % 12) + 12) % 12 === 0; }).length;
+  };
+  const best = Math.max(...cand.map(score));
+  return cand.filter((L) => score(L) === best);
+}
 // Which types a quality has: CAGED forms for the five above; closed triads for 3-note chords; drop 2 and drop 3 for 4-note
 // chords; shells for sevenths with a 3rd.
 export function chAvail(q) {
@@ -86,8 +101,10 @@ function place(tuning, strs, order) {
 // higher where all of it fits. Each card: id, kind, cells (s, f, iv), frets per string, strings token, inversion, span
 // (fretted notes only), lo / hi (open strings count as fret 0), the CAGED window that holds every note (or null), title,
 // fret string and tags.
-export function chordCards(tuning, root, q, types, up) {
-  const ivs = chIvs(q), pcs = ivs.map((iv) => (root + iv) % 12), ton = chTon(q);
+// The chord's names and windows, shared by its generated cards and by a shape tapped in Identify (Round 16): root name and
+// suffix, degree names (deg), note names spelled from the root letter (name) and the CAGED window that holds a whole shape.
+export function chordCtx(root, q) {
+  const ivs = chIvs(q), ton = chTon(q);
   const posList = ton === "major" ? POS_MAJOR : POS_MINOR;
   const base = (p) => (((root - CAGED_ANCHOR + p.off) % 12) + 12) % 12;
   const winOf = (cells) => { const p = posList.find((w) => cells.every((c) => ((((c.f - base(w)) % 12) + 12) % 12) <= w.w)); return p ? p.num : null; };
@@ -95,6 +112,38 @@ export function chordCards(tuning, root, q, types, up) {
   const degKey = q === "major" || q === "minor" ? "triad" : q;
   const deg = (iv) => (DEG_OVERRIDE[degKey] && DEG_OVERRIDE[degKey][iv]) || DEG_LABEL[iv];
   const name = (pc) => { const d = /(\d)$/.exec(deg((((pc - root) % 12) + 12) % 12)); return accs(spellAt(li + (d ? +d[1] : 1) - 1, pc)); };
+  return { root, q, ivs, ton, winOf, rn, li, sfx, deg, name };
+}
+// One card from a shape's cells (s, f), as chordCards makes it. r: { kind, form } (kind "shape" for a tapped shape); k: 0, or
+// 12 for a copy 12 frets up (already added to the cells).
+function cardOf(tuning, x, r, cells, k) {
+  const { root, q, ivs, ton, winOf, rn, sfx, deg, name } = x;
+  cells.forEach((c) => { c.iv = (((tuning.open[c.s] + c.f - root) % 12) + 12) % 12; });
+  const bass = cells.reduce((a, c) => (tuning.openAbs[c.s] + c.f < tuning.openAbs[a.s] + a.f ? c : a));
+  const inv = ivs.indexOf(bass.iv);
+  const frets = Array.from({ length: tuning.strings }, (_, s) => { const c = cells.find((y) => y.s === s); return c ? c.f : null; });
+  const fs = cells.map((c) => c.f), fretted = fs.filter((f) => f > 0);
+  const tok = strTok(cells.map((c) => c.s));
+  const strsLow = [...cells].sort((a, b) => b.s - a.s).map((c) => c.s);
+  const pos = r.kind === "caged" ? CAGED_NUM[r.form] : winOf(cells);
+  const forms = r.kind === "caged" ? [r.form] : chordForms(root, ton, q, cells);
+  const id = r.kind === "shape" ? "y" : (r.kind === "caged" ? "c" + r.form : { triad: "t", drop2: "d", drop3: "e", shell: "s" }[r.kind] + tok + inv) + (k ? "u" : "");
+  const title = rn + sfx + (inv > 0 ? "/" + name((root + ivs[inv]) % 12) : "") + (k ? " · 12 up" : "");
+  return {
+    id, kind: r.kind, form: r.form || null, forms, k, cells, frets, tok, inv, pos, bassStr: strsLow[0],
+    lo: Math.min(...fs), hi: Math.max(...fs), span: fretted.length ? Math.max(...fretted) - Math.min(...fretted) + 1 : 0,
+    open: fs.some((f) => f === 0), root, q, title,
+    sub: [...frets].reverse().map((f) => (f === null ? "x" : f)).join(" "),
+    mark: r.kind === "caged" ? `CAGED ${r.form} form` : r.kind === "shape" ? "Your shape" : CARD_NAME[r.kind],
+    tags: r.kind === "caged" ? [`Window ${pos}`] : r.kind === "shape" ? [INV_LABEL[inv], ...(pos ? [`Window ${pos}`] : [])] : [INV_LABEL[inv], `Strings ${strLabel(tok)}`],
+    deg, name,
+  };
+}
+// A tapped shape as a card of the chord (root, q) (Identify, Round 16). Its notes must all be tones of the chord.
+export const shapeCard = (tuning, root, q, cells) => cardOf(tuning, chordCtx(root, q), { kind: "shape" }, cells.map((c) => ({ s: c.s, f: c.f })), 0);
+
+export function chordCards(tuning, root, q, types, up) {
+  const x = chordCtx(root, q), { ivs } = x, pcs = ivs.map((iv) => (root + iv) % 12);
   const raw = [];
   const want = new Set(types.filter((t) => chAvail(q).includes(t)));
   if (want.has("caged") && tuning.id === "std") Object.entries(CAGED[q]).forEach(([L, tpl]) => {
@@ -115,25 +164,7 @@ export function chordCards(tuning, root, q, types, up) {
     if (!r.cells || (k && !up)) return;
     const cells = r.cells.map((c) => ({ s: c.s, f: c.f + k }));
     if (cells.some((c) => c.f > tuning.frets)) return;
-    cells.forEach((c) => { c.iv = (((tuning.open[c.s] + c.f - root) % 12) + 12) % 12; });
-    const bass = cells.reduce((a, c) => (tuning.openAbs[c.s] + c.f < tuning.openAbs[a.s] + a.f ? c : a));
-    const inv = ivs.indexOf(bass.iv);
-    const frets = Array.from({ length: tuning.strings }, (_, s) => { const c = cells.find((x) => x.s === s); return c ? c.f : null; });
-    const fs = cells.map((c) => c.f), fretted = fs.filter((f) => f > 0);
-    const tok = strTok(cells.map((c) => c.s));
-    const strsLow = [...cells].sort((a, b) => b.s - a.s).map((c) => c.s);
-    const pos = r.kind === "caged" ? CAGED_NUM[r.form] : winOf(cells);
-    const id = (r.kind === "caged" ? "c" + r.form : { triad: "t", drop2: "d", drop3: "e", shell: "s" }[r.kind] + tok + inv) + (k ? "u" : "");
-    const title = rn + sfx + (inv > 0 ? "/" + name((root + ivs[inv]) % 12) : "") + (k ? " · 12 up" : "");
-    out.push({
-      id, kind: r.kind, form: r.form || null, k, cells, frets, tok, inv, pos, bassStr: strsLow[0],
-      lo: Math.min(...fs), hi: Math.max(...fs), span: fretted.length ? Math.max(...fretted) - Math.min(...fretted) + 1 : 0,
-      open: fs.some((f) => f === 0), root, q, title,
-      sub: [...frets].reverse().map((f) => (f === null ? "x" : f)).join(" "),
-      mark: r.kind === "caged" ? `CAGED ${r.form} form` : CARD_NAME[r.kind],
-      tags: r.kind === "caged" ? [`Window ${pos}`] : [INV_LABEL[inv], `Strings ${strLabel(tok)}`],
-      deg, name,
-    });
+    out.push(cardOf(tuning, x, r, cells, k));
   }));
   return out;
 }

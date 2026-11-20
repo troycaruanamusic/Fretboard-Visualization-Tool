@@ -7,11 +7,13 @@ import { accs, spellAt, autoLetter, neckLetter, normSpell } from "../../core/spe
 import { NOTE_TOK } from "../../core/link.js";
 import { Seg, Track, Row, Card, Btn, useMedia, PHONE_Q, Dialog } from "../../core/ui.jsx";
 import { atType, atScale, CardGrid, AtlasCard } from "../../core/atlas.jsx";
-import { MARKERS, colPx, SET_NAME } from "./guitar.js";
+import { MARKERS, colPx, SET_NAME, inlayAt } from "./guitar.js";
+import { ringMask } from "../../core/marker.js";
 import { POS_COLOR, POS_MAJOR, POS_MINOR, CAGED_ANCHOR } from "./caged.js";
 import { keepChord } from "./state.js";
 import { gapCells } from "./neck.jsx";
 import { ChordsMode } from "./atlaschords.jsx";
+import { IdentifyMode } from "./atlasidentify.jsx";
 
 // Atlas page (Round 11, Atlas review and mock-up of 18 Nov): a scale as a grid of small necks, one card per shape. Scales mode
 // is built here; Chords mode (Round 14) is atlaschords.jsx. Key, Major / Minor and Mode are the Neck's (cfg), and Labels is the Neck's Labels, so
@@ -110,11 +112,12 @@ function MiniNeck({ tuning, card, labelMode, big, str, lg }) {
         dot = off
           ? <span {...data} className="mn-d" style={{ width: sz, height: sz, border: `${isRoot ? 3 : 1.5}px solid ${THEME.edge}`, color: THEME.muted, fontSize: fs, fontWeight: 500, zIndex: 2 }}>{lab}</span>
           : isRoot
-            ? <span {...data} className="mn-d" style={{ width: sz, height: sz, background: col, zIndex: 5 }}><span className="mn-d" style={{ width: sz - 6, height: sz - 6, background: THEME.ink, color: THEME.text, fontSize: fs, fontWeight: 800 }}>{lab}</span></span>
-            : <span {...data} className="mn-d" style={{ width: sz, height: sz, background: col, color: THEME.ink, fontSize: fs, fontWeight: big && isCT ? 800 : 500, zIndex: isCT ? 3 : 2 }}>{lab}</span>;
+            ? <span {...data} data-ring="1" className="mn-d fdot" style={{ width: sz + 4, height: sz + 4, background: col, color: THEME.ink, fontSize: fs, fontWeight: 800, zIndex: 5, ...ringMask(2, 1.5) }}>{lab}</span>
+            : <span {...data} className="mn-d fdot" style={{ width: sz, height: sz, background: col, color: THEME.ink, fontSize: fs, fontWeight: big && isCT ? 800 : 500, zIndex: isCT ? 3 : 2 }}>{lab}</span>;
       }
       out.push(
-        <span key={s + "-" + f} className="mn-c" style={{ height: rowH, borderRight: f === 0 ? `4px solid ${THEME.nut}` : `1.5px solid ${THEME.line}`, background: f === 0 ? THEME.track : undefined }}>
+        <span key={s + "-" + f} className="mn-c" style={{ height: rowH, borderRight: f === 0 ? `4px solid ${THEME.nut}` : `2px solid ${THEME.fret}`, background: f === 0 ? THEME.track : undefined }}>
+          {inlayAt(tuning.strings, s, f) && <span className="inlay" style={{ width: lg ? 9 : 8, height: lg ? 9 : 8 }} />}
           <span className="mn-s" style={{ height: tuning.gauges[s], marginTop: -tuning.gauges[s] / 2 }} />
           {dot}
         </span>
@@ -154,7 +157,7 @@ function NeckMap({ tuning, sc, p, str, phone, note }) {
   const cellsOut = [];
   for (let s = 0; s < tuning.strings; s++) {
     const off = str !== null && (s < str || s > str + 2);
-    cellsOut.push(<div key={"l" + s} className="nm-c" style={{ gridRow: s + 1, gridColumn: 1, height: rowH, fontSize: 11, color: THEME.muted }}>{tuning.labels[s]}</div>);
+    cellsOut.push(<div key={"l" + s} className="nm-c" style={{ gridRow: s + 2, gridColumn: 1, height: rowH, fontSize: 11, color: THEME.muted }}>{tuning.labels[s]}</div>);
     for (let f = 0; f <= tuning.frets; f++) {
       const iv = (((tuning.open[s] + f - sc.root) % 12) + 12) % 12;
       let mark = null;
@@ -167,11 +170,11 @@ function NeckMap({ tuning, sc, p, str, phone, note }) {
           fill = hits.length > 1 ? `linear-gradient(135deg, ${hits[0]} 0 50%, ${hits[1]} 50% 100%)` : hits[0];
         }
         mark = fill
-          ? <span data-m={`${s}-${f}`} className="mn-d" style={{ width: dot + (isRoot ? 2 : 0), height: dot + (isRoot ? 2 : 0), background: fill, zIndex: 2 }}>{isRoot && <span style={{ width: dot - 4, height: dot - 4, borderRadius: "50%", background: THEME.ink }} />}</span>
+          ? <span data-m={`${s}-${f}`} className="mn-d fdot" style={{ width: dot + (isRoot ? 4 : 0), height: dot + (isRoot ? 4 : 0), background: fill, zIndex: 2, ...(isRoot ? ringMask(1.5, 1) : {}) }} />
           : <span className="mn-d" style={{ width: dot, height: dot, border: `${isRoot ? 2 : 1}px solid ${THEME.edge}`, background: THEME.panel2, zIndex: 1 }} />;
       }
       cellsOut.push(
-        <div key={s + "-" + f} className="nm-c" style={{ gridRow: s + 1, gridColumn: f + 2, height: rowH, borderRight: f === 0 ? `3px solid ${THEME.nut}` : `1px solid ${THEME.line}` }}>
+        <div key={s + "-" + f} className="nm-c" style={{ gridRow: s + 2, gridColumn: f + 2, height: rowH, borderRight: f === 0 ? `3px solid ${THEME.nut}` : `1px solid ${THEME.fret}` }}>
           <span className="mn-s" style={{ height: 1, marginTop: -0.5 }} />
           {mark}
         </div>
@@ -182,16 +185,22 @@ function NeckMap({ tuning, sc, p, str, phone, note }) {
     <section className="nmap" aria-label="Neck map">
       <div className="nm-head"><h2>Neck map</h2><span data-mapnote className="text-xs text-muted">{note}</span></div>
       <div role="img" aria-label={`The whole neck. ${note}`} className="nm-g" style={{ gridTemplateColumns: `14px ${colPx(tuning.frets).map((n) => `minmax(0, ${n}fr)`).join(" ")}` }}>
+        {/* Fret markers (Round 15): small guide dots above the neck, single at 3 5 7 9 15 17 19 21 and a pair at 12. */}
+        {Object.entries(MARKERS).filter(([f]) => +f <= tuning.frets).map(([f, n]) => (
+          <div key={"i" + f} data-minlay={f} className="nm-c" aria-hidden="true" style={{ gridRow: 1, gridColumn: +f + 2, height: 9, gap: 3 }}>
+            {Array.from({ length: n }, (_, i) => <span key={i} style={{ width: 4, height: 4, borderRadius: "50%", background: THEME.edge }} />)}
+          </div>
+        ))}
         {cellsOut}
         {Array.from({ length: tuning.frets + 1 }, (_, f) => (!phone || MARKERS[f]) && (
-          <div key={"n" + f} className="nm-c" style={{ gridRow: tuning.strings + 1, gridColumn: f + 2, height: rowH, fontSize: 11, overflow: "visible", color: MARKERS[f] ? THEME.text : THEME.muted, fontWeight: MARKERS[f] ? 700 : 400 }}>{f}</div>
+          <div key={"n" + f} className="nm-c" style={{ gridRow: tuning.strings + 2, gridColumn: f + 2, height: rowH, fontSize: 11, overflow: "visible", color: MARKERS[f] ? THEME.text : THEME.muted, fontWeight: MARKERS[f] ? 700 : 400 }}>{f}</div>
         ))}
-        {Array.from({ length: lanes }, (_, l) => <div key={"rl" + l} style={{ gridRow: tuning.strings + 2 + l, gridColumn: 1, height: 18 }} />)}
+        {Array.from({ length: lanes }, (_, l) => <div key={"rl" + l} style={{ gridRow: tuning.strings + 3 + l, gridColumn: 1, height: 18 }} />)}
         {spans.map((sp) => {
           const on = !p || sp.q.num === p.num, c = on ? POS_COLOR[sp.q.letter] : THEME.line, side = on && p ? 2 : 1;
           return (
             <div key={`r${sp.q.num}-${sp.a}`} data-mruler={`${sp.q.num} ${sp.q.letter}`} data-on={on && p ? "1" : undefined} className="nm-r"
-              style={{ gridRow: tuning.strings + 2 + sp.lane, gridColumn: `${sp.a + 2} / ${sp.z + 3}`, color: on && p ? THEME.text : THEME.muted, fontWeight: on && p ? 700 : 400,
+              style={{ gridRow: tuning.strings + 3 + sp.lane, gridColumn: `${sp.a + 2} / ${sp.z + 3}`, color: on && p ? THEME.text : THEME.muted, fontWeight: on && p ? 700 : 400,
                 borderBottom: `${on && p ? 2 : 1}px solid ${c}`, borderLeft: sp.clipped && sp.a === 0 ? "none" : `${side}px solid ${c}`, borderRight: sp.clipped && sp.z === tuning.frets ? "none" : `${side}px solid ${c}` }}>
               {phone ? sp.q.letter : `${sp.q.num} ${sp.q.letter}`}
             </div>
@@ -305,10 +314,14 @@ export function AtlasPage({ tuning, cfg, update, at, setAt, labelMode, setLabelM
 
   return (
     <div>
+      {/* Identify (Round 16) is the third mode, with its one-line note beside the switch on tablet and desktop. */}
       <div className="amode">
-        <Track label="Atlas mode" cols={2}>{[["scales","Scales"],["chords","Chords"]].map(([k, l]) => <Seg key={k} active={am === k} onClick={() => set({ am: k })}>{l}</Seg>)}</Track>
+        <Track label="Atlas mode" cols={3}>{[["scales","Scales"],["chords","Chords"],["identify","Identify"]].map(([k, l]) => <Seg key={k} active={am === k} onClick={() => set({ am: k })}>{l}</Seg>)}</Track>
+        {am === "identify" && !phone && <span className="text-sm text-muted" style={{ marginLeft: 12 }}>Tap frets to name a chord and see its shapes.</span>}
       </div>
-      {am === "chords" ? (
+      {am === "identify" ? (
+        <IdentifyMode tuning={tuning} at={at} setAt={setAt} labelMode={labelMode} setLabelMode={setLabelMode} onOpen={onOpenChord} />
+      ) : am === "chords" ? (
         <ChordsMode tuning={tuning} at={at} setAt={setAt} labelMode={labelMode} setLabelMode={setLabelMode} onOpen={onOpenChord} />
       ) : (
         <React.Fragment>

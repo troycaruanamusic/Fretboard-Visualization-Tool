@@ -1,7 +1,7 @@
   /* Chords page (Round 5): the chord strip and the two control groups (mock-ups D and E). */
   .strip{display:flex;align-items:stretch;gap:6px;margin-top:8px}
   .strip .btn{height:auto;min-height:34px}
-  .striptrack{flex:1;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px;padding:2px;border-radius:8px;background:#091017;min-width:0}
+  .striptrack{flex:1;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px;padding:2px;border-radius:8px;background:var(--track);min-width:0}
   @media (max-width:639px){.striptrack{grid-template-columns:repeat(4,minmax(0,1fr))}}
   .stripcell{min-width:0;padding:6px 4px;border-radius:6px;display:flex;flex-direction:column;align-items:center;gap:2px;white-space:nowrap;min-height:44px}
   .cgroups{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr));gap:12px;align-items:start}
@@ -10,44 +10,44 @@
   /* Modes page (Round 6, mock-up F): two control cards, then the parent-key table. Below 1,024 px each mode is a card;
      the table keeps explicit roles so it still reads as a table when its display changes. */
   .mtop{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr));gap:12px;align-items:start;margin-bottom:12px}
-  .sel{height:34px;min-width:110px;padding:0 8px;border-radius:8px;background:#2A3645;color:#E3E9F0;border:1px solid #6C7C8E;font:inherit;font-size:.875rem}
+  .sel{height:34px;min-width:110px;padding:0 8px;border-radius:8px;background:var(--ctl);color:var(--text);border:1px solid var(--edge);font:inherit;font-size:.875rem}
   @media (pointer:coarse){.sel{height:44px}}
   .lk{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 12px}
-  .lk label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:#A9B6C4}
+  .lk label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--muted)}
   .lkres{min-height:34px;display:flex;align-items:center;font-size:.875rem;font-weight:600}
-  .mtab{width:100%;border-collapse:collapse;font-size:13px;color:#E3E9F0}
-  .mtab th{color:#A9B6C4;font-size:12.5px;font-weight:600;text-align:left;padding:6px 8px;white-space:nowrap}
-  .mtab td{padding:6px 8px;vertical-align:middle;border-top:1px solid #334252}
+  .mtab{width:100%;border-collapse:collapse;font-size:13px;color:var(--text)}
+  .mtab th{color:var(--muted);font-size:12.5px;font-weight:600;text-align:left;padding:6px 8px;white-space:nowrap}
+  .mtab td{padding:6px 8px;vertical-align:middle;border-top:1px solid var(--line)}
   .mtab .mdet td{border-top:0;padding:0 8px 10px}
-  .mbody.hit .mrow td{background:#1B2530}
-  .mbody.hit .mrow td:first-child{box-shadow:inset 3px 0 0 #E3E9F0}
+  .mbody.hit .mrow td{background:var(--panel2)}
+  .mbody.hit .mrow td:first-child{box-shadow:inset 3px 0 0 var(--text)}
   .tones{display:flex;gap:2px}
   .tone{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;min-width:36px;min-height:30px;padding:3px 2px;border-radius:4px;font-weight:600;line-height:1.2}
-  .tone small{font-size:11px;font-weight:500;color:#A9B6C4}
-  .tone.hot{background:#E3E9F0;color:#16232F}.tone.hot small{color:#16232F}
+  .tone small{font-size:11px;font-weight:500;color:var(--muted)}
+  .tone.hot{background:var(--hot);color:var(--ink)}.tone.hot small{color:var(--ink)}
   .mlab{display:none}
   .macts{display:flex;align-items:center;justify-content:flex-end;gap:8px;white-space:nowrap}
   .mtog{min-width:34px;justify-content:center}
   @media (pointer:coarse){.mtog{min-width:44px}}
-  .mdl{margin:0;background:#1B2530;border-radius:8px;padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px 24px}
-  .mdl div{min-width:120px}.mdl dt{font-size:12.5px;color:#A9B6C4}.mdl dd{margin:2px 0 0;font-size:13px;line-height:1.4}
+  .mdl{margin:0;background:var(--panel2);border-radius:8px;padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px 24px}
+  .mdl div{min-width:120px}.mdl dt{font-size:12.5px;color:var(--muted)}.mdl dd{margin:2px 0 0;font-size:13px;line-height:1.4}
   @media (max-width:1023px){
     .mtab,.mtab tbody,.mtab tr,.mtab td{display:block}
     .mtab{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));gap:8px;align-items:start}
     .mtab thead{display:none}
-    .mtab tbody{background:#1B2530;border-radius:8px;padding:10px;min-width:0}
+    .mtab tbody{background:var(--panel2);border-radius:8px;padding:10px;min-width:0}
     .mtab .mrow{display:grid;grid-template-columns:auto auto 1fr auto;grid-template-areas:"deg root mode q" "tones tones tones tones" "solo solo solo solo" "act act act act";gap:8px;align-items:center}
     .mtab td,.mtab .mdet td{border:0;padding:0}
-    .c-deg{grid-area:deg;color:#A9B6C4}.c-root{grid-area:root}.c-mode{grid-area:mode}.c-q{grid-area:q}.c-tones{grid-area:tones}.c-solo{grid-area:solo}.c-act{grid-area:act}
-    .mlab{display:block;font-size:12.5px;color:#A9B6C4;margin-bottom:2px}
+    .c-deg{grid-area:deg;color:var(--muted)}.c-root{grid-area:root}.c-mode{grid-area:mode}.c-q{grid-area:q}.c-tones{grid-area:tones}.c-solo{grid-area:solo}.c-act{grid-area:act}
+    .mlab{display:block;font-size:12.5px;color:var(--muted);margin-bottom:2px}
     .macts{justify-content:space-between}
-    .mbody.hit{box-shadow:0 0 0 1.5px #E3E9F0}
+    .mbody.hit{box-shadow:0 0 0 1.5px var(--text)}
     .mbody.hit .mrow td{background:transparent}.mbody.hit .mrow td:first-child{box-shadow:none}
-    .mtab .mdet td{padding-top:8px}.mdl{background:#141C25}
+    .mtab .mdet td{padding-top:8px}.mdl{background:var(--panel)}
   }
   .sumrow{display:flex;align-items:center;gap:8px;min-height:34px;overflow-x:auto;white-space:nowrap;margin-bottom:8px}
   @media (pointer:coarse){.sumrow{min-height:44px}}
-  .boardwrap{background:#0D131A;padding-bottom:8px}
+  .boardwrap{background:var(--bg);padding-bottom:8px}
   /* Sticky on a phone held upright, so the result of a tap stays on screen (RS-03). */
   @media (max-width:899px) and (min-height:600px){.boardwrap{position:sticky;top:0;z-index:10}}
   .groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr));gap:12px;align-items:start}
@@ -61,20 +61,20 @@
   @media (min-width:1200px){.agroups{grid-template-columns:1.3fr 1fr 1.15fr .8fr}}
   .abar{display:flex;gap:8px;overflow-x:auto;white-space:nowrap;padding:2px}
   .abar>*{flex:none}
-  .abadge{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:10px;background:#E3E9F0;color:#16232F;font-size:12px;font-weight:700;margin-left:6px}
+  .abadge{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:10px;background:var(--text);color:var(--panel);font-size:12px;font-weight:700;margin-left:6px}
   .asum{display:flex;align-items:center;gap:8px;min-height:34px;margin-top:12px}
   @media (pointer:coarse){.asum{min-height:44px}}
   .asum-l{display:flex;align-items:center;gap:8px;flex:1;min-width:0;overflow-x:auto;white-space:nowrap;padding:2px}
-  .nmap{background:#141C25;border-radius:.5rem;padding:10px;margin-top:8px}
+  .nmap{background:var(--panel);border-radius:.5rem;padding:10px;margin-top:8px}
   .nm-head{display:flex;align-items:baseline;gap:8px;margin-bottom:6px;min-width:0}
-  .nm-head h2{margin:0;font-size:.875rem;line-height:1.25rem;font-weight:700;color:#E3E9F0;white-space:nowrap}
-  .nm-g{display:grid;background:#1B2530;border-radius:6px;padding:6px 8px 4px}
+  .nm-head h2{margin:0;font-size:.875rem;line-height:1.25rem;font-weight:700;color:var(--text);white-space:nowrap}
+  .nm-g{display:grid;background:var(--panel2);border-radius:6px;padding:6px 8px 4px}
   .nm-c{position:relative;display:flex;align-items:center;justify-content:center;min-width:0}
   .nm-r{height:18px;margin:0 1px;font-size:11px;line-height:15px;text-align:center;white-space:nowrap;overflow:hidden}
-  .mneck{display:block;background:#1B2530;border-radius:6px;padding:6px 6px 2px}
+  .mneck{display:block;background:var(--panel2);border-radius:6px;padding:6px 6px 2px}
   .mn-g{display:grid}
   .mn-c{position:relative;display:flex;align-items:center;justify-content:center;min-width:0}
-  .mn-s{position:absolute;left:0;right:0;top:50%;background:#6C7C8E}
+  .mn-s{position:absolute;left:0;right:0;top:50%;background:var(--edge)}
   .mn-d{position:relative;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;box-sizing:border-box;flex:none;line-height:1}
   /* The Key grid fills the picker and the sheet, so its 12 cells are 50 px wide at 360 px. */
   .apop [aria-label="Key"],.asheet [aria-label="Key"]{display:grid;width:100%}
@@ -83,4 +83,28 @@
   .apbtn{display:flex;align-items:center;gap:6px;width:100%;min-width:0}
   .ashow{width:100%}
   /* Chords mode's phone picker (mock-up frame): the More groups as rows that open their grid. */
-  .apgrp{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:44px;width:100%;border-top:1px solid #334252;font-size:.875rem;color:#E3E9F0;text-align:left}
+  .apgrp{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:44px;width:100%;border-top:1px solid var(--line);font-size:.875rem;color:var(--text);text-align:left}
+  /* Identify (Round 16, Identify mock-up): the tap board, the shape line, the names list and the link to Chords mode. */
+  .ihead{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+  .ihead h2{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px}
+  .ilabels{display:flex;align-items:center;gap:8px;margin-left:auto}
+  .itb{background:var(--panel2);border-radius:12px;overflow-x:auto}
+  .itb-g{display:grid;min-width:min-content;padding:8px 8px 4px}
+  .itb-str{position:sticky;left:0;z-index:6;background:var(--panel2);display:flex;align-items:center;justify-content:space-between;gap:4px;padding:0 8px 0 4px;font-size:13px;font-weight:600;color:var(--text)}
+  .itb-badge{min-width:22px;height:22px;padding:0 4px;border-radius:11px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+  .itb-c{position:relative;display:flex;align-items:center;justify-content:center;min-width:0;padding:0}
+  .itb-n{height:22px;display:flex;align-items:center;justify-content:center;font-size:12px}
+  .iinfo{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;font-size:13px;color:var(--muted)}
+  .iinfo b{color:var(--text)}
+  .inames{display:flex;flex-direction:column;gap:8px}
+  .iname{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;width:100%;min-height:52px;padding:8px 12px;border-radius:8px;text-align:left;color:var(--text);background:var(--panel2);border:1px solid var(--line)}
+  .iname:hover{border-color:var(--edge)}
+  .iname.on{background:var(--ctl-hover);border-color:transparent;box-shadow:0 0 0 1.5px var(--text)}
+  .iname-big{font-size:20px;font-weight:800;min-width:80px}
+  .iname-mid{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .iname-tags{display:flex;flex-wrap:wrap;gap:4px;margin-left:auto}
+  .ito{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:12px}
+  .iover{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0;list-style:none}
+  .iover .atag{height:30px;gap:6px;font-size:13px}
+  /* Inlays (Round 15): the fret markers between strings, under the dots. */
+  .inlay{position:absolute;left:50%;top:100%;transform:translate(-50%,-50%);border-radius:50%;background:var(--inlay);z-index:1;pointer-events:none}

@@ -1,6 +1,6 @@
 // Fretboard Trainer · the app: state, head and pages.
 import { useState, useEffect } from "../../core/react.js";
-import { THEME } from "../../core/theme.js";
+import { THEME, storedTheme, applyTheme } from "../../core/theme.js";
 import { MODE_Q } from "../../core/scales.js";
 import { normSpell } from "../../core/spelling.js";
 import { Seg, Track, Btn, useMedia, PHONE_Q } from "../../core/ui.jsx";
@@ -10,7 +10,7 @@ import { Help } from "./help.jsx";
 import { ChordsPage } from "./chords.jsx";
 import { ModesPage } from "./modes.jsx";
 import { AtlasPage } from "./atlas.jsx";
-import { TuningMenu } from "./head.jsx";
+import { TuningMenu, ThemeMenu } from "./head.jsx";
 import { STANDARD } from "./tunings.js";
 import { stateToQuery, queryToState, URL_INIT } from "./url.js";
 import { QUAL_IN_MORE } from "../../core/chords.js";
@@ -28,6 +28,9 @@ function FretboardTrainer() {
   const [dotColour, setDotColour] = useState(URL_INIT.top.dotColour);
   const [more, setMore] = useState(URL_INIT.top.more);
   const [help, setHelp] = useState(false);
+  // Theme (Round 15): stored per browser, applied to <html>; the template already set it before first paint.
+  const [theme, setThemeRaw] = useState(() => applyTheme(storedTheme(), false));
+  const setTheme = (t) => setThemeRaw(applyTheme(t));
   const [cfg, setCfgRaw] = useState(URL_INIT.cfg);
   // Every cfg change passes through normSpell, so a carried root letter is dropped when it no longer applies (Round 9).
   const setCfg = (f) => setCfgRaw((c) => normSpell(typeof f === "function" ? f(c) : f));
@@ -135,12 +138,13 @@ function FretboardTrainer() {
   // On the neck, from a chord card (Round 14, mock-up item 5, TC 19 Nov): the Neck page on Any chord with the card's root and
   // quality, Show: Chord, and the card's CAGED window as Position where one window holds the whole shape (else no Position).
   // Strings, Focus and Notes: Chord tones are cleared; More opens when the quality is in it, as the Any chord button does.
-  const openChord = (card) => {
+  // Identify's cards (Round 16) pass their own back note: the shape's name and frets, "C6/A, x 0 2 0 1 0".
+  const openChord = (card, label = null) => {
     const tri = card.q === "major" || card.q === "minor", arp = tri ? "triad" : card.q;
     setCfg((c) => ({ ...c, scope: "arpeggio", arpMode: "quality", arp, tonality: chTon(card.q), root: card.root, pos: card.pos, strGroup: null, focus: [] }));
     setIsolate(false);
     if (QUAL_IN_MORE(arp)) setMore(true);
-    setFromAtlas({ label: `${card.title}, ${card.sub}` });
+    setFromAtlas({ label: label || [card.title, card.mark, card.kind !== "caged" && card.forms.length ? card.forms.join("/") + " form" : ""].filter(Boolean).join(", ") });
     setHelp(false);
     setPage("neck");
   };
@@ -149,9 +153,10 @@ function FretboardTrainer() {
   const anyFilter = cfg.pos !== null || cfg.strGroup !== null || cfg.focus.length > 0 || isolate;
   // In Chords mode it clears the chord filters (Inversion, Frets, Copies, String set, Open strings, Max span); the chord,
   // Lay out by, the voicing types and Display stay.
-  const atFilter = at.am === "scales" ? at.str !== null || at.up : chAnyFilter(at);
+  // Identify has no filters, so Clear is off there (Clear shape clears the shape).
+  const atFilter = at.am === "scales" ? at.str !== null || at.up : at.am === "chords" ? chAnyFilter(at) : false;
   const clearAll = () => {
-    if (page === "atlas") { setAt((a) => (a.am === "scales" ? { ...a, str: null, up: false } : { ...a, ...CH_FILTER_DEFAULT })); return; }
+    if (page === "atlas") { if (at.am !== "identify") setAt((a) => (a.am === "scales" ? { ...a, str: null, up: false } : { ...a, ...CH_FILTER_DEFAULT })); return; }
     up({ pos: null, strGroup: null, focus: [] }); setIsolate(false);
   };
 
@@ -168,6 +173,7 @@ function FretboardTrainer() {
         </nav>
         <div className="hrow2">
           <TuningMenu tuning={tuning} phone={phone} />
+          <ThemeMenu theme={theme} setTheme={setTheme} phone={phone} />
           <div className="hbtns">
             <Btn onClick={copyLink} aria-live="polite" className="btn copyl text-sm transition-colors">{copied || "Copy link"}</Btn>
             <Btn onClick={() => setHelp((h) => !h)} aria-pressed={help} className="btn hb hb1 text-sm transition-colors">Help</Btn>
@@ -178,7 +184,7 @@ function FretboardTrainer() {
 
       {help ? <Help onExample={applyPreset} />
         : page === "neck" ? <Board tuning={tuning} cfg={cfg} update={up} globals={globals} back={fromAtlas && { label: fromAtlas.label, go: () => { setFromAtlas(null); setPage("atlas"); } }} />
-        : page === "chords" ? <ChordsPage tuning={tuning} cfg={cfg} update={up} ch={ch} setCh={setCh} />
+        : page === "chords" ? <ChordsPage tuning={tuning} cfg={cfg} update={up} ch={ch} setCh={setCh} labelMode={labelMode} setLabelMode={setLabelMode} />
         : page === "modes" ? <ModesPage md={md} setMd={setMd} onNeck={showMode} />
         : <AtlasPage tuning={tuning} cfg={cfg} update={up} at={at} setAt={setAt} labelMode={labelMode} setLabelMode={setLabelMode} onOpen={openCard} onOpenChord={openChord} />}
       </div>

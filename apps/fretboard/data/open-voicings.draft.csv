@@ -1,0 +1,46 @@
+root,quality,frets,note
+F,major,x x 3 2 1 1,small F (no barre; no open string)
+G,major,3 2 0 0 3 3,G with the D on string 2
+C,major,3 3 2 0 1 0,C/G: G in the bass
+C,major,0 3 2 0 1 0,C/E: E in the bass
+D,major,2 0 0 2 3 2,D/F#: F# in the bass
+G,major,x 2 0 0 3 3,G/B: B in the bass
+F,minor,x x 3 1 1 1,small Fm (no barre; no open string)
+E,dom7,0 2 2 1 3 0,E7 with the 7th on string 2
+A,dom7,x 0 2 2 2 3,A7 with the 7th on string 1
+B,dom7,x 2 1 2 0 2,B7
+D,dom7,x 0 0 2 1 2,D7/A: A in the bass
+F,maj7,x x 3 2 1 0,Fmaj7
+F,maj7,x 3 3 2 1 0,Fmaj7/C: C in the bass
+E,min7,0 2 2 0 3 0,Em7 with the 7th on string 2
+E,min7,0 2 2 0 3 3,Em7 with G on top
+B,min7,x 2 0 2 0 2,Bm7
+F#,min7,2 0 2 2 2 0,F#m7
+A,sus4,x 0 2 2 3 0,Asus4
+D,sus4,x x 0 2 3 3,Dsus4
+E,sus4,0 2 2 2 0 0,Esus4
+C,sus4,x 3 3 0 1 1,Csus4
+G,sus4,3 3 0 0 1 3,Gsus4
+A,sus2,x 0 2 2 0 0,Asus2
+D,sus2,x x 0 2 3 0,Dsus2
+C,sus2,x 3 0 0 3 3,Csus2
+G,sus2,3 0 0 0 3 3,Gsus2
+A,7sus4,x 0 2 0 3 0,A7sus4
+E,7sus4,0 2 0 2 0 0,E7sus4
+G,7sus4,3 3 0 0 1 1,G7sus4
+C,add9,x 3 2 0 3 0,Cadd9
+G,add9,3 0 0 2 0 3,Gadd9
+E,add9,0 2 4 1 0 0,Eadd9
+A,add9,x 0 2 4 2 0,Aadd9
+A,madd9,x 0 2 4 1 0,Am(add9)
+E,madd9,0 2 4 0 0 0,Em(add9)
+A,madd11,x 0 0 2 1 0,Am(add11)
+E,madd11,0 0 2 0 0 0,Em(add11)
+C,add13,x 3 2 2 1 0,C6 (no 5th)
+A,add13,x 0 2 2 2 2,A6
+E,add13,0 2 2 1 2 0,E6
+G,add13,3 2 0 0 0 0,G6
+A,m6,x 0 2 2 1 2,Am6
+E,m6,0 2 2 0 2 0,Em6
+C,aug,x 3 2 1 1 0,Caug
+E,aug,0 3 2 1 1 0,Eaug
