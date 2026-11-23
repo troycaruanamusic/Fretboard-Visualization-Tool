@@ -1,5 +1,6 @@
 // Fretboard Trainer · the Atlas's chord shapes (Chords mode, app-structure plan step 6): every shape of one chord, root and
-// quality, as cards. Shape kinds: CAGED forms, closed triads, drop 2 and drop 3 voicings, and shells. Closed, drop 2 and
+// quality, as cards. Shape kinds: CAGED forms, open-position voicings (TC's list, Round 17), closed triads, drop 2 and drop 3
+// voicings, and shells. Closed, drop 2 and
 // drop 3 shapes are placed as the Chords page places its ladders (v0.34 rules: each tone the next one above the string
 // below, the inversion's tone in the bass); string sets, shell strings and the CAGED templates are six-string standard-tuning
 // constants, redesigned with the other tunings (plan step 8). The tuning gives the open pitches and the fret count.
@@ -8,19 +9,21 @@ import { KEY_NAME, LETTERS } from "../../core/notes.js";
 import { accs, spellAt } from "../../core/spelling.js";
 import { QUAL_COMMON, QUAL_MORE, QUAL_T, DROP2, DROP3, INV_NAME7 } from "../../core/chords.js";
 import { POS_MAJOR, POS_MINOR, CAGED_ANCHOR, cagedForms } from "./caged.js";
+import { OPEN_ROWS } from "./openvoicings.js";
 
 // Voicing types: key, button label, short name (phone bar, summary). Buttons and cards use the standard terms in full
 // (TC, 19 Nov); the definitions sit under the buttons and in Help.
-export const CH_TYPES = [["caged", "CAGED forms", "CAGED"], ["triad", "Closed triads", "Triads"], ["drop2", "Drop 2 voicings", "Drop 2"], ["drop3", "Drop 3 voicings", "Drop 3"], ["shell", "Shells (R 3 7)", "Shells"]];
+export const CH_TYPES = [["caged", "CAGED forms", "CAGED"], ["open", "Open position", "Open"], ["triad", "Closed triads", "Triads"], ["drop2", "Drop 2 voicings", "Drop 2"], ["drop3", "Drop 3 voicings", "Drop 3"], ["shell", "Shells (R 3 7)", "Shells"]];
 export const CH_TYPE_KEYS = CH_TYPES.map(([k]) => k);
 export const CH_TYPE_DEF = {
   caged: ["CAGED forms", "the five open-chord shapes (C, A, G, E, D) moved up the neck, one per window."],
+  open: ["Open position", "everyday chords in frets 0–4, most with open strings, from a hand-picked list."],
   triad: ["Closed triads", "the three notes as close as they go, on three adjacent strings."],
   drop2: ["Drop 2", "a close 4-note chord with its 2nd note from the top moved down an octave."],
   drop3: ["Drop 3", "a close 4-note chord with its 3rd note from the top moved down an octave (one string skipped)."],
   shell: ["Shells", "root, 3rd and 7th only, root in the bass."],
 };
-const CARD_NAME = { triad: "Closed triad", drop2: "Drop 2 voicing", drop3: "Drop 3 voicing", shell: "Shell voicing" };
+const CARD_NAME = { open: "Open position", triad: "Closed triad", drop2: "Drop 2 voicing", drop3: "Drop 3 voicing", shell: "Shell voicing" };
 export const INV_LABEL = INV_NAME7.map((s) => s[0].toUpperCase() + s.slice(1));
 
 // Qualities, as the Neck's Any chord lists them. Major and Minor are the triads.
@@ -63,12 +66,16 @@ export function chordForms(root, ton, q, cells) {
   const best = Math.max(...cand.map(score));
   return cand.filter((L) => score(L) === best);
 }
-// Which types a quality has: CAGED forms for the five above; closed triads for 3-note chords; drop 2 and drop 3 for 4-note
-// chords; shells for sevenths with a 3rd.
+// Which types a quality has: CAGED forms for the five above; open position where the list has a row of that quality (any
+// root: the button stays as the root changes); closed triads for 3-note chords; drop 2 and drop 3 for 4-note chords; shells
+// for sevenths with a 3rd.
 export function chAvail(q) {
   const n = chIvs(q).length;
-  return CH_TYPE_KEYS.filter((t) => (t === "caged" ? !!CAGED[q] : t === "triad" ? n === 3 : t === "drop2" || t === "drop3" ? n === 4 : SHELL_Q.includes(q)));
+  return CH_TYPE_KEYS.filter((t) => (t === "caged" ? !!CAGED[q] : t === "open" ? OPEN_ROWS.some((o) => o.q === q) : t === "triad" ? n === 3
+    : t === "drop2" || t === "drop3" ? n === 4 : SHELL_Q.includes(q)));
 }
+// The list's rows of one chord, in file order, as cells (s, f). Standard tuning only.
+export const openRows = (tuning, root, q) => (tuning.id === "std" ? OPEN_ROWS.filter((o) => o.root === root && o.q === q) : []);
 
 // String sets, low string first, by string index (0 = string 1). Six-string guitar constants (plan step 8).
 const TRIAD_SETS = [0, 1, 2, 3].map((g) => [g + 2, g + 1, g]);
@@ -127,7 +134,11 @@ function cardOf(tuning, x, r, cells, k) {
   const strsLow = [...cells].sort((a, b) => b.s - a.s).map((c) => c.s);
   const pos = r.kind === "caged" ? CAGED_NUM[r.form] : winOf(cells);
   const forms = r.kind === "caged" ? [r.form] : chordForms(root, ton, q, cells);
-  const id = r.kind === "shape" ? "y" : (r.kind === "caged" ? "c" + r.form : { triad: "t", drop2: "d", drop3: "e", shell: "s" }[r.kind] + tok + inv) + (k ? "u" : "");
+  // An open-position card's id is its frets, low E to high e (o x32010), so a link keeps it when rows move in the list.
+  const id = r.kind === "shape" ? "y" : (r.kind === "caged" ? "c" + r.form : r.kind === "open" ? "o" + [...frets].reverse().map((f) => (f === null ? "x" : f - k)).join("")
+    : { triad: "t", drop2: "d", drop3: "e", shell: "s" }[r.kind] + tok + inv) + (k ? "u" : "");
+  // A row of the list may leave out the 5th of a 4-note chord (C6 x 3 2 2 1 0); its card says so.
+  const no5 = r.kind === "open" && ivs.some((iv) => !cells.some((c) => c.iv === iv));
   const title = rn + sfx + (inv > 0 ? "/" + name((root + ivs[inv]) % 12) : "") + (k ? " · 12 up" : "");
   return {
     id, kind: r.kind, form: r.form || null, forms, k, cells, frets, tok, inv, pos, bassStr: strsLow[0],
@@ -135,7 +146,7 @@ function cardOf(tuning, x, r, cells, k) {
     open: fs.some((f) => f === 0), root, q, title,
     sub: [...frets].reverse().map((f) => (f === null ? "x" : f)).join(" "),
     mark: r.kind === "caged" ? `CAGED ${r.form} form` : r.kind === "shape" ? "Your shape" : CARD_NAME[r.kind],
-    tags: r.kind === "caged" ? [`Window ${pos}`] : r.kind === "shape" ? [INV_LABEL[inv], ...(pos ? [`Window ${pos}`] : [])] : [INV_LABEL[inv], `Strings ${strLabel(tok)}`],
+    tags: r.kind === "caged" ? [`Window ${pos}`] : r.kind === "shape" ? [INV_LABEL[inv], ...(pos ? [`Window ${pos}`] : [])] : [INV_LABEL[inv], `Strings ${strLabel(tok)}`, ...(no5 ? ["No 5th"] : [])],
     deg, name,
   };
 }
@@ -151,6 +162,11 @@ export function chordCards(tuning, root, q, types, up) {
     const cells = [];
     tpl.forEach((f, i) => { if (f !== null) cells.push({ s: tuning.strings - 1 - i, f: f + t }); });
     raw.push({ kind: "caged", form: L, cells });
+  });
+  if (want.has("open")) openRows(tuning, root, q).forEach((o) => {
+    const cells = [];
+    o.frets.forEach((f, s) => { if (f !== null) cells.push({ s, f }); });
+    raw.push({ kind: "open", cells });
   });
   if (want.has("triad")) TRIAD_SETS.forEach((strs) => [0, 1, 2].forEach((inv) => raw.push({ kind: "triad", cells: place(tuning, strs, [...pcs.slice(inv), ...pcs.slice(0, inv)]) })));
   // Drop 2 and drop 3 come from the close voicing: the four tones within one octave, low to high. For sevenths and 6 chords

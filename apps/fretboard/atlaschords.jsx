@@ -9,7 +9,7 @@ import { CardGrid, AtlasCard } from "../../core/atlas.jsx";
 import { MARKERS, inlayAt } from "./guitar.js";
 import { POS_COLOR, formFill, formName } from "./caged.js";
 import { ringMask } from "../../core/marker.js";
-import { CH_TYPES, CH_QUALS, CH_TYPE_DEF, CH_FRETS, INV_LABEL, chAvail, chIvs, chName, chRootName, chordCards, chFilter, chSections, strLabel } from "./chordshapes.js";
+import { CH_TYPES, CH_QUALS, CH_TYPE_DEF, CH_FRETS, INV_LABEL, chAvail, chIvs, chName, chRootName, chordCards, chFilter, chSections, strLabel, openRows } from "./chordshapes.js";
 
 const CH_BY = [["family", "Family"], ["inversion", "Inversion"], ["strings", "Strings"], ["position", "Position"]];
 const INV_SEG = [[null, "Any"], [0, "Root"], [1, "1st"], [2, "2nd"], [3, "3rd"]];
@@ -105,7 +105,7 @@ export function ChordsMode({ tuning, at, setAt, labelMode, setLabelMode, onOpen 
   const shown = sections.map((sec) => { const cs = sec.cards.slice(0, Math.max(0, left)); left -= cs.length; return { ...sec, shown: cs }; }).filter((sec) => sec.shown.length);
 
   const nm = chName(croot, cq), qLabel = CH_QUALS.find(([k]) => k === cq)[1];
-  const typeNames = types.map((t) => ({ caged: "CAGED forms", triad: "closed triads", drop2: "drop 2", drop3: "drop 3", shell: "shells" })[t]);
+  const typeNames = types.map((t) => ({ caged: "CAGED forms", open: "open position", triad: "closed triads", drop2: "drop 2", drop3: "drop 3", shell: "shells" })[t]);
   const labNote = labelMode === "name" ? " · note names" : labelMode === "none" ? " · no labels" : "";
   const summary = `${nm} · ${cards.length} voicing${cards.length === 1 ? "" : "s"}` + (phone ? "" : ` · ${typeNames.length ? typeNames.join(", ") : "no voicing type"}`) + labNote;
   const typeShort = types.length ? types.map((t) => CH_TYPES.find(([k]) => k === t)[2]).join(" + ") : "No voicing type";
@@ -206,7 +206,9 @@ export function ChordsMode({ tuning, at, setAt, labelMode, setLabelMode, onOpen 
   // Empty state (mock-up frame): why nothing matches, a Remove for each filter and an Add for each type that would match.
   const adds = avail.filter((t) => !types.includes(t)).map((t) => [t, chFilter(chordCards(tuning, croot, cq, [t], cup), flt).length]).filter(([, n]) => n > 0);
   const rootOnly = types.length > 0 && types.every((t) => t === "caged" || t === "shell");
-  const why = !types.length ? "No voicing type is chosen." : cinv !== null && cinv > 0 && rootOnly
+  // Open position is offered for a quality on any root; the list may have no row for this one (B♭ major).
+  const why = !types.length ? "No voicing type is chosen." : types.every((t) => t === "open") && !openRows(tuning, croot, cq).length
+    ? `The open-position list has no ${nm} voicing.` : cinv !== null && cinv > 0 && rootOnly
     ? <React.Fragment>{types.length === 1 ? (types[0] === "shell" ? "Shells always have" : "CAGED forms always have") : "CAGED forms and shells always have"} the root in the bass, so <b className="text-body" style={{ fontWeight: 600 }}>Inversion: {INV_SEG.find(([v]) => v === cinv)[1]}</b> leaves none.</React.Fragment>
     : "The filters leave none of the chosen voicing types.";
 
