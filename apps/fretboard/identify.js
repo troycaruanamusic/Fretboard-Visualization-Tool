@@ -5,6 +5,7 @@
 import { DEG_LABEL } from "../../core/scales.js";
 import { accs, spellAt } from "../../core/spelling.js";
 import { CH_QUALS, CH_TYPE_KEYS, chIvs, chName, chordCtx, chordCards, INV_LABEL } from "./chordshapes.js";
+import { OPEN_ROWS } from "./openvoicings.js";
 
 // Spelling with no chord to spell from (mock-up call 8): C♯ E♭ F♯ A♭ B♭.
 export const PLAIN = ["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"];
@@ -112,4 +113,34 @@ export function shapeIn(v, tuning) {
   if (a.length !== tuning.strings) return undefined;
   const fs = a.map((t) => (t === "x" ? null : /^\d{1,2}$/.test(t) && +t <= tuning.frets ? +t : undefined));
   return fs.includes(undefined) ? undefined : fs.reverse();
+}
+
+// The open-position list's check (Round 17), run by the build: a row that fails stops it, with the line and the reason. Each
+// row needs a note name, one of the app's quality keys and a fret or x for every string, low E to high e, all within frets
+// 0–4; its notes must spell its chord as Identify reads them (every tone, or a 4-note chord without its perfect 5th; the root
+// in the shape); and it must not repeat another row or a generated shape of its chord (any type, lowest copy or 12 up).
+export function openProblems(tuning) {
+  const out = [], seen = new Map(), keys = CH_QUALS.map(([k]) => k), gen = CH_TYPE_KEYS.filter((t) => t !== "open");
+  const key = (cs) => cs.map((c) => c.s * 100 + c.f).sort((a, b) => a - b).join(",");
+  OPEN_ROWS.forEach((o) => {
+    const p = [];
+    if (o.root < 0) p.push(`root "${o.rootTok}" is not a note name (C, F#, Bb …)`);
+    if (!keys.includes(o.q)) p.push(`quality "${o.q}" is not one of ${keys.join(", ")}`);
+    if (o.frets.length !== tuning.strings || o.frets.some((f) => Number.isNaN(f))) p.push(`frets need ${tuning.strings} entries, low E to high e, each x or a fret number`);
+    else if (o.frets.some((f) => f !== null && f > 4)) p.push("a fret above 4 (open position is frets 0–4)");
+    if (!p.length) {
+      const { cells, pcs } = shapeInfo(tuning, o.frets);
+      const r = readings(tuning, o.frets).find((x) => x.root === o.root && x.q === o.q);
+      if (!r) p.push(`its notes ${pcs.map((c) => PLAIN[c]).join(" ")} don't spell ${chName(o.root, o.q)}`);
+      else {
+        const k = `${o.root}|${o.q}|${key(cells)}`;
+        if (seen.has(k)) p.push(`same shape as line ${seen.get(k)}`);
+        else seen.set(k, o.line);
+        const g = chordCards(tuning, o.root, o.q, gen, true).find((c) => key(c.cells) === key(cells));
+        if (g) p.push(`already generated (${g.mark}${g.k ? ", 12 up" : ""})`);
+      }
+    }
+    if (p.length) out.push(`line ${o.line} (${o.text}): ${p.join("; ")}`);
+  });
+  return out;
 }

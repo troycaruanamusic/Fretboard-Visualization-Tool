@@ -2,7 +2,8 @@
 // modules bundled into one in-browser Babel script (JSX is left for Babel, as before the restructure).
 //   npm run build              all apps
 //   npm run build -- fretboard one app
-// Output: dist/<app>/index.html. The build fails if a core module imports app code.
+// Output: dist/<app>/index.html. The build fails if a core module imports app code, or if an app's data check reports a
+// problem (Fretboard Trainer: the open-position list, apps/fretboard/data/open-voicings.csv).
 import fs from "node:fs";
 import path from "node:path";
 import * as esbuild from "esbuild";
@@ -13,21 +14,36 @@ const APPS = {
     template: "apps/fretboard/index.html",
     entry: "apps/fretboard/main.jsx",
     css: ["core/design.css", "apps/fretboard/app.css"],
+    // Its default export: a list of problems, empty when the data is good.
+    check: `import { openProblems } from "./apps/fretboard/identify.js"; import { STANDARD } from "./apps/fretboard/tunings.js"; export default openProblems(STANDARD);`,
   },
 };
 
 const fail = (msg) => { console.error("build: " + msg); process.exit(1); };
+// Data files: CSV is read as text (Fretboard Trainer's open-position list).
+const LOADER = { ".js": "jsx", ".csv": "text" };
+
+// An app's data check: its code bundled for Node and run here; any problem fails the build.
+async function check(name, code) {
+  const res = await esbuild.build({
+    absWorkingDir: ROOT, stdin: { contents: code, resolveDir: ROOT, loader: "js" }, bundle: true, format: "esm", platform: "node",
+    loader: LOADER, charset: "utf8", write: false, logLevel: "warning",
+  });
+  const problems = (await import("data:text/javascript;base64," + Buffer.from(res.outputFiles[0].text).toString("base64"))).default;
+  if (problems.length) fail(`${name}: the data check found ${problems.length} problem${problems.length === 1 ? "" : "s"}:\n  ${problems.join("\n  ")}`);
+}
 
 async function build(name) {
   const app = APPS[name];
   if (!app) fail(`no app "${name}" (apps: ${Object.keys(APPS).join(", ")})`);
+  if (app.check) await check(name, app.check);
   const res = await esbuild.build({
     absWorkingDir: ROOT,
     entryPoints: [app.entry],
     bundle: true,
     format: "esm",
     jsx: "preserve",
-    loader: { ".js": "jsx" },
+    loader: LOADER,
     charset: "utf8",
     target: "esnext",
     legalComments: "none",
