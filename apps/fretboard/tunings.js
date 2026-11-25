@@ -1,5 +1,5 @@
-// Fretboard Trainer · guitar tunings as data (tunings layer, app-structure plan step 5). Standard only for now; drop D, open
-// and custom tunings follow at step 8.
+// Fretboard Trainer · guitar tunings as data (tunings layer, app-structure plan step 5). Standard only: drop, open and
+// custom tunings are out of this app (TC, 25 Nov; build plan step 8 dropped). The tunings layer stays for the shared core.
 import { makeTuning } from "../../core/tuning.js";
 
 // e4 B3 G3 D3 A2 E2, string 1 first; 21 frets.

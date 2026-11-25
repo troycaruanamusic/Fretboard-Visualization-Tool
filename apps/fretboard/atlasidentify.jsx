@@ -1,10 +1,11 @@
-// Fretboard Trainer · the Atlas's Identify mode (build plan step 7, Identify mock-up of 19 Nov; TC's answers of 19 and 20 Nov):
-// tap a shape on a 21-fret board, read its names, and see its shapes as Chords-mode cards. The matcher is identify.js.
+// Fretboard Trainer · the Identify tab (build plan step 7, Identify mock-up of 19 Nov; TC's answers of 19 and 20 Nov; its own
+// tab since Build A): tap a shape on a 21-fret board, read its names, and see its shapes as voicing cards. The matcher is
+// identify.js.
 import { useMemo, useEffect } from "../../core/react.js";
 import { THEME } from "../../core/theme.js";
-import { Seg, Track, Btn, useMedia, PHONE_Q } from "../../core/ui.jsx";
+import { Btn, Labels, useMedia, PHONE_Q } from "../../core/ui.jsx";
 import { CardGrid, AtlasCard } from "../../core/atlas.jsx";
-import { ringMask } from "../../core/marker.js";
+import { TILE, ROOT } from "../../core/marker.js";
 import { MARKERS, colPx, inlayAt } from "./guitar.js";
 import { POS_COLOR, NEUTRAL_CT, formName } from "./caged.js";
 import { CH_TYPES, CH_TYPE_KEYS, chAvail, chName, chordCards, chFilter, chSort, shapeCard } from "./chordshapes.js";
@@ -56,7 +57,7 @@ function TapBoard({ tuning, shape, setShape, dotOf }) {
           {inlayAt(tuning.strings, s, f) && <span className="inlay" style={{ width: 11, height: 11 }} />}
           <span className="mn-s" style={{ height: tuning.gauges[s], marginTop: -tuning.gauges[s] / 2 }} />
           {d && (d.root
-            ? <span data-ring="1" className="mn-d fdot" style={{ width: dot + 2, height: dot + 2, background: NEUTRAL_CT, color: THEME.ink, fontSize: 12, fontWeight: 800, zIndex: 5, ...ringMask(2, 2) }}>{d.label}</span>
+            ? <span data-root="1" className={"mn-d fdot " + ROOT} style={{ width: dot, height: dot, background: NEUTRAL_CT, color: THEME.ink, fontSize: 12, fontWeight: 800, zIndex: 5 }}>{d.label}</span>
             : <span className="mn-d fdot" style={{ width: dot, height: dot, background: NEUTRAL_CT, color: THEME.ink, fontSize: 12, fontWeight: 800, zIndex: 3 }}>{d.label}</span>)}
         </button>
       );
@@ -97,7 +98,7 @@ function NameList({ list, chosen, onPick }) {
   );
 }
 
-export function IdentifyMode({ tuning, at, setAt, labelMode, setLabelMode, onOpen }) {
+export function IdentifyPage({ tuning, at, setAt, labelMode, setLabelMode, onOpen, toVoicings }) {
   const { ishape: shape, iname, size } = at;
   const phone = useMedia(PHONE_Q);
   const set = (p) => setAt((a) => ({ ...a, ...p }));
@@ -136,12 +137,8 @@ export function IdentifyMode({ tuning, at, setAt, labelMode, setLabelMode, onOpe
     return { head: `${nm} · your shape and the lowest ${lowest.length}`, note: chAvail(q).includes("caged") ? "" : `${nm} has no CAGED form; these come from its other voicing types.`, count: null, lit: mine.id, cards: [mine, ...lowest], total };
   }, [tuning, chosen && chosen.id, shape.join(",")]);
 
-  const toChords = () => set({ am: "chords", croot: chosen.root, cq: chosen.q, vt: CH_TYPE_KEYS, ...CH_FILTER_DEFAULT, clit: null });
-  const labels = (
-    <span className="ilabels"><span className="text-xs text-muted">Labels</span>
-      <Track label="Labels" cols={3}>{[["degree", "Degrees"], ["name", "Notes"], ["none", "None"]].map(([k, l]) => <Seg key={k} active={labelMode === k} onClick={() => setLabelMode(k)}>{l}</Seg>)}</Track>
-    </span>
-  );
+  const toChords = () => toVoicings(chosen.root, chosen.q);
+  const labels = <Labels value={labelMode} set={setLabelMode} />;
   const shapeBtns = (u, c) => (
     <span className="flex" style={{ gap: 8 }}>
       <Btn onClick={undo} disabled={!HIST.length}>{u}</Btn>
@@ -182,7 +179,7 @@ export function IdentifyMode({ tuning, at, setAt, labelMode, setLabelMode, onOpe
             {shapes.cards.map((c0) => {
               const c = { ...c0, ...frame(tuning, c0.cells) }, on = c.id === shapes.lit;
               return (
-                <AtlasCard key={c.id} card={c} sub={tonesOf(c, labelMode)} on={on} onToggle={() => {}} setHov={() => {}} onOpen={() => onOpen(c, `${c.title}, ${c.sub}`)}
+                <AtlasCard key={c.id} card={c} sub={tonesOf(c, labelMode)} on={on} onToggle={() => {}} setHov={() => {}} onOpen={() => onOpen(c)} openLabel="All positions"
                   mark={c.mark} markColour={c.kind === "caged" ? POS_COLOR[c.form] : c.kind === "shape" ? THEME.sel : null}
                   formTag={c.kind !== "caged" && c.forms.length ? { label: formName(c.forms), line: formLine(c.forms) } : null}
                   extraTag={on && c.kind !== "shape" ? { label: "Your shape", colour: THEME.sel } : null}>
@@ -192,8 +189,8 @@ export function IdentifyMode({ tuning, at, setAt, labelMode, setLabelMode, onOpe
             })}
           </CardGrid>
           <div className="ito">
-            <Btn data-tochords onClick={toChords}>All {shapes.total} {chName(chosen.root, chosen.q)} voicings in Chords<span aria-hidden="true" style={{ marginLeft: 6 }}>›</span></Btn>
-            <span className="text-xs text-muted">Opens Chords mode on {chName(chosen.root, chosen.q)}, every voicing type.</span>
+            <Btn data-tochords onClick={toChords}>All {shapes.total} {chName(chosen.root, chosen.q)} voicings in Chord<span aria-hidden="true" style={{ marginLeft: 6 }}>›</span></Btn>
+            <span className="text-xs text-muted">Opens Chord → Voicing on {chName(chosen.root, chosen.q)}, every voicing type.</span>
           </div>
         </section>
       )}

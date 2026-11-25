@@ -10,7 +10,7 @@ export const HATCH = Object.fromEntries(LETTERS5.map((L) => [L, `var(--h-${L})`]
 // The All view's 12 % column tint, per position colour.
 export const POS_TINT = Object.fromEntries(LETTERS5.map((L) => [L, `color-mix(in srgb, var(--c-${L}) 12%, transparent)`]));
 // Window offsets count from the pitch class of standard tuning's low E (4). Kept as a CAGED constant, not read from the
-// tuning, so drop D can keep the standard windows; other tunings' windows are designed at plan step 8.
+// tuning; the app is standard tuning only (TC, 25 Nov: build plan step 8, other tunings, dropped).
 export const CAGED_ANCHOR = 4;
 export const POS_MAJOR = [{num:1,letter:"C",off:4,w:3},{num:2,letter:"A",off:6,w:3},{num:3,letter:"G",off:9,w:3},{num:4,letter:"E",off:-1,w:3},{num:5,letter:"D",off:1,w:4}];
 export const POS_MINOR = [{num:1,letter:"C",off:4,w:4},{num:2,letter:"A",off:7,w:3},{num:3,letter:"G",off:9,w:3},{num:4,letter:"E",off:0,w:3},{num:5,letter:"D",off:2,w:3}];

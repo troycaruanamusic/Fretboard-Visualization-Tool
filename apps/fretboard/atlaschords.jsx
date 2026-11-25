@@ -1,14 +1,14 @@
-// Fretboard Trainer · the Atlas's Chords mode (app-structure plan step 6, Atlas mock-up of 18 Nov): one chord, root and
-// quality, as a grid of small necks, one card per shape, in sections by Lay out by. The tuning is an input; shapes come
-// from chordshapes.js.
-import { useState, useMemo } from "../../core/react.js";
+// Fretboard Trainer · Chord → Voicing (v0.41's Atlas Chords mode, app-structure plan step 6; under the Chord tab since Build A):
+// one voicing on the neck and the chord's shapes as a grid of small necks under it, in sections by Lay out by. The tuning is
+// an input; shapes come from chordshapes.js. Build C replaces the grid with the voicing list.
+import { useState, useMemo, useEffect } from "../../core/react.js";
 import { THEME } from "../../core/theme.js";
-import { QUAL_COMMON, QUAL_MORE, QUAL_IN_MORE } from "../../core/chords.js";
-import { Seg, Track, Row, Card, Btn, useMedia, PHONE_Q, Dialog } from "../../core/ui.jsx";
+import { Seg, Track, Btn, Bar, Grp, Labels, Chip, ClearAll, useMedia, PHONE_Q } from "../../core/ui.jsx";
 import { CardGrid, AtlasCard } from "../../core/atlas.jsx";
-import { MARKERS, inlayAt } from "./guitar.js";
+import { MARKERS, colPx, inlayAt } from "./guitar.js";
 import { POS_COLOR, formFill, formName } from "./caged.js";
-import { ringMask } from "../../core/marker.js";
+import { TILE, ROOT } from "../../core/marker.js";
+import { chordQ } from "./url.js";
 import { CH_TYPES, CH_QUALS, CH_TYPE_DEF, CH_FRETS, INV_LABEL, chAvail, chIvs, chName, chRootName, chordCards, chFilter, chSections, strLabel, openRows } from "./chordshapes.js";
 
 const CH_BY = [["family", "Family"], ["inversion", "Inversion"], ["strings", "Strings"], ["position", "Position"]];
@@ -22,8 +22,8 @@ export const chAnyFilter = (at) => Object.entries(CH_FILTER_DEFAULT).some(([k, v
 // 24 and batch above that.
 const BATCH = { phone: 12, wide: 24 };
 
-// A chord card's neck: six fret columns (more if the shape spans more), as the Scales cards. CAGED forms in their form's
-// colour; the other shapes neutral, the root with a gold rim (mock-up, TC 18 Nov).
+// A chord card's neck: six fret columns (more if the shape spans more), as the scale cards. Every shape in its CAGED form's
+// colour; the root with its ink frame (Build A).
 export function ChordNeck({ tuning, card, labelMode, lg }) {
   const { cells, start, cols } = card;
   const rowH = lg ? 34 : 28, d1 = lg ? 26 : 22, fs = lg ? 12 : 11;
@@ -42,7 +42,7 @@ export function ChordNeck({ tuning, card, labelMode, lg }) {
         const lab = labelMode === "name" ? card.name(pc) : labelMode === "degree" ? card.deg(c.iv) : "";
         const data = { "data-c": `${s}-${f}`, title: `${card.name(pc)} · ${card.deg(c.iv)}` };
         dot = isRoot
-          ? <span {...data} data-ring="1" className="mn-d fdot" style={{ width: d1 + 4, height: d1 + 4, background: col, color: THEME.ink, fontSize: fs, fontWeight: 800, zIndex: 5, ...ringMask(2, 1.5) }}>{lab}</span>
+          ? <span {...data} data-root="1" className={"mn-d fdot " + ROOT} style={{ width: d1, height: d1, background: col, color: THEME.ink, fontSize: fs, fontWeight: 800, zIndex: 5 }}>{lab}</span>
           : <span {...data} className="mn-d fdot" style={{ width: d1, height: d1, background: col, color: THEME.ink, fontSize: fs, fontWeight: 800, zIndex: 3 }}>{lab}</span>;
       }
       out.push(
@@ -72,20 +72,77 @@ export function frame(tuning, cells) {
   return { cols, start: Math.max(0, Math.min(tuning.frets - cols + 1, lo - Math.floor((cols - span) / 2))) };
 }
 
-export function ChordsMode({ tuning, at, setAt, labelMode, setLabelMode, onOpen }) {
-  const { croot, cq, cby, vt, cinv, frets, cset, copen, span, cup, clit, size } = at;
+// The voicing on the big neck (Build A, TC 25 Nov): the chosen card's notes filled in its CAGED form colour, the root framed,
+// the chord's other tones across the neck as open squares, and × at the nut on each string the shape leaves out (mock-up
+// call 6). The neck scrolls to the shape when it is wider than the screen.
+function VoicingNeck({ tuning, card, labelMode }) {
+  const cellH = 46, fontPx = 11;
+  const COLS = `30px ${colPx(tuning.frets).map((n) => `minmax(${n}px, ${n}fr)`).join(" ")}`;
+  const fill = formFill(card.forms), tones = new Set(card.cells.map((c) => c.iv)), ivs = new Set(card.deg ? chordTones(card) : []);
+  const hit = {};
+  card.cells.forEach((c) => { hit[c.s * 100 + c.f] = c; });
+  const lab = (pc, iv) => (labelMode === "name" ? card.name(pc) : labelMode === "degree" ? card.deg(iv) : "");
+  const scrollRef = React.useRef(null);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || el.scrollWidth <= el.clientWidth) return;
+    const lo = el.querySelector(`[data-fret="${Math.max(0, card.lo - 1)}"]`), hi = el.querySelector(`[data-fret="${Math.min(tuning.frets, card.hi + 1)}"]`);
+    if (!lo || !hi) return;
+    const box = el.getBoundingClientRect(), l = lo.getBoundingClientRect().left - box.left + el.scrollLeft, r = hi.getBoundingClientRect().right - box.left + el.scrollLeft;
+    const smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollTo({ left: Math.max(0, (l + r) / 2 - el.clientWidth / 2), behavior: smooth ? "smooth" : "auto" });
+  }, [tuning, card.id, card.root, card.q]);
+  const rows = [];
+  for (let s = 0; s < tuning.strings; s++) {
+    const muted = card.frets[s] === null;
+    rows.push(<div key={"l" + s} className="flex items-center justify-center text-xs font-semibold" style={{ height: cellH, color: muted ? THEME.muted : THEME.text }}>{tuning.labels[s]}</div>);
+    for (let f = 0; f <= tuning.frets; f++) {
+      const pc = (tuning.open[s] + f) % 12, iv = (((pc - card.root) % 12) + 12) % 12, c = hit[s * 100 + f];
+      let dot = null;
+      if (c) {
+        const isRoot = c.iv === 0, title = `${card.name(pc)} · ${card.deg(c.iv)}`;
+        dot = <div data-v={`${s}-${f}`} data-root={isRoot ? "1" : undefined} title={title} className={"fdot " + (isRoot ? ROOT : TILE) + " relative flex items-center justify-center"} style={{ width: 30, height: 30, background: fill, color: THEME.ink, fontSize: fontPx, fontWeight: 800, zIndex: isRoot ? 5 : 3 }}>{lab(pc, c.iv)}</div>;
+      } else if (f === 0 && muted) {
+        dot = <div data-mute={s} aria-label="muted" className="relative" style={{ color: THEME.muted, fontSize: 15, fontWeight: 700, zIndex: 2 }}>×</div>;
+      } else if (ivs.has(iv)) {
+        dot = <div data-o={`${s}-${f}`} title={`${card.name(pc)} · ${card.deg(iv)}`} className={TILE + " relative flex items-center justify-center"} style={{ width: 24, height: 24, border: `${iv === 0 ? 3 : 1.5}px solid ${THEME.edge}`, color: THEME.muted, fontSize: fontPx, fontWeight: 500, zIndex: 2 }}>{lab(pc, iv)}</div>;
+      }
+      rows.push(
+        <div key={s + "-" + f} data-fret={s === 0 ? f : undefined} className="relative flex items-center justify-center" style={{ height: cellH, borderRight: f === 0 ? `5px solid ${THEME.nut}` : `2px solid ${THEME.fret}`, background: f === 0 ? THEME.track : undefined }}>
+          {inlayAt(tuning.strings, s, f) && <span className="inlay" style={{ width: 11, height: 11 }} />}
+          <div className="absolute left-0 right-0" style={{ top: "50%", transform: "translateY(-50%)", height: tuning.gauges[s], background: THEME.edge }} />
+          {dot}
+        </div>
+      );
+    }
+  }
+  return (
+    <div ref={scrollRef} data-voicing={card.id} className="overflow-x-auto pb-2 rounded-xl" style={{ background: THEME.panel2 }}>
+      <div className="grid p-3" style={{ gridTemplateColumns: COLS, width: "100%", minWidth: "min-content" }}>
+        {rows}
+        <div />
+        {Array.from({ length: tuning.frets + 1 }, (_, f) => (
+          <div key={"n" + f} className="flex items-center justify-center text-xs" style={{ height: 24, color: MARKERS[f] ? THEME.text : THEME.muted, fontWeight: MARKERS[f] ? 700 : 400 }}>{f}</div>
+        ))}
+      </div>
+    </div>
+  );
+}
+// The chord's tones as intervals from its root (every tone of the quality, whether or not the shape plays it).
+const chordTones = (card) => chIvs(card.q);
+
+// lead: the Chord tab's Show, Root and Quality (Build A). The chord is the Chord tab's one chord (TC, 25 Nov).
+export function VoicingView({ tuning, cfg, at, setAt, labelMode, setLabelMode, onAll, lead }) {
+  const croot = cfg.root, cq = chordQ(cfg);
+  const { cby, vt, frets, cset, copen, span, cup, clit, size } = at;
   const phone = useMedia(PHONE_Q);
-  const [sheet, setSheet] = useState(false);
-  const [pick, setPick] = useState(false);
-  const [open, setOpen] = useState("");
-  const [more, setMore] = useState(QUAL_IN_MORE(cq));
   const [moreF, setMoreF] = useState(false);
-  const [pickGrp, setPickGrp] = useState(QUAL_MORE.find(([, qs]) => qs.some(([k]) => k === cq)) ? QUAL_MORE.find(([, qs]) => qs.some(([k]) => k === cq))[0] : "");
   const [allFor, setAllFor] = useState("");
   const set = (p) => setAt((a) => ({ ...a, ...p }));
   const avail = chAvail(cq), types = vt.filter((t) => avail.includes(t)), n3 = chIvs(cq).length === 3;
-  // A 3-note chord has no 3rd inversion: choosing one drops Inversion: 3rd.
-  const setQ = (q) => set({ cq: q, clit: null, ...(chIvs(q).length === 3 && cinv === 3 ? { cinv: null } : {}) });
+  // A 3-note chord has no 3rd inversion: a quality change drops Inversion: 3rd.
+  const cinv = at.cinv === 3 && n3 ? null : at.cinv;
+  useEffect(() => { if (cinv !== at.cinv) set({ cinv }); });
   const flt = { inv: cinv, frets, set: cset, open: copen, span };
 
   const base = useMemo(() => chordCards(tuning, croot, cq, types, cup).map((c) => ({ ...c, ...frame(tuning, c.cells) })), [tuning, croot, cq, types.join("."), cup]);
@@ -103,12 +160,12 @@ export function ChordsMode({ tuning, at, setAt, labelMode, setLabelMode, onOpen 
   const batched = cards.length > limit && allFor !== sig;
   let left = batched ? limit : Infinity;
   const shown = sections.map((sec) => { const cs = sec.cards.slice(0, Math.max(0, left)); left -= cs.length; return { ...sec, shown: cs }; }).filter((sec) => sec.shown.length);
+  // The voicing on the neck: the lit card, else the first card shown.
+  const onNeck = cards.find((c) => c.id === clit) || (shown.length ? shown[0].shown[0] : null);
 
-  const nm = chName(croot, cq), qLabel = CH_QUALS.find(([k]) => k === cq)[1];
+  const nm = chName(croot, cq);
   const typeNames = types.map((t) => ({ caged: "CAGED forms", open: "open position", triad: "closed triads", drop2: "drop 2", drop3: "drop 3", shell: "shells" })[t]);
-  const labNote = labelMode === "name" ? " · note names" : labelMode === "none" ? " · no labels" : "";
-  const summary = `${nm} · ${cards.length} voicing${cards.length === 1 ? "" : "s"}` + (phone ? "" : ` · ${typeNames.length ? typeNames.join(", ") : "no voicing type"}`) + labNote;
-  const typeShort = types.length ? types.map((t) => CH_TYPES.find(([k]) => k === t)[2]).join(" + ") : "No voicing type";
+  const summary = `${nm} · ${cards.length} voicing${cards.length === 1 ? "" : "s"}` + (phone ? "" : ` · ${typeNames.length ? typeNames.join(", ") : "no voicing type"}`);
   const chips = [
     cinv !== null && [`Inversion: ${INV_SEG.find(([v]) => v === cinv)[1]}`, () => set({ cinv: null })],
     frets !== "any" && [`Frets ${CH_FRETS.find(([k]) => k === frets)[1]}`, () => set({ frets: "any" })],
@@ -118,90 +175,7 @@ export function ChordsMode({ tuning, at, setAt, labelMode, setLabelMode, onOpen 
     span !== CH_FILTER_DEFAULT.span && [`Max span ${span}`, () => set({ span: CH_FILTER_DEFAULT.span })],
   ].filter(Boolean);
   const clear = () => set({ ...CH_FILTER_DEFAULT });
-
-  // Controls, shared by the cards (tablet and desktop), the Filters sheet and the chord picker (phone).
-  const rootGrid = (
-    <Track label="Root" cols={6}>{Array.from({ length: 12 }, (_, r) => <Seg key={r} tone="gold" active={croot === r} onClick={() => set({ croot: r, clit: null })}>{chRootName(r, cq)}</Seg>)}</Track>
-  );
-  const qualGrid = <Track label="Quality" cols={3}>{QUAL_COMMON.map(([k, l]) => <Seg key={k} active={cq === k} onClick={() => setQ(k)}>{l}</Seg>)}</Track>;
-  const moreGroups = (id) => (
-    <div id={id} className="flex flex-col gap-2">{QUAL_MORE.map(([group, qs, n]) => (
-      <Row key={group} label={group}>
-        <Track label={group} cols={n}>{qs.map(([k, l]) => <Seg key={k} active={cq === k} onClick={() => setQ(k)}>{l}</Seg>)}</Track>
-      </Row>
-    ))}</div>
-  );
-  const typeRow = (
-    <React.Fragment>
-      <Row label="Voicing type">
-        <div role="group" aria-label="Voicing type" className="flex flex-wrap" style={{ gap: 6 }}>
-          {CH_TYPES.filter(([k]) => avail.includes(k)).map(([k, l]) => (
-            <Btn key={k} aria-pressed={types.includes(k)} onClick={() => set({ vt: CH_TYPES.map(([t]) => t).filter((t) => (t === k ? !vt.includes(k) : vt.includes(t))), clit: null })}>{l}</Btn>
-          ))}
-        </div>
-      </Row>
-      <p data-typedef className="text-xs text-muted" style={{ margin: 0, lineHeight: 1.45 }}>
-        {avail.map((k, i) => <React.Fragment key={k}>{i > 0 && " "}<b className="text-body" style={{ fontWeight: 600 }}>{CH_TYPE_DEF[k][0]}</b>: {CH_TYPE_DEF[k][1]}</React.Fragment>)}
-      </p>
-    </React.Fragment>
-  );
-  const byRows = (
-    <React.Fragment>
-      <Row>
-        <Track label="Lay out by" cols={phone ? 2 : 4}>{CH_BY.map(([k, l]) => <Seg key={k} active={cby === k} onClick={() => set({ cby: k })}>{l}</Seg>)}</Track>
-      </Row>
-      {typeRow}
-    </React.Fragment>
-  );
-  const moreFRows = (
-    <div id="ch-morefilters" className="flex flex-col gap-2">
-      <Row label="String set">
-        <Track label="String set" cols={Math.min(4, setOpts.length + 1)}>
-          <Seg active={cset === null} onClick={() => set({ cset: null })}>Any</Seg>
-          {setOpts.map((t) => <Seg key={t} active={cset === t} onClick={() => set({ cset: t })}>{strLabel(t)}</Seg>)}
-        </Track>
-      </Row>
-      <Row label="Open strings">
-        <Track label="Open strings" cols={2}>{[["allow", "Allow"], ["none", "None"]].map(([k, l]) => <Seg key={k} active={copen === k} onClick={() => set({ copen: k })}>{l}</Seg>)}</Track>
-      </Row>
-      <Row label="Max span (frets)">
-        <Track label="Max span" cols={4}>{SPANS.map((v) => <Seg key={v} active={span === v} onClick={() => set({ span: v })}>{v}</Seg>)}</Track>
-      </Row>
-    </div>
-  );
   const drop = (on) => <span aria-hidden="true" className="text-muted" style={{ marginLeft: 6, display: "inline-block", transform: on ? "rotate(180deg)" : "none" }}>▾</span>;
-  const filterRows = (
-    <React.Fragment>
-      <Row label="Inversion">
-        <Track label="Inversion" cols={5}>{INV_SEG.map(([v, l]) => <Seg key={l} active={cinv === v} disabled={v === 3 && n3} onClick={() => set({ cinv: v })}>{l}</Seg>)}</Track>
-      </Row>
-      <Row label="Frets">
-        <Track label="Frets" cols={3}>{CH_FRETS.map(([k, l]) => <Seg key={k} active={frets === k} onClick={() => set({ frets: k })}>{l}</Seg>)}</Track>
-      </Row>
-      <Row label="Copies">
-        <Track label="Copies" cols={2}>{[[false, "Lowest"], [true, "Also 12 up"]].map(([v, l]) => <Seg key={l} active={cup === v} onClick={() => set({ cup: v })}>{l}</Seg>)}</Track>
-      </Row>
-      <Row>
-        <Btn onClick={() => setMoreF((m) => !m)} aria-expanded={moreF} aria-controls="ch-morefilters" aria-label="More filters: string set, open strings, max span">More filters{drop(moreF)}</Btn>
-      </Row>
-      {moreF && moreFRows}
-    </React.Fragment>
-  );
-  const displayRows = (
-    <React.Fragment>
-      <Row label="Labels">
-        <Track label="Labels" cols={3}>{[["degree", "Degrees"], ["name", "Notes"], ["none", "None"]].map(([k, l]) => <Seg key={k} active={labelMode === k} onClick={() => setLabelMode(k)}>{l}</Seg>)}</Track>
-      </Row>
-      <Row label="Card size">
-        <Track label="Card size" cols={2}>{[["standard", "Standard"], ["large", "Large"]].map(([k, l]) => <Seg key={k} active={size === k} onClick={() => set({ size: k })}>{l}</Seg>)}</Track>
-      </Row>
-    </React.Fragment>
-  );
-  const chip = ([t, rm]) => (
-    <button key={t} onClick={rm} aria-label={`Remove ${t}`} className="chip flex items-center gap-1.5 px-2 rounded-lg text-xs transition-colors" style={{ background: THEME.ctl, border: `1px solid ${THEME.edge}`, color: THEME.text, fontWeight: 500, flex: "none" }}>
-      {t}<span aria-hidden="true" className="text-muted">✕</span>
-    </button>
-  );
 
   // Empty state (mock-up frame): why nothing matches, a Remove for each filter and an Add for each type that would match.
   const adds = avail.filter((t) => !types.includes(t)).map((t) => [t, chFilter(chordCards(tuning, croot, cq, [t], cup), flt).length]).filter(([, n]) => n > 0);
@@ -213,110 +187,102 @@ export function ChordsMode({ tuning, at, setAt, labelMode, setLabelMode, onOpen 
     : "The filters leave none of the chosen voicing types.";
 
   return (
-    <React.Fragment>
-      {phone ? (
-        <div className="abar" role="group" aria-label="Atlas controls">
-          <Btn onClick={() => setSheet(true)} aria-haspopup="dialog" aria-label={`Filters${chips.length ? `, ${chips.length} active` : ""}`}>
-            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke={THEME.text} strokeWidth="1.6" strokeLinecap="round" style={{ marginRight: 6, verticalAlign: "-3px" }}><path d="M2 4h12M4.5 8h7M7 12h2" /></svg>
-            Filters{chips.length > 0 && <span className="abadge">{chips.length}</span>}
-          </Btn>
-          <Btn data-pill onClick={() => setPick(true)} aria-haspopup="dialog">{nm}{drop(false)}</Btn>
-          <Btn onClick={() => setSheet(true)} aria-haspopup="dialog">By {cby}</Btn>
-          <Btn onClick={() => setSheet(true)} aria-haspopup="dialog">{typeShort}</Btn>
-          {chips.map(chip)}
+    <div>
+      <Bar>{lead}</Bar>
+      <div className="boardwrap">
+        <div className="sumrow">
+          <span data-summary aria-live="polite" className="text-sm font-semibold text-body">{onNeck ? `${onNeck.title} · ${onNeck.sub}${onNeck.forms.length ? " · " + formName(onNeck.forms) : ""}` : `${nm} · no voicing matches`}</span>
+          <Labels value={labelMode} set={setLabelMode} />
         </div>
-      ) : (
-        <div className="agroups">
-          <Card title="Chord">
-            <Row label="Root">{rootGrid}</Row>
-            <Row label="Quality">{qualGrid}</Row>
-            <Row><Btn onClick={() => setMore((m) => !m)} aria-expanded={more} aria-controls="ch-qual-more" aria-label="More qualities">More{drop(more)}</Btn></Row>
-            {more && moreGroups("ch-qual-more")}
-          </Card>
-          <Card title="Lay out by">{byRows}</Card>
-          <Card title="Filter">{filterRows}</Card>
-          <Card title="Display">{displayRows}</Card>
-        </div>
-      )}
-
-      <div className="asum">
-        <div className="asum-l">
-          <span data-summary aria-live="polite" className="text-sm font-semibold text-body">{summary}</span>
-          {!phone && chips.map(chip)}
-        </div>
+        {onNeck && <VoicingNeck tuning={tuning} card={onNeck} labelMode={labelMode} />}
       </div>
 
-      {cards.length === 0 ? (
-        <div role="status" className="card" data-empty style={{ marginTop: 16, alignItems: "flex-start" }}>
-          <h2 style={{ fontSize: 16 }}>No {nm} voicings match</h2>
-          <p className="text-sm text-muted" style={{ margin: 0, lineHeight: 1.45, maxWidth: 560 }}>{why}</p>
-          <div className="flex flex-wrap" style={{ gap: 8 }}>
-            {chips.map(([t, rm]) => <Btn key={t} onClick={rm}>Remove {t}</Btn>)}
-            {adds.map(([t, n]) => <Btn key={t} onClick={() => set({ vt: CH_TYPES.map(([k]) => k).filter((k) => k === t || vt.includes(k)) })}>Add {CH_TYPES.find(([k]) => k === t)[2]} ({n} voicing{n === 1 ? "" : "s"})</Btn>)}
-          </div>
-        </div>
-      ) : shown.map((sec, i) => (
-        <CardGrid key={sec.key} id={`atlas-cards-${i}`} heading={[sec.title, ""]} count={sec.cards.length} large={size === "large"}>
-          {sec.shown.map((c) => {
-            const on = c.id === clit;
-            return (
-              <AtlasCard key={c.id} card={c} sub={tonesOf(c, labelMode)} on={on} onToggle={() => set({ clit: on ? null : c.id })} setHov={() => {}} onOpen={() => onOpen(c)}
-                mark={c.mark} markColour={c.kind === "caged" ? POS_COLOR[c.form] : null}
-                formTag={c.kind !== "caged" && c.forms.length ? { label: formName(c.forms), line: formLine(c.forms) } : null}>
-                <ChordNeck tuning={tuning} card={c} labelMode={labelMode} lg={size === "large"} />
-              </AtlasCard>
-            );
-          })}
-        </CardGrid>
-      ))}
-      {batched && (
-        <div style={{ marginTop: 16 }}>
-          <Btn data-showall onClick={() => setAllFor(sig)} className="btn text-sm transition-colors ashow">Show all {cards.length} voicings</Btn>
-        </div>
-      )}
-
-      {/* Phone: the chord picker from the chip bar, and the Filters sheet with every control (mock-up frames). */}
-      {phone && pick && (
-        <Dialog label="Chord" kind="apop" onClose={() => setPick(false)}>
-          <div className="flex items-center"><h2 className="adlg-h">{nm}</h2><Btn onClick={() => setPick(false)}>Done</Btn></div>
-          <Row label="Root">{rootGrid}</Row>
-          <Row label="Quality">{qualGrid}</Row>
-          <div className="flex flex-col">
-            {QUAL_MORE.map(([group, qs, n]) => (
-              <React.Fragment key={group}>
-                <button className="apgrp" onClick={() => setPickGrp(pickGrp === group ? "" : group)} aria-expanded={pickGrp === group}>
-                  <span>{group}</span><span className="text-muted text-xs">{qs.map(([, l]) => l).join(" · ")} {pickGrp === group ? "▾" : "▸"}</span>
-                </button>
-                {pickGrp === group && <Row><Track label={group} cols={n}>{qs.map(([k, l]) => <Seg key={k} active={cq === k} onClick={() => setQ(k)}>{l}</Seg>)}</Track></Row>}
-              </React.Fragment>
+      <section aria-label="Voicings" style={{ marginTop: 16 }}>
+        {/* The cards' controls as a bar (Build A, streamline item 5): Lay out by and the voicing types, then the filters. */}
+        <Bar label="Voicing controls">
+          <Grp cap="Lay out by">
+            <Track label="Lay out by" cols={phone ? 2 : 4}>{CH_BY.map(([k, l]) => <Seg key={k} active={cby === k} onClick={() => set({ cby: k })}>{l}</Seg>)}</Track>
+          </Grp>
+          <Grp cap="Voicing type">
+            {CH_TYPES.filter(([k]) => avail.includes(k)).map(([k, l]) => (
+              <Btn key={k} aria-pressed={types.includes(k)} onClick={() => set({ vt: CH_TYPES.map(([t]) => t).filter((t) => (t === k ? !vt.includes(k) : vt.includes(t))), clit: null })}>{l}</Btn>
             ))}
+          </Grp>
+          <Grp cap="Inversion">
+            <Track label="Inversion" cols={5}>{INV_SEG.map(([v, l]) => <Seg key={l} active={cinv === v} disabled={v === 3 && n3} onClick={() => set({ cinv: v })}>{l}</Seg>)}</Track>
+          </Grp>
+          <Grp cap="Frets">
+            <Track label="Frets" cols={6}>{CH_FRETS.map(([k, l]) => <Seg key={k} active={frets === k} onClick={() => set({ frets: k })}>{l}</Seg>)}</Track>
+          </Grp>
+          <Grp cap="Copies">
+            <Track label="Copies" cols={2}>{[[false, "Lowest"], [true, "Also 12 up"]].map(([v, l]) => <Seg key={l} active={cup === v} onClick={() => set({ cup: v })}>{l}</Seg>)}</Track>
+          </Grp>
+          <Grp cap="Card size">
+            <Track label="Card size" cols={2}>{[["standard", "Standard"], ["large", "Large"]].map(([k, l]) => <Seg key={k} active={size === k} onClick={() => set({ size: k })}>{l}</Seg>)}</Track>
+          </Grp>
+          <Grp cap="More filters">
+            <Btn onClick={() => setMoreF((m) => !m)} aria-expanded={moreF} aria-controls="ch-morefilters" aria-label="More filters: string set, open strings, max span">String set · Open · Span{drop(moreF)}</Btn>
+          </Grp>
+        </Bar>
+        {moreF && (
+          <div id="ch-morefilters" className="bmore">
+            <Bar label="More filters">
+              <Grp cap="String set">
+                <Track label="String set" cols={Math.min(8, setOpts.length + 1)}>
+                  <Seg active={cset === null} onClick={() => set({ cset: null })}>Any</Seg>
+                  {setOpts.map((t) => <Seg key={t} active={cset === t} onClick={() => set({ cset: t })}>{strLabel(t)}</Seg>)}
+                </Track>
+              </Grp>
+              <Grp cap="Open strings">
+                <Track label="Open strings" cols={2}>{[["allow", "Allow"], ["none", "None"]].map(([k, l]) => <Seg key={k} active={copen === k} onClick={() => set({ copen: k })}>{l}</Seg>)}</Track>
+              </Grp>
+              <Grp cap="Max span (frets)">
+                <Track label="Max span" cols={4}>{SPANS.map((v) => <Seg key={v} active={span === v} onClick={() => set({ span: v })}>{v}</Seg>)}</Track>
+              </Grp>
+            </Bar>
           </div>
-        </Dialog>
-      )}
-      {phone && sheet && (
-        <Dialog label="Filters" kind="asheet" onClose={() => setSheet(false)}>
-          <div aria-hidden="true" className="agrip" />
-          <div className="flex items-center" style={{ padding: "8px 16px 0" }}><h2 className="adlg-h">Filters</h2><Btn onClick={clear} disabled={!chips.length}>Reset</Btn></div>
-          <div className="asheet-body">
-            <section className="asec" aria-label="Chord">
-              <h3>Chord</h3>
-              {/* The one-row picker (canvas comment, 18 Nov): Root and Quality each open their grid below the row. */}
-              <div className="apick2">
-                <Btn onClick={() => setOpen(open === "root" ? "" : "root")} aria-expanded={open === "root"} aria-label={`Root, ${chRootName(croot, cq)}`} className="btn text-sm transition-colors apbtn"><span className="text-muted" style={{ fontWeight: 500 }}>Root</span><span style={{ fontWeight: 700, marginLeft: "auto" }}>{chRootName(croot, cq)}</span>{drop(false)}</Btn>
-                <Btn onClick={() => setOpen(open === "q" ? "" : "q")} aria-expanded={open === "q"} aria-label={`Quality, ${qLabel}`} className="btn text-sm transition-colors apbtn"><span className="text-muted" style={{ fontWeight: 500 }}>Quality</span><span style={{ fontWeight: 700, marginLeft: "auto", overflow: "hidden", textOverflow: "ellipsis" }}>{qLabel}</span>{drop(false)}</Btn>
-              </div>
-              {open === "root" && <Row>{rootGrid}</Row>}
-              {open === "q" && <React.Fragment><Row>{qualGrid}</Row>{moreGroups("ch-qual-more-s")}</React.Fragment>}
-            </section>
-            <section className="asec" aria-label="Lay out by"><h3>Lay out by</h3>{byRows}</section>
-            <section className="asec" aria-label="Filter"><h3>Filter</h3>{filterRows}</section>
-            <section className="asec" aria-label="Display"><h3>Display</h3>{displayRows}</section>
+        )}
+        <p data-typedef className="text-xs text-muted" style={{ margin: "0 0 4px", lineHeight: 1.45 }}>
+          {avail.map((k, i) => <React.Fragment key={k}>{i > 0 && " "}<b className="text-body" style={{ fontWeight: 600 }}>{CH_TYPE_DEF[k][0]}</b>: {CH_TYPE_DEF[k][1]}</React.Fragment>)}
+        </p>
+
+        <div className="asum">
+          <div className="asum-l">
+            <span data-cardsum aria-live="polite" className="text-sm font-semibold text-body">{summary}</span>
+            {chips.map(([t, rm]) => <Chip key={t} text={t} onClear={rm} />)}
+            {chips.length > 0 && <ClearAll onClick={clear} />}
           </div>
-          <div style={{ padding: "12px 16px 16px", borderTop: `1px solid ${THEME.line}` }}>
-            <Btn data-show onClick={() => setSheet(false)} className="btn text-sm transition-colors ashow">Show {cards.length} voicing{cards.length === 1 ? "" : "s"}</Btn>
+        </div>
+
+        {cards.length === 0 ? (
+          <div role="status" className="card" data-empty style={{ marginTop: 16, alignItems: "flex-start" }}>
+            <h2 style={{ fontSize: 16 }}>No {nm} voicings match</h2>
+            <p className="text-sm text-muted" style={{ margin: 0, lineHeight: 1.45, maxWidth: 560 }}>{why}</p>
+            <div className="flex flex-wrap" style={{ gap: 8 }}>
+              {chips.map(([t, rm]) => <Btn key={t} onClick={rm}>Remove {t}</Btn>)}
+              {adds.map(([t, n]) => <Btn key={t} onClick={() => set({ vt: CH_TYPES.map(([k]) => k).filter((k) => k === t || vt.includes(k)) })}>Add {CH_TYPES.find(([k]) => k === t)[2]} ({n} voicing{n === 1 ? "" : "s"})</Btn>)}
+            </div>
           </div>
-        </Dialog>
-      )}
-    </React.Fragment>
+        ) : shown.map((sec, i) => (
+          <CardGrid key={sec.key} id={`atlas-cards-${i}`} heading={[sec.title, ""]} count={sec.cards.length} large={size === "large"}>
+            {sec.shown.map((c) => {
+              const on = onNeck !== null && c.id === onNeck.id;
+              return (
+                <AtlasCard key={c.id} card={c} sub={tonesOf(c, labelMode)} on={on} onToggle={() => set({ clit: c.id })} setHov={() => {}} onOpen={() => onAll(c)} openLabel="All positions"
+                  mark={c.mark} markColour={c.kind === "caged" ? POS_COLOR[c.form] : null}
+                  formTag={c.kind !== "caged" && c.forms.length ? { label: formName(c.forms), line: formLine(c.forms) } : null}>
+                  <ChordNeck tuning={tuning} card={c} labelMode={labelMode} lg={size === "large"} />
+                </AtlasCard>
+              );
+            })}
+          </CardGrid>
+        ))}
+        {batched && (
+          <div style={{ marginTop: 16 }}>
+            <Btn data-showall onClick={() => setAllFor(sig)} className="btn text-sm transition-colors ashow">Show all {cards.length} voicings</Btn>
+          </div>
+        )}
+      </section>
+    </div>
   );
 }

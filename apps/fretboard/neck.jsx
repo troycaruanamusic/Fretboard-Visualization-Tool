@@ -1,16 +1,33 @@
-// Fretboard Trainer · the Neck page: gap fill, nut substitutes and the board.
+// Fretboard Trainer · the board: gap fill, nut substitutes, the neck with its summary row, and the bar's filter groups. The
+// Scale tab draws it with the scale layers, the Chord tab's All positions with the chord (Build A).
 import { useMemo, useEffect } from "../../core/react.js";
 import { THEME } from "../../core/theme.js";
 import { toggle } from "../../core/util.js";
 import { NOTES_SHARP, NOTES_FLAT, LETTERS } from "../../core/notes.js";
 import { DEG_LABEL, DEG_OVERRIDE, MODE_NAME, KEY_DEG, MODES, OTHER_SCALES, MODE_IV, MODE_Q, scopeIntervals } from "../../core/scales.js";
 import { accs, spellAt, keySpelling, autoLetter, neckLetter } from "../../core/spelling.js";
-import { QUAL_COMMON, QUAL_MORE, QUAL_IN_MORE, QUAL_T, QUAL_NAME, DIATONIC } from "../../core/chords.js";
-import { Seg, Track, Row, Card, Btn } from "../../core/ui.jsx";
+import { QUAL_NAME } from "../../core/chords.js";
+import { Seg, Track, Btn, Bar, Grp, Sel, Labels, Chip, ClearAll } from "../../core/ui.jsx";
 import { MARKERS, colPx, inlayAt } from "./guitar.js";
 import { NEUTRAL_CT, NEUTRAL_OTHER, POS_COLOR, POS_TINT, HATCH, POS_MAJOR, POS_MINOR, CAGED_ANCHOR } from "./caged.js";
-import { ringMask } from "../../core/marker.js";
-import { keepChord } from "./state.js";
+import { TILE, ROOT } from "../../core/marker.js";
+import { keyPatch } from "./state.js";
+
+// The Key menu's 12 roots, each spelled as the neck would spell that root in the layer shown, so G♭ in Lydian (Round 9).
+export const keyOptions = (cfg) => { const li = neckLetter(cfg); return NOTES_SHARP.map((n, i) => [i, accs(spellAt(cfg.keyRoot === i ? li : autoLetter(i, cfg), i))]); };
+// Key and Major / Minor, both gold (UX-09, IA-review decision 3; the key as a menu since Build A). Major / Minor goes back to
+// Ionian or Aeolian unless the chosen mode already has that 3rd (Round 4b).
+// view: the state the names are spelled for (the Chord tab spells for the chord layer); names: other root names (In key uses
+// the standard key names, as v0.41's Chords page did).
+export function KeyGroup({ cfg, update, view = cfg, names = null }) {
+  const { keyRoot, keyMode, mode } = cfg;
+  return (
+    <Grp cap="Key">
+      <Sel label="Key" gold value={keyRoot} options={names || keyOptions(view)} onChange={(v) => update(keyPatch(cfg, { keyRoot: +v }))} />
+      <Track label="Major or minor" cols={2}>{[["major","Major"],["minor","Minor"]].map(([t,l]) => <Seg key={t} tone="gold" active={keyMode === t} onClick={() => update(keyPatch(cfg, { keyMode: t, mode: keyMode === t && MODE_Q(mode) === t ? mode : t === "major" ? "ionian" : "aeolian" }))}>{l}</Seg>)}</Track>
+    </Grp>
+  );
+}
 
 // Window gap fill (SH-21, 22, 25 to 28, 30). In the lowest complete copy of window p, the layer's pitches run low to high;
 // each pitch missing between the lowest and highest takes the nearest on-board cell outside the window, a tie going above.
@@ -75,7 +92,9 @@ function nutSubs(tuning, root, set, p, gaps) {
   return out;
 }
 
-export function Board({ tuning, cfg, update, globals, back = null }) {
+// lead: the tab's own bar groups (Key, Scale, Mode; or Chord's Show and chord). The board adds Position and More, the summary
+// row (filter chips, Clear all, Labels) and the neck.
+export function Board({ tuning, cfg, update, globals, lead = null, boardRef = null, children = null }) {
   const { scope, arp, pos, focus, keyRoot, keyMode, arpMode, diaLabel, strGroup, mode } = cfg;
   const { labelMode, isolate, ghost, dotColour, more, setLabelMode, setIsolate, setGhost, setDotColour, setMore } = globals;
   const caged = dotColour === "caged";
@@ -199,8 +218,7 @@ export function Board({ tuning, cfg, update, globals, back = null }) {
       }
       // Fill: the position colour inside a single position. With no position and in All, Dot colour decides (Round 6b):
       // CAGED gives each note its window's colour, half and half on a diagonal where two windows share it, the lower window
-      // top left (as v0.25); Neutral gives the value step (DS-05). The root (Round 15) is filled, with a gap and an outer ring in the same
-      // colour or colours.
+      // top left (as v0.25); Neutral gives the value step (DS-05). The root (Build A) is the same tile with an ink frame inside its edge.
       let posFill = activePos && inWin(s, f) ? POS_COLOR[activePos.letter] : null;
       if (!activePos && caged) {
         const hits = posList.filter((p) => inPos(f, p)).sort((a, b) => phase(f, b) - phase(f, a)).map((p) => POS_COLOR[p.letter]);
@@ -211,8 +229,8 @@ export function Board({ tuning, cfg, update, globals, back = null }) {
       // A nut substitute is hatched in its position colour; on a root the hatch runs through the centre and the ring.
       const isSub = !interlock && subs !== null && subs.has(s * 100 + f);
       const hatch = (c) => `repeating-linear-gradient(135deg, ${c} 0 3px, ${HATCH[activePos.letter]} 3px 6px)`;
-      // Filtered-out notes are monochrome open circles, not faded dots (DS-01): edge ring, muted label. The root keeps a
-      // heavier ring; a nut substitute keeps a dashed one.
+      // Filtered-out notes are monochrome open squares, not faded tiles (DS-01): edge outline, muted label. The root keeps a
+      // heavier outline; a nut substitute keeps a dashed one.
       const ring = (w) => `${w}px ${isSub ? "dashed" : "solid"} ${THEME.edge}`;
       const face = dim
         ? { background: "transparent", border: ring(isRoot ? 3 : 1.5), color: THEME.muted }
@@ -233,9 +251,9 @@ export function Board({ tuning, cfg, update, globals, back = null }) {
           {inlayAt(tuning.strings, s, f) && <span className="inlay" style={{ width: 11, height: 11 }} />}
           <div className="absolute left-0 right-0" style={{ top: "50%", transform: "translateY(-50%)", height: tuning.gauges[s], background: THEME.edge }} />
           {inScope && (isRoot && !dim ? (
-            <button tabIndex={-1} disabled={interlock} data-ring="1" className="fdot relative rounded-full flex items-center justify-center transition-all" style={{ width: sz + 2, height: sz + 2, background: face.background, color: face.color, fontSize: fontPx, fontWeight: 800, ...ringMask(2, 2), zIndex: 5, cursor: interlock ? "default" : "pointer" }} title={title}>{labelOf(pc, iv)}</button>
+            <button tabIndex={-1} disabled={interlock} data-root="1" className={"fdot " + ROOT + " relative flex items-center justify-center transition-all"} style={{ width: sz, height: sz, background: face.background, color: face.color, fontSize: fontPx, fontWeight: 800, zIndex: 5, cursor: interlock ? "default" : "pointer" }} title={title}>{labelOf(pc, iv)}</button>
           ) : (
-            <button tabIndex={-1} disabled={interlock} className={(dim ? "" : "fdot ") + "relative rounded-full flex items-center justify-center transition-all"} style={{ width: sz, height: sz, fontSize: fontPx, fontWeight: isRoot || isCT ? 800 : 500, ...face, zIndex: isRoot ? 5 : isCT ? 3 : 2, cursor: interlock ? "default" : "pointer" }} title={title}>{labelOf(pc, iv)}</button>
+            <button tabIndex={-1} disabled={interlock} className={(dim ? "" : "fdot ") + TILE + " relative flex items-center justify-center transition-all"} style={{ width: sz, height: sz, fontSize: fontPx, fontWeight: isRoot || isCT ? 800 : 500, ...face, zIndex: isRoot ? 5 : isCT ? 3 : 2, cursor: interlock ? "default" : "pointer" }} title={title}>{labelOf(pc, iv)}</button>
           ))}
           {/* Chromatic notes are bare labels with no circle, so a circle always means "in the set" (DS-06). */}
           {!inScope && ghost && (
@@ -261,30 +279,87 @@ export function Board({ tuning, cfg, update, globals, back = null }) {
     : scope === "blended" ? `${rootName} major and minor pentatonic`
     : `${rootName} ${tonality} ${scope}`;
 
-  // Active filters as chips, each with ✕; Clear in the head clears them all (UX-12, decision 12 = a). Focus shows here too (UX-17).
+  // Active filters as chips, each with ✕, and Clear all beside them while any is on (UX-12; Build A, streamline item 3).
+  // Focus shows here too (UX-17).
   const chips = [
     interlock ? ["All positions", () => update({ pos: null })] : activePos && [`Position ${activePos.num} ${activePos.letter}`, () => update({ pos: null })],
     strGroup !== null && [`Strings ${["1–3","2–4","3–5","4–6"][strGroup]}`, () => update({ strGroup: null })],
     isolate && !interlock && ["Chord tones", () => setIsolate(false)],
     anyFocus && [`Focus ${activeFocus.slice().sort((a,b) => a-b).map((iv) => degLabel((root + iv) % 12, iv)).join(" ")}`, () => update({ focus: [] })],
   ].filter(Boolean);
-  // From a scale layer, Show resets the chord root and quality to the key (UX-10).
-  const toKey = (k) => ({ scope: k, root: keyRoot, ...keepChord(cfg, keyMode) });
+  const clearAll = () => { update({ pos: null, strGroup: null, focus: [] }); setIsolate(false); };
+  const drop = <span aria-hidden="true" className="text-muted" style={{ marginLeft: 6, display: "inline-block", transform: more ? "rotate(180deg)" : "none" }}>▾</span>;
 
   return (
     <div>
-      {/* Summary line and board first; nothing above the board changes height (UX-01, IA-03). Sticky on an upright phone (RS-03). */}
-      <div className="boardwrap">
+      {/* The bar (Build A, E9 model): the tab's groups, then Position (in the bar until the path list takes it, Build B) and More. */}
+      <Bar>
+        {lead}
+        <Grp cap="Position">
+          {/* Seven equal cells: the shape letter as the label, its number small, the colour as the underline (mock-up C).
+              The number is 11 px, the floor (BR-05); the accessible name stays "1 C". */}
+          <Track label="Position" cols={7}>
+            <Seg active={pos === null} onClick={() => update({ pos: null })}>Off</Seg>
+            {posList.map((p) => <Seg key={p.num} active={pos === p.num} onClick={() => update({ pos: p.num })} pos={POS_COLOR[p.letter]} aria-label={`${p.num} ${p.letter}`}><span aria-hidden="true" style={{ fontSize: 11, fontWeight: 500, marginRight: 3 }}>{p.num}</span>{p.letter}</Seg>)}
+            <Seg active={interlock} onClick={() => update({ pos: "all" })}>All</Seg>
+          </Track>
+        </Grp>
+        <Grp cap="More">
+          <Btn onClick={() => setMore((m) => !m)} aria-expanded={more} aria-controls="bar-more" aria-label="More: strings, notes, focus, other notes, dot colour">Strings · Notes · Focus{drop}</Btn>
+        </Grp>
+      </Bar>
+      {more && (
+        <div id="bar-more" className="bmore">
+          <Bar label="More">
+            <Grp cap="Strings">
+              <Track label="Strings" cols={5}>
+                <Seg active={strGroup === null} onClick={() => update({ strGroup: null })}>All</Seg>
+                {[[0,"1–3"],[1,"2–4"],[2,"3–5"],[3,"4–6"]].map(([g,l]) => <Seg key={g} active={strGroup === g} onClick={() => update({ strGroup: g })}>{l}</Seg>)}
+              </Track>
+            </Grp>
+            {/* Was the Isolate chord tones toggle: same state, unavailable in All (IA-01). */}
+            <Grp cap="Notes">
+              <Track label="Notes" cols={2}>
+                <Seg active={!isolate || interlock} disabled={interlock} onClick={() => setIsolate(false)}>All</Seg>
+                <Seg active={isolate && !interlock} disabled={interlock} onClick={() => setIsolate(true)}>Chord tones</Seg>
+              </Track>
+            </Grp>
+            {/* Focus chips: degree and note only, chord tones bold (DS-08). In All the chips are unavailable, like Notes. */}
+            <Grp cap="Focus">
+              {degrees.map((iv) => {
+                const focused = focusSet.has(iv);
+                const ct = ctSet.has(iv);
+                const off = interlock || !litSet.has(iv);
+                const quiet = anyFocus && !focused;
+                return (
+                  <button key={iv} disabled={off} aria-disabled={off} aria-pressed={focused} onClick={() => update({ focus: toggle(activeFocus, iv) })} className="chip flex items-center gap-2 px-2 rounded-lg text-xs" style={{ border: `1px solid ${focused ? "transparent" : THEME.edge}`, background: focused ? THEME.ctlHover : quiet ? "transparent" : THEME.ctl, boxShadow: focused ? `0 0 0 1.5px ${THEME.text}` : "none", opacity: off ? 0.5 : 1, cursor: off ? "default" : "pointer", fontWeight: ct ? 800 : 500 }}>
+                    <span className="text-body">{degLabel((root + iv) % 12, iv)}</span>
+                    <span className="text-muted">{noteName((root + iv) % 12, root)}</span>
+                  </button>
+                );
+              })}
+            </Grp>
+            <Grp cap="Other notes">
+              <Track label="Other notes" cols={2}>
+                <Seg active={!ghost} onClick={() => setGhost(false)}>Hidden</Seg>
+                <Seg active={ghost} onClick={() => setGhost(true)}>Shown</Seg>
+              </Track>
+            </Grp>
+            {/* With no position and in All: CAGED colours each note by its window, half and half where two share it (Round 6b). */}
+            <Grp cap="Dot colour">
+              <Track label="Dot colour" cols={2}>{[["caged","CAGED"],["neutral","Neutral"]].map(([k,l]) => <Seg key={k} active={dotColour === k} onClick={() => setDotColour(k)}>{l}</Seg>)}</Track>
+            </Grp>
+          </Bar>
+        </div>
+      )}
+
+      {/* Summary row and board; sticky on an upright phone (RS-03). Labels sits at the right end of the summary row. */}
+      <div ref={boardRef} className="boardwrap">
         <div className="sumrow">
-          {/* After On the neck on an Atlas card (Round 11): the way back, and which card opened this view. */}
-          {back && <Btn data-back onClick={back.go}><span aria-hidden="true" style={{ marginRight: 6 }}>‹</span>Atlas</Btn>}
           <span data-summary className="text-sm font-semibold text-body">{summary}</span>
-          {chips.map(([t, clear]) => (
-            <button key={t} onClick={clear} aria-label={`Remove ${t}`} className="chip flex items-center gap-1.5 px-2 rounded-lg text-xs transition-colors" style={{ background: THEME.ctl, border: `1px solid ${THEME.edge}`, color: THEME.text, fontWeight: 500 }}>
-              {t}<span aria-hidden="true" className="text-muted">✕</span>
-            </button>
-          ))}
-          {back && <span data-backnote className="text-xs text-muted">Opened from the Atlas: {back.label}</span>}
+          {chips.map(([t, clear]) => <Chip key={t} text={t} onClear={clear} />)}
+          {chips.length > 0 && <ClearAll onClick={clearAll} />}
+          <Labels value={labelMode} set={setLabelMode} />
         </div>
         <div ref={scrollRef} className="overflow-x-auto pb-2 rounded-xl" style={{ background: THEME.panel2 }}>
           <div className="grid p-3" style={{ gridTemplateColumns: COLS, width: "100%", minWidth: "min-content" }}>
@@ -311,166 +386,8 @@ export function Board({ tuning, cfg, update, globals, back = null }) {
           </div>
         </div>
       </div>
-
-      {/* Four groups: Key, Show, Filter, Display; a row of cards on desktop and tablet, stacked on a phone (IA-05). */}
-      <div className="groups mt-3">
-      <Card title="Key">
-        {/* The 12 keys as a 6 × 2 equal-cell grid, Major / Minor below; both gold (UX-09, IA-review decision 3). Each cell is
-            spelled as the Neck would spell that root in the scale shown, so G♭ in Lydian (Round 9).
-            Major / Minor goes back to Ionian or Aeolian unless the chosen mode already has that 3rd (Round 4b). */}
-        <Row>
-          <Track label="Key" cols={6}>{NOTES_SHARP.map((n,i) => <Seg key={i} tone="gold" active={keyRoot === i} onClick={() => update({ root: i, keyRoot: i, ...keepChord(cfg, keyMode) })}>{accs(spellAt(keyRoot === i ? keyLi : autoLetter(i, cfg), i))}</Seg>)}</Track>
-        </Row>
-        <Row>
-          <Track label="Major or minor" cols={2}>{[["major","Major"],["minor","Minor"]].map(([t,l]) => <Seg key={t} tone="gold" active={keyMode === t} onClick={() => update({ keyMode: t, root: keyRoot, ...keepChord(cfg, t), mode: keyMode === t && MODE_Q(mode) === t ? mode : t === "major" ? "ionian" : "aeolian" })}>{l}</Seg>)}</Track>
-        </Row>
-      </Card>
-
-      <Card title="Show">
-      {/* Show as four equal cells; the sub-panel hangs off the chosen cell (caret, inset surface) and is titled with the
-          resolved name, "C Dorian" or "C major pentatonic" (IA-review, mock-up C). Blues has the title only. */}
-      <div>
-      <Row>
-        {/* Major and minor is an option under Pentatonic, not a fifth layer (feature table). */}
-        <Track label="Show" cols={4}>{[["arpeggio","Chord"],["pentatonic","Pentatonic"],["blues","Blues"],["scale","Scale"]].map(([k,l]) => {
-          const on = scope === k || (k === "pentatonic" && scope === "blended");
-          return <Seg key={k} active={on} aria-controls="show-panel" onClick={() => { if (!on) update(k === "arpeggio" ? { scope: k } : toKey(k)); }}>{l}{on && <span aria-hidden="true" className="caret" />}</Seg>;
-        })}</Track>
-      </Row>
-
-      <div id="show-panel" className="subpanel" role="group" aria-labelledby="show-title">
-        <h3 id="show-title">{summary}</h3>
-        {(scope === "pentatonic" || scope === "blended") && (
-          <Row label="Pentatonic">
-            <Track label="Pentatonic">
-              <Seg active={scope === "pentatonic"} onClick={() => update(toKey("pentatonic"))}>{keyMode === "major" ? "Major" : "Minor"}</Seg>
-              <Seg active={scope === "blended"} onClick={() => update(toKey("blended"))}>Major and minor</Seg>
-            </Track>
-          </Row>
-        )}
-        {scope === "arpeggio" && (
-          <div className="flex flex-col gap-2">
-            <Row label="Chord">
-              <Track label="Chord">
-                <Seg active={arpMode === "diatonic"} onClick={() => update({ arpMode: "diatonic", arp: "triad" })}>In key</Seg>
-                <Seg active={arpMode === "quality"} onClick={() => { update({ arpMode: "quality" }); if (QUAL_IN_MORE(arp)) setMore(true); }}>Any chord</Seg>
-              </Track>
-            </Row>
-            {arpMode === "diatonic" ? (
-              <React.Fragment>
-                <Row>
-                  <Track label="Chords in the key">{DIATONIC[keyMode].map(([rn,off,q]) => {
-                    const cr = (keyRoot + off) % 12;
-                    const active = root === cr;
-                    return <Seg key={rn} active={active} onClick={() => update({ root: cr, tonality: q === "maj" ? "major" : "minor", arp: q === "dim" ? "dim" : "triad" })}>{rn}</Seg>;
-                  })}</Track>
-                </Row>
-                <Row label="Numbers from">
-                  <Track label="Numbers from">
-                    <Seg active={diaLabel === "key"} onClick={() => update({ diaLabel: "key" })}>Key</Seg>
-                    <Seg active={diaLabel === "chord"} onClick={() => update({ diaLabel: "chord" })}>Chord</Seg>
-                  </Track>
-                </Row>
-              </React.Fragment>
-            ) : (
-              <React.Fragment>
-                {/* Common qualities, then More (IA-04, UX-16). Any chord opens More when the chosen quality is in it (vii° from In key). */}
-                <Row label="Quality">
-                  <Track label="Quality" cols={6}>{QUAL_COMMON.map(([k,l]) => {
-                    const tri = k === "major" || k === "minor";
-                    return <Seg key={k} active={tri ? arp === "triad" && tonality === k : arp === k} onClick={() => update(tri ? { arp: "triad", tonality: k } : { arp: k, tonality: QUAL_T[k] || tonality })}>{l}</Seg>;
-                  })}</Track>
-                </Row>
-                <Row>
-                  <Btn onClick={() => setMore((m) => !m)} aria-expanded={more} aria-controls="qual-more">More<span aria-hidden="true" className="text-muted" style={{ marginLeft: 6, display: "inline-block", transform: more ? "rotate(180deg)" : "none" }}>▾</span></Btn>
-                </Row>
-                {more && <div id="qual-more" className="flex flex-col gap-2">{QUAL_MORE.map(([group, qs, n]) => (
-                  <Row key={group} label={group}>
-                    <Track label={group} cols={n}>{qs.map(([k,l]) => <Seg key={k} active={arp === k} onClick={() => update({ arp: k, tonality: QUAL_T[k] || tonality })}>{l}</Seg>)}</Track>
-                  </Row>
-                ))}</div>}
-              </React.Fragment>
-            )}
-          </div>
-        )}
-        {/* All seven modes in any key; a mode with the other 3rd switches Major / Minor (Round 4b). */}
-        {scope === "scale" && [["Mode", MODES, 4], ["Other scales", OTHER_SCALES, 2]].map(([lab, list, n]) => (
-          <Row key={lab} label={lab}>
-            <Track label={lab} cols={n}>{list.map(([k,l]) => <Seg key={k} active={mode === k} onClick={() => {
-              const q = MODE_Q(k);
-              update(q === keyMode ? { mode: k } : { mode: k, keyMode: q, root: keyRoot, ...keepChord(cfg, q) });
-            }}>{l}</Seg>)}</Track>
-          </Row>
-        ))}
-      </div>
-      </div>
-      </Card>
-
-      <Card title="Filter">
-      <Row label="Position">
-        {/* Seven equal cells on one row: the shape letter as the label, its number small, the colour as the underline (mock-up C).
-            The number is 11 px, the floor (BR-05); the accessible name stays "1 C". */}
-        <Track label="Position" cols={7}>
-          <Seg active={pos === null} onClick={() => update({ pos: null })}>Off</Seg>
-          {posList.map((p) => <Seg key={p.num} active={pos === p.num} onClick={() => update({ pos: p.num })} pos={POS_COLOR[p.letter]} aria-label={`${p.num} ${p.letter}`}><span aria-hidden="true" style={{ fontSize: 11, fontWeight: 500, marginRight: 3 }}>{p.num}</span>{p.letter}</Seg>)}
-          <Seg active={interlock} onClick={() => update({ pos: "all" })}>All</Seg>
-        </Track>
-      </Row>
-
-      <Row label="Strings">
-        <Track label="Strings" cols={5}>
-          <Seg active={strGroup === null} onClick={() => update({ strGroup: null })}>All</Seg>
-          {[[0,"1–3"],[1,"2–4"],[2,"3–5"],[3,"4–6"]].map(([g,l]) => (
-            <Seg key={g} active={strGroup === g} onClick={() => update({ strGroup: g })}>{l}</Seg>
-          ))}
-        </Track>
-      </Row>
-
-      {/* Was the Isolate chord tones toggle: same state, unavailable in All (IA-01). */}
-      <Row label="Notes">
-        <Track label="Notes" cols={2}>
-          <Seg active={!isolate || interlock} disabled={interlock} onClick={() => setIsolate(false)}>All</Seg>
-          <Seg active={isolate && !interlock} disabled={interlock} onClick={() => setIsolate(true)}>Chord tones</Seg>
-        </Track>
-      </Row>
-
-      {/* Focus chips: degree and note only, chord tones bold (DS-08). The All legend is gone: the Position buttons and the
-          ruler name the positions. In All the chips are unavailable, like Notes. */}
-      <Row label="Focus">
-        <div className="flex flex-wrap gap-2 items-center" role="group" aria-label="Focus">
-          {degrees.map((iv) => {
-            const focused = focusSet.has(iv);
-            const ct = ctSet.has(iv);
-            const off = interlock || !litSet.has(iv);
-            const quiet = anyFocus && !focused;
-            return (
-              <button key={iv} disabled={off} aria-disabled={off} aria-pressed={focused} onClick={() => update({ focus: toggle(activeFocus, iv) })} className="chip flex items-center gap-2 px-2 rounded-lg text-xs" style={{ border: `1px solid ${focused ? "transparent" : THEME.edge}`, background: focused ? THEME.ctlHover : quiet ? "transparent" : THEME.ctl, boxShadow: focused ? `0 0 0 1.5px ${THEME.text}` : "none", opacity: off ? 0.5 : 1, cursor: off ? "default" : "pointer", fontWeight: ct ? 800 : 500 }}>
-                <span className="text-body">{degLabel((root + iv) % 12, iv)}</span>
-                <span className="text-muted">{noteName((root + iv) % 12, root)}</span>
-              </button>
-            );
-          })}
-        </div>
-      </Row>
-      </Card>
-
-      {/* Display beside the other groups, with the board on screen (IA-01, decision 2 = b). */}
-      <Card title="Display">
-        <Row label="Labels">
-          <Track label="Labels" cols={3}>{[["degree","Degrees"],["name","Notes"],["none","None"]].map(([k,l]) => <Seg key={k} active={labelMode === k} onClick={() => setLabelMode(k)}>{l}</Seg>)}</Track>
-        </Row>
-        <Row label="Other notes">
-          <Track label="Other notes" cols={2}>
-            <Seg active={!ghost} onClick={() => setGhost(false)}>Hidden</Seg>
-            <Seg active={ghost} onClick={() => setGhost(true)}>Shown</Seg>
-          </Track>
-        </Row>
-        {/* With no position and in All: CAGED colours each note by its window, half and half where two share it (Round 6b). */}
-        <Row label="Dot colour">
-          <Track label="Dot colour" cols={2}>{[["caged","CAGED"],["neutral","Neutral"]].map(([k,l]) => <Seg key={k} active={dotColour === k} onClick={() => setDotColour(k)}>{l}</Seg>)}</Track>
-        </Row>
-      </Card>
-      </div>
+      {/* The list under the neck (the scale cards on the Scale tab); inside the board's block so the sticky board stays over it. */}
+      {children}
     </div>
   );
 }

@@ -1,10 +1,9 @@
-// Fretboard Trainer · the head's menus: Tuning and Theme.
+// Fretboard Trainer · the head's Theme menu. (Tuning left the head in Build A: Standard is the app's only tuning, TC 25 Nov.)
 import { useState, useEffect } from "../../core/react.js";
 import { Btn } from "../../core/ui.jsx";
-import { NOTES_SHARP } from "../../core/notes.js";
 import { THEMES } from "../../core/theme.js";
 
-// A head menu button with a radio list below it (the Tuning menu pattern). items: { key, on, main, note, pick }.
+// A head menu button with a radio list below it. items: { key, on, main, note, pick }.
 function HeadMenu({ label, button, btnLabel, items, cls, caret = true }) {
   const [open, setOpen] = useState(false);
   const ref = React.useRef(null);
@@ -29,19 +28,6 @@ function HeadMenu({ label, button, btnLabel, items, cls, caret = true }) {
         </div>
       )}
     </div>
-  );
-}
-
-// The tuning slot (Atlas mock-up): the current tuning's name and open notes, low string to high, from the tuning object.
-// Only built tunings are listed (Round 15: Drop D removed until it is built).
-export function TuningMenu({ tuning, phone }) {
-  return (
-    <HeadMenu
-      label="Tuning"
-      cls="htun"
-      button={phone ? `Tuning: ${tuning.name}` : `${tuning.name} tuning`}
-      items={[{ key: tuning.id, on: true, main: tuning.name, note: [...tuning.openAbs].reverse().map((m) => NOTES_SHARP[m % 12]).join(" "), pick: () => {} }]}
-    />
   );
 }
 
