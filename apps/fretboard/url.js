@@ -8,6 +8,7 @@ import { NOTE_IN, noteTok, oneOf, intIn, listIn } from "../../core/link.js";
 import { CH_QUALS, CH_TYPE_KEYS, CH_FRETS, chIvs, chTon } from "./chordshapes.js";
 import { STANDARD } from "./tunings.js";
 import { emptyShape, shapeTok, shapeIn } from "./identify.js";
+import { PATH_DEFAULTS, pathStrOk } from "./pathlist.jsx";
 
 const STR_TOK = ["13", "24", "35", "46"];
 const STR7_TOK = ["14", "25", "36"];
@@ -53,20 +54,20 @@ const URL_FIELDS = [
   ["findmode", "md", "lkMode", "", (v) => String(+v + 1), (v) => { const n = intIn(1, 7)(v); return n === undefined ? undefined : String(n - 1); }],
   ["hit", "md", "hit", null, (v) => String(v + 1), (v) => { const n = intIn(1, 7)(v); return n === undefined ? undefined : n - 1; }],
   ["open", "md", "open", [], (v) => v.map((i) => i + 1).join("."), (v) => { const a = listIn(1, 7)(v); return a && a.map((i) => i - 1); }],
-  // The scale cards (Round 11; under the Scale tab's neck since Build A). Key, Major / Minor, Scale, Mode and Strings are the
-  // bar's. lit is the lit card: a window number, a mode or a key, with u for its copy 12 up. v0.41's Atlas mode, Show,
-  // Strings, Chord tones and Neck map are read only (lg).
+  // The scale cards (Round 11; under the Scale tab's neck in Build A) gave way to the path list in Build B: their Lay out by,
+  // Window, Modes from, Copies and lit card are read but never written, like v0.41's Atlas mode, Show, Strings, Chord tones
+  // and Neck map (lg). Card size stays: the Chord tab's voicing cards use it.
   ["atlas", "lg", "am", "scales", String, oneOf("scales", "chords", "identify")],
   ["ashow", "lg", "show", "scale", String, oneOf("scale", "pentatonic", "blues")],
-  ["by", "at", "by", "position", String, oneOf("position", "mode", "key")],
-  ["apos", "at", "pos", 2, String, intIn(1, 5)],
-  ["from", "at", "from", "root", String, oneOf("root", "parent")],
+  ["by", "lg", "by", "position", String, oneOf("position", "mode", "key")],
+  ["apos", "lg", "apos", 2, String, intIn(1, 5)],
+  ["from", "lg", "from", "root", String, oneOf("root", "parent")],
   ["astr", "lg", "str", null, (v) => STR_TOK[v], (v) => (STR_TOK.includes(v) ? STR_TOK.indexOf(v) : undefined)],
-  ["copies", "at", "up", false, () => "12", (v) => (v === "12" ? true : undefined)],
+  ["copies", "lg", "up", false, () => "12", (v) => (v === "12" ? true : undefined)],
   ["tones", "lg", "ct", "larger", String, oneOf("larger", "same")],
   ["size", "at", "size", "standard", String, oneOf("standard", "large")],
   ["map", "lg", "map", null, (v) => (v ? "on" : "off"), (v) => ({ on: true, off: false })[v]],
-  ["lit", "at", "lit", null, String, (v) => (/^[A-Za-z0-9]{1,12}$/.test(v) ? v : undefined)],
+  ["lit", "lg", "lit", null, String, (v) => (/^[A-Za-z0-9]{1,12}$/.test(v) ? v : undefined)],
   // Chord tab, Voicing (Round 14's Chords mode): Lay out by, voicing types (listed in their button order; all on is the
   // default), the filters and the lit card (a shape id: kind, strings, inversion, u for its copy 12 up). The chord is the
   // Chord tab's one Root and Quality (croot, q, cmode above); v0.41's own Atlas chord (achord, aq) is read only.
@@ -88,16 +89,28 @@ const URL_FIELDS = [
     const m = /^([A-G][bs]?)\.([A-Za-z0-9]+)$/.exec(v), r = m ? NOTE_IN(m[1]) : -1;
     return r >= 0 && CH_QUALS.some(([k]) => k === m[2]) ? `${r}.${m[2]}` : undefined;
   }],
+  // The Scale tab's list (Build B): Runs or Positions, the chosen path (lowest string, first fret, notes per string: 5-8-332)
+  // and its step, the sort, the Runs filters and Rows or Cards. A window row is the board's Position (pos above).
+  ["list", "at", "pl", "runs", String, oneOf("runs", "pos")],
+  ["path", "at", "pid", null, String, (v) => (/^\d{1,2}-\d{1,2}-[1-9]{1,8}$/.test(v) ? v : undefined)],
+  ["step", "at", "pstep", 0, (v) => String(v + 1), (v) => { const n = intIn(1, 24)(v); return n === undefined ? undefined : n - 1; }],
+  ["sort", "at", "psort", "lo", String, oneOf("path", "strs", "nps", "lo", "span", "start", "pos", "src")],
+  ["desc", "at", "pdesc", false, () => "1", (v) => (v === "1" ? true : undefined)],
+  ["pstr", "at", "pstr", "all", String, (v) => (v === "all" ? v : ((n) => ([1, 2, 3, 5, 6].includes(n) ? n : undefined))(intIn(1, 6)(v)))],
+  ["oct", "at", "poct", 1, String, intIn(1, 2)],
+  ["start", "at", "pstart", "root", String, oneOf("root", "any")],
+  ["pspan", "at", "pspan", "any", String, oneOf("any", "5")],
+  ["view", "at", "pview", "rows", String, oneOf("rows", "cards")],
 ];
 const URL_DEFAULT = {
   top: { page: "scale", cshow: "voicing", labelMode: "degree", isolate: false, ghost: false, dotColour: "caged", more: false },
   cfg: { root: 0, tonality: "major", scope: "pentatonic", arp: "triad", pos: null, focus: [], keyRoot: 0, keyMode: "major", arpMode: "diatonic", diaLabel: "key", strGroup: null, mode: "ionian", keySpell: null },
   ch: { deg: 0, strSet: 0, inv: 0, sev: false, strSet7: 0, inv7: 0, drop3: false, strSet3: 0, inv3: 0, harm: false },
   md: { parent: 0, view: "notes", hit: null, lkRoot: "", lkMode: "", open: [] },
-  at: { by: "position", pos: 2, from: "root", up: false, size: "standard", lit: null,
+  at: { size: "standard", ...PATH_DEFAULTS,
     cby: "family", vt: CH_TYPE_KEYS, cinv: null, frets: "any", cset: null, copen: "allow", span: 4, cup: false, clit: null,
     ishape: emptyShape(STANDARD), iname: null },
-  lg: { behind: false, am: "scales", show: "scale", str: null, ct: "larger", map: null, croot: 0, cq: "major" },
+  lg: { behind: false, am: "scales", show: "scale", str: null, ct: "larger", map: null, croot: 0, cq: "major", by: "position", apos: 2, from: "root", up: false, lit: null },
 };
 // The Chord tab's quality as one key: the triads by their 3rd, else the Any chord quality.
 export const chordQ = (c) => (c.arp === "triad" ? c.tonality : c.arp);
@@ -153,8 +166,10 @@ export function queryToState(search) {
   // A hand-edited link: a quality with a 3rd takes its own Major / Minor, as a click would.
   if (st.cfg.arp !== "triad" && QUAL_T[st.cfg.arp]) st.cfg.tonality = QUAL_T[st.cfg.arp];
   st.top.more = q.get("more") === "1";
-  // Lay out by Mode is for Scale with a mode; a hand-edited link with another layer falls back to Position, as the control does.
-  if (st.at.by === "mode" && st.cfg.scope !== "scale") st.at.by = "position";
+  // A chosen path takes Position's place (Build B), so a hand-edited link with both keeps the path; the Strings filter
+  // keeps only the string counts its Octaves can have, as the control does.
+  if (st.at.pid) st.cfg.pos = null;
+  if (!pathStrOk(st.at.poct, st.at.pstr)) st.at.pstr = "all";
   // A 3-note chord has no 3rd inversion; the control drops it, so a hand-edited link does too.
   if (st.at.cinv === 3 && chIvs(chordQ(st.cfg)).length === 3) st.at.cinv = null;
   return st;

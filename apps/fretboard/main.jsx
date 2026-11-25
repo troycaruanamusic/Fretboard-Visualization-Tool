@@ -88,11 +88,18 @@ function FretboardTrainer() {
   const globals = { labelMode, isolate, ghost, dotColour, more, setLabelMode, setIsolate, setGhost, setDotColour, setMore };
   // Key and Major / Minor (state.js keyPatch): a carried root letter goes with another key (Round 9); the Chord tab's chord
   // follows the key only when it is picked from the key (In key degrees).
-  const up = (p) => setCfg((c) => ({ ...c, ...p, ...(p.keyRoot !== undefined && p.keyRoot !== c.keyRoot && p.keySpell === undefined ? { keySpell: null } : {}) }));
+  // Build B: a chosen path belongs to its key and scale, and takes Position's place, so a Key, Major / Minor, Scale or Mode
+  // change, or a Position, drops it (and its step).
+  const dropPath = () => setAt((a) => (a.pid || a.pstep ? { ...a, pid: null, pstep: 0 } : a));
+  const up = (p) => {
+    if ((p.pos !== undefined && p.pos !== null) || ["keyRoot", "keyMode", "scope", "mode"].some((k) => p[k] !== undefined && p[k] !== cfg[k])) dropPath();
+    setCfg((c) => ({ ...c, ...p, ...(p.keyRoot !== undefined && p.keyRoot !== c.keyRoot && p.keySpell === undefined ? { keySpell: null } : {}) }));
+  };
   const go = (pg, cv) => { setHelp(false); setPage(pg); if (cv) setCshow(cv); };
 
   // Examples (Help): trainer state only, Strings included; Labels, View and Other notes stay (UX-15, decision 13 = a).
   const applyPreset = (p) => {
+    dropPath();
     if (p === "interlock") {
       setCfg((c) => ({ ...c, scope: "pentatonic", pos: "all", strGroup: null, focus: [] }));
       setIsolate(false); go("scale");
@@ -110,6 +117,7 @@ function FretboardTrainer() {
   // A Modes row link lands on the Scale tab in the state that Key (the mode root), then Scale, then Mode would give there
   // (Round 6). Filters, Labels and Other notes stay, as they do for those choices.
   const showMode = (r, mk, letter) => {
+    dropPath();
     setCfg((c) => {
       let n = keyPatch(c, { keyRoot: r }, c.keyMode);
       n = { ...n, scope: "scale" };
@@ -124,6 +132,7 @@ function FretboardTrainer() {
   // All positions with the card's root and quality, and the card's CAGED window as Position where one window holds the whole
   // shape (else no Position). Strings, Focus and Notes: Chord tones are cleared.
   const openChord = (card) => {
+    dropPath();
     setCfg((c) => ({ ...c, arpMode: "quality", ...qualPatch(card.q, chTon(card.q)), root: card.root, pos: card.pos, strGroup: null, focus: [] }));
     setIsolate(false);
     go("chord", "all");

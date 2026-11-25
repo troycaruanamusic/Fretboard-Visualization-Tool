@@ -29,6 +29,8 @@ export function KeyGroup({ cfg, update, view = cfg, names = null }) {
   );
 }
 
+// The layers that take the gap fill in a single position.
+export const FILL_LAYERS = ["scale", "arpeggio", "blues", "blended"];
 // Window gap fill (SH-21, 22, 25 to 28, 30). In the lowest complete copy of window p, the layer's pitches run low to high;
 // each pitch missing between the lowest and highest takes the nearest on-board cell outside the window, a tie going above.
 // Returns keys s * 12 + (fret mod 12), so the fill repeats with the window 12 frets up or down, as inPos does.
@@ -92,9 +94,12 @@ function nutSubs(tuning, root, set, p, gaps) {
   return out;
 }
 
-// lead: the tab's own bar groups (Key, Scale, Mode; or Chord's Show and chord). The board adds Position and More, the summary
-// row (filter chips, Clear all, Labels) and the neck.
-export function Board({ tuning, cfg, update, globals, lead = null, boardRef = null, children = null }) {
+// lead: the tab's own bar groups (Key, Scale, Mode; or Chord's Show and chord). The board adds Position (Chord tab; the Scale
+// tab lists its windows under the neck since Build B: posInBar false) and More, the summary row (filter chips, Clear all,
+// Labels) and the neck. Build B (Scale tab): path, a chosen path on the neck ({ set of s * 100 + fret, wins, lo, hi, chip });
+// stepCell, the note ‹ › stands on (ringed); onClearPath, its chip's ✕; foot, the panel under the neck, inside the board's
+// block so it stays with the neck on a phone.
+export function Board({ tuning, cfg, update, globals, lead = null, boardRef = null, children = null, posInBar = true, path = null, stepCell = null, onClearPath = null, foot = null }) {
   const { scope, arp, pos, focus, keyRoot, keyMode, arpMode, diaLabel, strGroup, mode } = cfg;
   const { labelMode, isolate, ghost, dotColour, more, setLabelMode, setIsolate, setGhost, setDotColour, setMore } = globals;
   const caged = dotColour === "caged";
@@ -111,15 +116,16 @@ export function Board({ tuning, cfg, update, globals, lead = null, boardRef = nu
   const posList = tonality === "major" ? POS_MAJOR : POS_MINOR;
   const interlock = pos === "all";
   const activePos = typeof pos === "number" ? posList.find((p) => p.num === pos) : null;
-  // Gap fill applies to the Scale and Chord layers in a single position only; Pentatonic, Blues, Major and minor and All are unchanged.
-  const gaps = useMemo(() => (activePos && (scope === "scale" || scope === "arpeggio") ? gapCells(tuning, root, scopeSet, activePos) : null), [tuning, activePos, scope, root, scopeSet]);
+  // Gap fill applies in a single position only: Scale and Chord (v0.23), Blues and Major and minor (Build B, TC 25 Nov).
+  // Pentatonic has no gaps and stays unfilled (16 Nov); All is unchanged.
+  const gaps = useMemo(() => (activePos && FILL_LAYERS.includes(scope) ? gapCells(tuning, root, scopeSet, activePos) : null), [tuning, activePos, scope, root, scopeSet]);
   // Nut substitutes apply to every layer in a single position; All is unchanged.
   const subs = useMemo(() => (activePos ? nutSubs(tuning, root, scopeSet, activePos, gaps) : null), [tuning, activePos, root, scopeSet, gaps]);
   // Focus keeps only degrees that can be lit in the current position, strings and Isolate; one that leaves is dropped (UX-13). Interlock ignores focus (UX-14).
   const litSet = new Set();
   for (let s = 0; s < tuning.strings; s++) for (let f = 0; f <= tuning.frets; f++) {
     const iv = (((tuning.open[s] + f - root) % 12) + 12) % 12;
-    if (scopeSet.has(iv) && (interlock || !isolate || ctSet.has(iv)) && (strGroup === null || (s >= strGroup && s <= strGroup + 2)) && (!activePos || inWin(s, f))) litSet.add(iv);
+    if (scopeSet.has(iv) && (interlock || !isolate || ctSet.has(iv)) && (strGroup === null || (s >= strGroup && s <= strGroup + 2)) && (!(activePos || path) || inWin(s, f))) litSet.add(iv);
   }
   const activeFocus = interlock ? [] : focus.filter((iv) => litSet.has(iv));
   useEffect(() => { if (!interlock && activeFocus.length !== focus.length) update({ focus: activeFocus }); });
@@ -144,7 +150,8 @@ export function Board({ tuning, cfg, update, globals, lead = null, boardRef = nu
     return ((((f - base) % 12) + 12) % 12) <= p.w;
   }
   // A gap-fill cell and a nut substitute count as inside the active position.
-  function inWin(s, f) { return inPos(f, activePos) || (gaps !== null && (gaps.has(s * 12 + (f % 12)) || gaps.cut.has(s * 100 + f))) || (subs !== null && subs.has(s * 100 + f)); }
+  // A chosen path (Build B) takes the window's place: its own cells count as inside.
+  function inWin(s, f) { if (path) return path.set.has(s * 100 + f); return inPos(f, activePos) || (gaps !== null && (gaps.has(s * 12 + (f % 12)) || gaps.cut.has(s * 100 + f))) || (subs !== null && subs.has(s * 100 + f)); }
   const phase = (f, p) => { const b = (((root - CAGED_ANCHOR + p.off) % 12) + 12) % 12; return ((((f - b) % 12) + 12) % 12); };
 
   // One size: the neck fits the width when full-size dots fit, and scrolls below that (RS-01); the View control is gone.
@@ -177,16 +184,19 @@ export function Board({ tuning, cfg, update, globals, lead = null, boardRef = nu
 
   // Scroll to the chosen position when the neck scrolls (RS-03 part): the window's main copy, one fret either side, centred.
   const scrollRef = React.useRef(null);
+  // A chosen path scrolls the same way, to its own frets (Build B).
   useEffect(() => {
     const el = scrollRef.current;
-    if (!el || !activePos || el.scrollWidth <= el.clientWidth) return;
-    const b = (((root - CAGED_ANCHOR + activePos.off) % 12) + 12) % 12;
-    const lo = el.querySelector(`[data-fret="${Math.max(0, b - 1)}"]`), hi = el.querySelector(`[data-fret="${Math.min(tuning.frets, b + activePos.w + 1)}"]`);
+    if (!el || !(activePos || path) || el.scrollWidth <= el.clientWidth) return;
+    const b = path ? path.lo : (((root - CAGED_ANCHOR + activePos.off) % 12) + 12) % 12, w = path ? path.hi - path.lo : activePos.w;
+    const lo = el.querySelector(`[data-fret="${Math.max(0, b - 1)}"]`), hi = el.querySelector(`[data-fret="${Math.min(tuning.frets, b + w + 1)}"]`);
     if (!lo || !hi) return;
     const box = el.getBoundingClientRect(), l = lo.getBoundingClientRect().left - box.left + el.scrollLeft, r = hi.getBoundingClientRect().right - box.left + el.scrollLeft;
     const smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    el.scrollTo({ left: Math.max(0, (l + r) / 2 - el.clientWidth / 2), behavior: smooth ? "smooth" : "auto" });
-  }, [tuning, pos, root, tonality]);
+    // A path wider than the view starts at its first fret, so its first notes are not cut off (Build B).
+    const left = path && r - l > el.clientWidth ? l : (l + r) / 2 - el.clientWidth / 2;
+    el.scrollTo({ left: Math.max(0, left), behavior: smooth ? "smooth" : "auto" });
+  }, [tuning, pos, root, tonality, path && path.id]);
   const keyRel = scope === "arpeggio" && arpMode === "diatonic" && diaLabel === "key";
   const degLabel = (pc, iv) => {
     if (keyRel) {
@@ -212,7 +222,7 @@ export function Board({ tuning, cfg, update, globals, lead = null, boardRef = nu
       let dim = false;
       if (strGroup !== null && (s < strGroup || s > strGroup + 2)) dim = true;
       if (!interlock) {
-        if (activePos && !inWin(s, f)) dim = true;
+        if ((activePos || path) && !inWin(s, f)) dim = true;
         if (anyFocus && !focusSet.has(iv)) dim = true;
         if (isolate && !ctSet.has(iv)) dim = true;
       }
@@ -235,6 +245,13 @@ export function Board({ tuning, cfg, update, globals, lead = null, boardRef = nu
       const face = dim
         ? { background: "transparent", border: ring(isRoot ? 3 : 1.5), color: THEME.muted }
         : { background: isSub ? hatch(fill) : fill, color: THEME.ink };
+      // Build B: notes off the chosen path are open squares with no label (mock-up call 3); the step ‹ › stands on has an
+      // outer ring in the text colour, a gap of the board's colour between (call 4). The tile keeps its own inset edge or frame.
+      const offPath = path !== null && !path.set.has(s * 100 + f);
+      const stepOn = stepCell !== null && stepCell.s === s && stepCell.f === f;
+      const stepRing = `0 0 0 2px ${THEME.panel2}, 0 0 0 4px ${THEME.text}`;
+      const ringStyle = stepOn ? { boxShadow: dim ? stepRing : `${isRoot ? `inset 0 0 0 2px ${THEME.ink}` : `inset 0 0 0 1px ${THEME.dotEdge}`}, ${stepRing}` } : null;
+      const lab = offPath ? "" : labelOf(pc, iv);
       // All with Neutral dots: a faint tint of each window behind its frets, split where two windows meet (decision 6 = b).
       // With CAGED dots the dots carry the colour, so there is no tint (Round 6b). The ruler names the windows.
       let tint;
@@ -251,9 +268,9 @@ export function Board({ tuning, cfg, update, globals, lead = null, boardRef = nu
           {inlayAt(tuning.strings, s, f) && <span className="inlay" style={{ width: 11, height: 11 }} />}
           <div className="absolute left-0 right-0" style={{ top: "50%", transform: "translateY(-50%)", height: tuning.gauges[s], background: THEME.edge }} />
           {inScope && (isRoot && !dim ? (
-            <button tabIndex={-1} disabled={interlock} data-root="1" className={"fdot " + ROOT + " relative flex items-center justify-center transition-all"} style={{ width: sz, height: sz, background: face.background, color: face.color, fontSize: fontPx, fontWeight: 800, zIndex: 5, cursor: interlock ? "default" : "pointer" }} title={title}>{labelOf(pc, iv)}</button>
+            <button tabIndex={-1} disabled={interlock} data-root="1" data-step={stepOn ? "1" : undefined} className={"fdot " + ROOT + " relative flex items-center justify-center transition-all"} style={{ width: sz, height: sz, background: face.background, color: face.color, fontSize: fontPx, fontWeight: 800, zIndex: 5, cursor: interlock ? "default" : "pointer", ...ringStyle }} title={title}>{lab}</button>
           ) : (
-            <button tabIndex={-1} disabled={interlock} className={(dim ? "" : "fdot ") + TILE + " relative flex items-center justify-center transition-all"} style={{ width: sz, height: sz, fontSize: fontPx, fontWeight: isRoot || isCT ? 800 : 500, ...face, zIndex: isRoot ? 5 : isCT ? 3 : 2, cursor: interlock ? "default" : "pointer" }} title={title}>{labelOf(pc, iv)}</button>
+            <button tabIndex={-1} disabled={interlock} data-step={stepOn ? "1" : undefined} className={(dim ? "" : "fdot ") + TILE + " relative flex items-center justify-center transition-all"} style={{ width: sz, height: sz, fontSize: fontPx, fontWeight: isRoot || isCT ? 800 : 500, ...face, zIndex: stepOn ? 6 : isRoot ? 5 : isCT ? 3 : 2, cursor: interlock ? "default" : "pointer", ...ringStyle }} title={title}>{lab}</button>
           ))}
           {/* Chromatic notes are bare labels with no circle, so a circle always means "in the set" (DS-06). */}
           {!inScope && ghost && (
@@ -282,20 +299,21 @@ export function Board({ tuning, cfg, update, globals, lead = null, boardRef = nu
   // Active filters as chips, each with ✕, and Clear all beside them while any is on (UX-12; Build A, streamline item 3).
   // Focus shows here too (UX-17).
   const chips = [
+    path && [path.chip, onClearPath],
     interlock ? ["All positions", () => update({ pos: null })] : activePos && [`Position ${activePos.num} ${activePos.letter}`, () => update({ pos: null })],
     strGroup !== null && [`Strings ${["1–3","2–4","3–5","4–6"][strGroup]}`, () => update({ strGroup: null })],
     isolate && !interlock && ["Chord tones", () => setIsolate(false)],
     anyFocus && [`Focus ${activeFocus.slice().sort((a,b) => a-b).map((iv) => degLabel((root + iv) % 12, iv)).join(" ")}`, () => update({ focus: [] })],
   ].filter(Boolean);
-  const clearAll = () => { update({ pos: null, strGroup: null, focus: [] }); setIsolate(false); };
+  const clearAll = () => { update({ pos: null, strGroup: null, focus: [] }); setIsolate(false); if (path && onClearPath) onClearPath(); };
   const drop = <span aria-hidden="true" className="text-muted" style={{ marginLeft: 6, display: "inline-block", transform: more ? "rotate(180deg)" : "none" }}>▾</span>;
 
   return (
     <div>
-      {/* The bar (Build A, E9 model): the tab's groups, then Position (in the bar until the path list takes it, Build B) and More. */}
+      {/* The bar (Build A, E9 model): the tab's groups, then Position (Chord tab; the Scale tab lists the windows, Build B) and More. */}
       <Bar>
         {lead}
-        <Grp cap="Position">
+        {posInBar && <Grp cap="Position">
           {/* Seven equal cells: the shape letter as the label, its number small, the colour as the underline (mock-up C).
               The number is 11 px, the floor (BR-05); the accessible name stays "1 C". */}
           <Track label="Position" cols={7}>
@@ -303,7 +321,7 @@ export function Board({ tuning, cfg, update, globals, lead = null, boardRef = nu
             {posList.map((p) => <Seg key={p.num} active={pos === p.num} onClick={() => update({ pos: p.num })} pos={POS_COLOR[p.letter]} aria-label={`${p.num} ${p.letter}`}><span aria-hidden="true" style={{ fontSize: 11, fontWeight: 500, marginRight: 3 }}>{p.num}</span>{p.letter}</Seg>)}
             <Seg active={interlock} onClick={() => update({ pos: "all" })}>All</Seg>
           </Track>
-        </Grp>
+        </Grp>}
         <Grp cap="More">
           <Btn onClick={() => setMore((m) => !m)} aria-expanded={more} aria-controls="bar-more" aria-label="More: strings, notes, focus, other notes, dot colour">Strings · Notes · Focus{drop}</Btn>
         </Grp>
@@ -373,7 +391,7 @@ export function Board({ tuning, cfg, update, globals, lead = null, boardRef = nu
                 overlap. Low-key grey where a position is not chosen; colour for the chosen position and in All (Round 6b). */}
             {Array.from({ length: ruler.lanes }, (_, l) => <div key={"rl" + l} style={{ gridRow: tuning.strings + 2 + l, gridColumn: 1, height: 22 }} />)}
             {ruler.spans.map((sp) => {
-              const on = interlock || (activePos !== null && sp.p.num === activePos.num);
+              const on = interlock || (activePos !== null && sp.p.num === activePos.num) || (path !== null && path.wins.includes(sp.p.num));
               const c = on ? POS_COLOR[sp.p.letter] : THEME.line, side = on ? 2 : 1;
               return (
                 <div key={`r${sp.p.num}-${sp.a}`} data-ruler={`${sp.p.num} ${sp.p.letter}`} data-on={on ? "1" : undefined} className={"flex items-end justify-center text-xs " + (on ? "font-semibold text-body" : "text-muted")}
@@ -385,6 +403,7 @@ export function Board({ tuning, cfg, update, globals, lead = null, boardRef = nu
             })}
           </div>
         </div>
+        {foot}
       </div>
       {/* The list under the neck (the scale cards on the Scale tab); inside the board's block so the sticky board stays over it. */}
       {children}

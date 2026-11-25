@@ -3,7 +3,8 @@
 //   npm run build              all apps
 //   npm run build -- fretboard one app
 // Output: dist/<app>/index.html. The build fails if a core module imports app code, or if an app's data check reports a
-// problem (Fretboard Trainer: the open-position list, apps/fretboard/data/open-voicings.csv).
+// problem (Fretboard Trainer: the open-position list, apps/fretboard/data/open-voicings.csv, and TC's scale patterns,
+// apps/fretboard/data/scale-patterns.csv).
 import fs from "node:fs";
 import path from "node:path";
 import * as esbuild from "esbuild";
@@ -15,7 +16,7 @@ const APPS = {
     entry: "apps/fretboard/main.jsx",
     css: ["core/design.css", "apps/fretboard/app.css"],
     // Its default export: a list of problems, empty when the data is good.
-    check: `import { openProblems } from "./apps/fretboard/identify.js"; import { STANDARD } from "./apps/fretboard/tunings.js"; export default openProblems(STANDARD);`,
+    check: `import { openProblems } from "./apps/fretboard/identify.js"; import { patternProblems } from "./apps/fretboard/paths.js"; import { STANDARD } from "./apps/fretboard/tunings.js"; export default [...openProblems(STANDARD), ...patternProblems(STANDARD)];`,
   },
 };
 

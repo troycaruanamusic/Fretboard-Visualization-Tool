@@ -1,3 +1,3 @@
 // Fretboard Trainer · version label.
-export const VERSION = "v0.42";
+export const VERSION = "v0.43";
 document.title = `Fretboard Trainer · ${VERSION}`;
