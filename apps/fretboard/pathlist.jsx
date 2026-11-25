@@ -8,9 +8,9 @@ import { MODE_NAME, scopeIntervals } from "../../core/scales.js";
 import { atScale } from "../../core/atlas.jsx";
 import { Seg, Track, Btn, Bar, Grp, ClearAll } from "../../core/ui.jsx";
 import { TILE, ROOT } from "../../core/marker.js";
-import { MARKERS, inlayAt } from "./guitar.js";
+import { MARKERS, inlayAt, inRange } from "./guitar.js";
 import { POS_COLOR, POS_MAJOR, POS_MINOR, CAGED_ANCHOR } from "./caged.js";
-import { FILL_LAYERS } from "./neck.jsx";
+import { FILL_LAYERS, windowCopies } from "./neck.jsx";
 import { pathScale, scalePaths, scale3nps } from "./paths.js";
 
 export const PATH_DEFAULTS = { pl: "runs", pid: null, pstep: 0, psort: "lo", pdesc: false, pstr: "all", poct: 1, pstart: "root", pspan: "any", pview: "rows" };
@@ -36,34 +36,6 @@ function coverWins(root, posList, cells) {
     left.forEach((ws, i) => { if (ws.includes(best)) left[i] = []; });
   }
   return out.sort((a, b) => a.num - b.num);
-}
-
-// The lowest complete copy of window p with its gap fill as exact cells (the neck's gapCells rule), low to high: the window
-// row's notes for ‹ ›, its card and its columns.
-function windowCells(tuning, root, set, p, fill) {
-  const base = (((root - CAGED_ANCHOR + p.off) % 12) + 12) % 12, top = base + p.w;
-  const inSet = (m) => set.has((((m - root) % 12) + 12) % 12);
-  const cells = [], have = new Set();
-  for (let s = 0; s < tuning.strings; s++) for (let f = base; f <= top; f++) {
-    const m = tuning.openAbs[s] + f;
-    if (inSet(m)) { have.add(m); cells.push({ s, f, m, iv: (((m - root) % 12) + 12) % 12, gap: false }); }
-  }
-  if (fill && have.size) {
-    const lo = Math.min(...have), hi = Math.max(...have);
-    for (let m = lo + 1; m < hi; m++) {
-      if (!inSet(m) || have.has(m)) continue;
-      let best = null;
-      for (let s = 0; s < tuning.strings; s++) {
-        const f = m - tuning.openAbs[s];
-        if (f < 0 || f > tuning.frets || (f >= base && f <= top)) continue;
-        const d = f < base ? base - f : f - top;
-        if (!best || d < best.d || (d === best.d && f > top)) best = { s, f, d };
-      }
-      if (best) cells.push({ s: best.s, f: best.f, m, iv: (((m - root) % 12) + 12) % 12, gap: true });
-    }
-  }
-  const order = (c) => tuning.openAbs[c.s];
-  return cells.sort((a, b) => a.m - b.m || order(a) - order(b));
 }
 
 // The scale the list and the panel read: names and degrees as the neck spells them.
@@ -109,7 +81,9 @@ const cmpKey = (a, b) => { for (let i = 0; i < a.length; i++) { if (a[i] < b[i])
 
 // Every row the Scale tab can list for this state, and the chosen one. The chosen path is found among all of the scale's
 // paths, so a filter that hides its row leaves it on the neck.
-export function usePathRows(tuning, cfg, at) {
+// range (Build C): the fret range; rows keep only what fits inside it (a window, its copies that do).
+export function usePathRows(tuning, cfg, at, range) {
+  const { lo: rlo, hi: rhi } = range;
   const { keyRoot: root, keyMode, scope, mode } = cfg;
   const { sc, at: names, title } = useMemo(() => listScale(cfg), [root, keyMode, scope, mode, cfg.keySpell]);
   const posList = keyMode === "major" ? POS_MAJOR : POS_MINOR;
@@ -120,31 +94,36 @@ export function usePathRows(tuning, cfg, at) {
   const lowOrd = (r) => { const order = [...Array(tuning.strings).keys()].sort((a, b) => tuning.openAbs[a] - tuning.openAbs[b]); return order.indexOf(r.strs[0]); };
   const runs = useMemo(() => {
     if (!sc) return [];
-    return scalePaths(tuning, root, sc, oct, start).map((p) => { const r = decorate(tuning, root, posList, p, names); r.lowOrd = lowOrd(r); return r; });
-  }, [tuning, root, sc, oct, start, posList, names]);
+    return scalePaths(tuning, root, sc, oct, start).filter((p) => inRange(range, p.cells)).map((p) => { const r = decorate(tuning, root, posList, p, names); r.lowOrd = lowOrd(r); return r; });
+  }, [tuning, root, sc, oct, start, posList, names, rlo, rhi]);
   const positions = useMemo(() => {
     const wins = posList.map((p) => {
-      const cells = windowCells(tuning, root, layerSet, p, FILL_LAYERS.includes(scope));
+      // The window's copies on the neck (its lowest and the one 12 up where it ends by the last fret) that fit the range; the
+      // row's notes are the lowest of them.
+      const base = (((root - CAGED_ANCHOR + p.off) % 12) + 12) % 12;
+      const fits = windowCopies(tuning, root, layerSet, p, FILL_LAYERS.includes(scope)).filter((c) => inRange(range, c.cells));
+      if (!fits.length) return null;
+      const cells = fits[0].cells;
       const strs = [], counts = [];
       [...Array(tuning.strings).keys()].sort((a, b) => tuning.openAbs[a] - tuning.openAbs[b]).forEach((s) => {
         const k = cells.filter((c) => c.s === s).length;
         if (k) { strs.push(s); counts.push(k); }
       });
       const fs = cells.map((c) => c.f), lo = Math.min(...fs), hi = Math.max(...fs);
-      const base = (((root - CAGED_ANCHOR + p.off) % 12) + 12) % 12;
-      const copies = [base, base + 12].filter((b) => b + p.w <= tuning.frets);
+      const copies = fits.map((c) => base + c.k);
       const r = decorate(tuning, root, posList, { id: "w" + p.num, win: p, cells, strs, counts, lo, hi, span: hi - lo, copies }, names);
-      r.fretsTxt = copies.map((b) => (b === base ? r.fretsTxt : `${lo + 12}–${hi + 12}`)).join(", ");
+      r.fretsTxt = fits.map((c) => { const f = c.cells.map((x) => x.f), a = Math.min(...f), z = Math.max(...f); return a === z ? String(a) : `${a}–${z}`; }).join(", ");
       r.lowOrd = 0;
       return r;
-    });
-    const nps = sc ? scale3nps(tuning, root, sc).map((p) => { const r = decorate(tuning, root, posList, p, names); r.lowOrd = 0; return r; }) : [];
+    }).filter(Boolean);
+    const nps = sc ? scale3nps(tuning, root, sc).filter((p) => inRange(range, p.cells)).map((p) => { const r = decorate(tuning, root, posList, p, names); r.lowOrd = 0; return r; }) : [];
     return [...wins, ...nps];
-  }, [tuning, root, sc, layerSet, scope, posList, names]);
-  const allRow = useMemo(() => ({ id: "all", all: true, name: "All positions", cells: [], strs: [], counts: [], wins: posList, kindOrd: -1, nps: "", strsTxt: `All ${tuning.strings}`, fretsTxt: `0–${tuning.frets}`, startTxt: "", src: "CAGED windows", lo: 0, hi: tuning.frets, span: tuning.frets }), [posList, tuning]);
+  }, [tuning, root, sc, layerSet, scope, posList, names, rlo, rhi]);
+  const allRow = useMemo(() => ({ id: "all", all: true, name: "All positions", cells: [], strs: [], counts: [], wins: posList, kindOrd: -1, nps: "", strsTxt: `All ${tuning.strings}`, fretsTxt: `${rlo}–${rhi}`, startTxt: "", src: "CAGED windows", lo: rlo, hi: rhi, span: rhi - rlo }), [posList, tuning, rlo, rhi]);
 
-  // The chosen path: looked up by id among all the scale's paths (any start; its octave count from its note count).
-  const chosen = useMemo(() => {
+  // The chosen path: looked up by id among all the scale's paths (any start; its octave count from its note count). One
+  // outside the fret range is not chosen (Build C); the Scale tab then drops it.
+  const chosen0 = useMemo(() => {
     if (!at.pid || !sc) return null;
     const m = /^(\d+)-(\d+)-(\d+)$/.exec(at.pid);
     if (!m) return null;
@@ -158,6 +137,7 @@ export function usePathRows(tuning, cfg, at) {
     if (!p) return null;
     const r = decorate(tuning, root, posList, p, names); r.lowOrd = lowOrd(r); return r;
   }, [at.pid, sc, runs, positions, tuning, root, oct, start, posList, names]);
+  const chosen = chosen0 && inRange(range, chosen0.cells) ? chosen0 : null;
   const winRow = typeof cfg.pos === "number" ? positions.find((r) => r.win && r.win.num === cfg.pos) || null : cfg.pos === "all" ? allRow : null;
   const current = chosen || winRow;
 
@@ -255,13 +235,13 @@ function PathNeck({ tuning, row, names, posList, labelMode }) {
 const WinTags = ({ wins }) => wins.map((w) => <span key={w.num} className="atag ptag" style={{ boxShadow: `inset 0 -3px 0 ${POS_COLOR[w.letter]}` }}>{w.num} {w.letter}</span>);
 
 // The list under the Scale neck.
-export function PathList({ tuning, cfg, data, at, setAt, onPick, labelMode }) {
+export function PathList({ tuning, cfg, data, at, setAt, onPick, labelMode, range }) {
   const { sc, rows, current, title, strF, names, posList } = data;
   const set = (p) => setAt((a) => ({ ...a, ...p }));
   const view = at.pview, runsTab = at.pl !== "pos";
   const [shown, setShown] = useState(PAGE[view]);
   // A new list starts at its first page; the chosen row is always shown.
-  const listKey = [cfg.keyRoot, cfg.keyMode, cfg.scope, cfg.mode, at.pl, at.poct, at.pstart, strF, at.pspan, at.psort, at.pdesc, view].join("|");
+  const listKey = [cfg.keyRoot, cfg.keyMode, cfg.scope, cfg.mode, at.pl, at.poct, at.pstart, strF, at.pspan, at.psort, at.pdesc, view, range.key].join("|");
   useEffect(() => { setShown(PAGE[view]); }, [listKey]);
   const ci = current ? rows.findIndex((r) => r.id === current.id) : -1;
   const limit = Math.max(shown, ci + 1);
@@ -328,6 +308,7 @@ export function PathList({ tuning, cfg, data, at, setAt, onPick, labelMode }) {
           ))}
         </div>
       ))}
+      {!none && !rows.length && !range.full && <p data-pempty className="text-sm text-muted" style={{ margin: "8px 0 0" }}>No {runsTab ? "run" : "window or pattern"} fits {filtered && runsTab ? "these filters and " : ""}frets {range.label}.</p>}
       {!none && rows.length > limit && (
         <p style={{ margin: "10px 0 0" }}><Btn onClick={() => setShown(limit + PAGE[view])}>Show {Math.min(PAGE[view], rows.length - limit)} more ({rows.length - limit} left)</Btn></p>
       )}

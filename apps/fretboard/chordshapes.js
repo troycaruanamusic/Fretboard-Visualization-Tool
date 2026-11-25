@@ -11,18 +11,10 @@ import { QUAL_COMMON, QUAL_MORE, QUAL_T, DROP2, DROP3, INV_NAME7 } from "../../c
 import { POS_MAJOR, POS_MINOR, CAGED_ANCHOR, cagedForms } from "./caged.js";
 import { OPEN_ROWS } from "./openvoicings.js";
 
-// Voicing types: key, button label, short name (phone bar, summary). Buttons and cards use the standard terms in full
-// (TC, 19 Nov); the definitions sit under the buttons and in Help.
+// Voicing types: key, label, short name (the phone's Type filter). Labels use the standard terms in full (TC, 19 Nov); the
+// definitions are in Help.
 export const CH_TYPES = [["caged", "CAGED forms", "CAGED"], ["open", "Open position", "Open"], ["triad", "Closed triads", "Triads"], ["drop2", "Drop 2 voicings", "Drop 2"], ["drop3", "Drop 3 voicings", "Drop 3"], ["shell", "Shells (R 3 7)", "Shells"]];
 export const CH_TYPE_KEYS = CH_TYPES.map(([k]) => k);
-export const CH_TYPE_DEF = {
-  caged: ["CAGED forms", "the five open-chord shapes (C, A, G, E, D) moved up the neck, one per window."],
-  open: ["Open position", "everyday chords in frets 0–4, most with open strings, from a hand-picked list."],
-  triad: ["Closed triads", "the three notes as close as they go, on three adjacent strings."],
-  drop2: ["Drop 2", "a close 4-note chord with its 2nd note from the top moved down an octave."],
-  drop3: ["Drop 3", "a close 4-note chord with its 3rd note from the top moved down an octave (one string skipped)."],
-  shell: ["Shells", "root, 3rd and 7th only, root in the bass."],
-};
 const CARD_NAME = { open: "Open position", triad: "Closed triad", drop2: "Drop 2 voicing", drop3: "Drop 3 voicing", shell: "Shell voicing" };
 export const INV_LABEL = INV_NAME7.map((s) => s[0].toUpperCase() + s.slice(1));
 
@@ -185,40 +177,9 @@ export function chordCards(tuning, root, q, types, up) {
   return out;
 }
 
-// Frets filter (mock-up): Open = every note within frets 0–4 and at least one open string; a range = every note inside it,
-// open strings counting as fret 0; 12+ = every note at fret 12 or higher.
+// v0.43's Frets filter values (Build C: the bar's fret range took its place), so an old link is still read.
 export const CH_FRETS = [["any", "Any"], ["open", "Open"], ["1-5", "1–5"], ["5-9", "5–9"], ["9-13", "9–13"], ["12", "12+"]];
-export function fretsOk(c, fr) {
-  if (fr === "any") return true;
-  if (fr === "open") return c.open && c.hi <= 4;
-  if (fr === "12") return c.lo >= 12;
-  const [a, b] = fr.split("-").map(Number);
-  return c.lo >= a && c.hi <= b;
-}
-// The filters, in order. inv: null or 0–3; set: a strings token or null; open: "allow" or "none"; span: the most frets a
-// shape may cover with fretted notes.
-export function chFilter(cards, f) {
-  return cards.filter((c) => (f.inv === null || c.inv === f.inv) && fretsOk(c, f.frets) && (f.set === null || c.tok === f.set)
-    && (f.open === "allow" || !c.open) && c.span <= f.span);
-}
 const KIND_ORD = Object.fromEntries(CH_TYPE_KEYS.map((k, i) => [k, i]));
-// Card order inside a section: low fret to high (as Scales' Position layout), then the lower bass string, then type, then
+// Card order (Identify's shapes): low fret to high, then the lower bass string, then type, then
 // inversion.
 export const chSort = (a, b) => a.lo - b.lo || b.bassStr - a.bassStr || KIND_ORD[a.kind] - KIND_ORD[b.kind] || a.inv - b.inv || a.k - b.k;
-// Sections by Lay out by: Family (voicing type), Inversion, Strings (string set) or Position (the CAGED window that holds
-// the whole shape; shapes in none come last).
-export function chSections(cards, by) {
-  const groups = new Map();
-  const keyOf = (c) => (by === "family" ? KIND_ORD[c.kind] : by === "inversion" ? c.inv : by === "strings" ? c.tok : c.pos === null ? 9 : c.pos);
-  cards.forEach((c) => { const k = keyOf(c); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(c); });
-  const posList = cards.length && chTon(cards[0].q) === "minor" ? POS_MINOR : POS_MAJOR;
-  const title = (k) => (by === "family" ? CH_TYPES[k][1].replace(" (R 3 7)", "") : by === "inversion" ? INV_LABEL[k] : by === "strings" ? `Strings ${strLabel(k)}`
-    : k === 9 ? "Not in one window" : `Position ${k} ${posList.find((p) => p.num === k).letter}`);
-  const strOrd = (t) => [t.length, +t[0], +t[t.length - 1]];
-  const keys = [...groups.keys()].sort((a, b) => {
-    if (by !== "strings") return a - b;
-    const x = strOrd(a), y = strOrd(b);
-    return x[1] - y[1] || x[0] - y[0] || x[2] - y[2];
-  });
-  return keys.map((k) => ({ key: String(k), title: title(k), cards: groups.get(k).sort(chSort) }));
-}

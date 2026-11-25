@@ -6,7 +6,7 @@ import { DEG_LABEL, DEG_OVERRIDE, KEY_DEG, MODE_IV, KEY_DEG_HM } from "../../cor
 import { accs, keySpelling, uniAcc, hmSpelling } from "../../core/spelling.js";
 import { DIATONIC, INV_NAME, INV_NAME7, CH_Q, DIATONIC7, DROP2, DROP3 } from "../../core/chords.js";
 import { Seg, Track, Btn, Bar, Grp, Labels } from "../../core/ui.jsx";
-import { MARKERS, colPx, SET_NAME, inlayAt } from "./guitar.js";
+import { MARKERS, SET_NAME, inlayAt, neckOf, neckCols } from "./guitar.js";
 import { POS_COLOR, formFill, formName } from "./caged.js";
 import { chordForms } from "./chordshapes.js";
 import { TILE, ROOT, outlineMask } from "../../core/marker.js";
@@ -108,8 +108,9 @@ function ChordStrip({ ladder, deg, setDeg, nameOf, forms }) {
 
 const formUnderline = (fs) => (fs.length > 1 ? `linear-gradient(90deg, ${POS_COLOR[fs[0]]} 0 50%, ${POS_COLOR[fs[1]]} 50% 100%)` : `linear-gradient(${POS_COLOR[fs[0]]}, ${POS_COLOR[fs[0]]})`);
 
-// lead: the Chord tab's Show and the Key (Build A). Scale behind is cut (streamline cut 16, TC 25 Nov).
-export function ChordsPage({ tuning, cfg, update, ch, setCh, labelMode, setLabelMode, lead = null }) {
+// lead: the Chord tab's Show and the Key (Build A). Scale behind is cut (streamline cut 16, TC 25 Nov). tail: the bar's last
+// group (Neck size, Build C); size: the neck size.
+export function ChordsPage({ tuning, cfg, update, ch, setCh, labelMode, setLabelMode, lead = null, tail = null, size = "M" }) {
   const { keyRoot, keyMode } = cfg;
   const { deg, strSet, inv, sev, strSet7, inv7, drop3, strSet3, inv3, harm } = ch;
   // Triads, drop-2 and drop-3 sevenths each keep their own string set and inversion (Rounds 8 and 10).
@@ -147,7 +148,7 @@ export function ChordsPage({ tuning, cfg, update, ch, setCh, labelMode, setLabel
     const box = el.getBoundingClientRect(), l = lo.getBoundingClientRect().left - box.left + el.scrollLeft, r = hi.getBoundingClientRect().right - box.left + el.scrollLeft;
     const smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     el.scrollTo({ left: Math.max(0, (l + r) / 2 - el.clientWidth / 2), behavior: smooth ? "smooth" : "auto" });
-  }, [tuning, deg, sev, g, iv, d3, hm, keyRoot, keyMode]);
+  }, [tuning, deg, sev, g, iv, d3, hm, keyRoot, keyMode, size]);
 
   // ← and → step the chord from anywhere on the page except inside a control group, which keeps its own arrow keys.
   useEffect(() => {
@@ -162,8 +163,8 @@ export function ChordsPage({ tuning, cfg, update, ch, setCh, labelMode, setLabel
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
-  const cellH = 46, fontPx = 11;
-  const COLS = `30px ${colPx(tuning.frets).map((n) => `minmax(${n}px, ${n}fr)`).join(" ")}`;
+  const G = neckOf(size), cellH = G.cellH, fontPx = G.font;
+  const COLS = neckCols(tuning, G);
   const renderRow = (s) => {
     const cells = [];
     for (let f = 0; f <= tuning.frets; f++) {
@@ -178,18 +179,18 @@ export function ChordsPage({ tuning, cfg, update, ch, setCh, labelMode, setLabel
         if (hit.k === deg) {
           // The chosen shape: filled in its CAGED form colour with ink labels; its root has the ink frame (Build A).
           dot = isRoot ? (
-            <div data-shape={hit.k} data-chosen="1" data-root="1" title={title} className={"fdot " + ROOT + " relative flex items-center justify-center"} style={{ width: 30, height: 30, background: fill, color: THEME.ink, fontSize: fontPx, fontWeight: 800, zIndex: 5 }}>{lab}</div>
+            <div data-shape={hit.k} data-chosen="1" data-root="1" title={title} className={"fdot " + ROOT + " relative flex items-center justify-center"} style={{ width: G.tile, height: G.tile, background: fill, color: THEME.ink, fontSize: fontPx, fontWeight: 800, zIndex: 5 }}>{lab}</div>
           ) : (
-            <div data-shape={hit.k} data-chosen="1" title={title} className={"fdot " + TILE + " relative flex items-center justify-center"} style={{ width: 30, height: 30, background: fill, color: THEME.ink, fontSize: fontPx, fontWeight: 800, zIndex: 3 }}>{lab}</div>
+            <div data-shape={hit.k} data-chosen="1" title={title} className={"fdot " + TILE + " relative flex items-center justify-center"} style={{ width: G.tile, height: G.tile, background: fill, color: THEME.ink, fontSize: fontPx, fontWeight: 800, zIndex: 3 }}>{lab}</div>
           );
         } else {
           // The other six: open squares outlined in their form colour, no labels; a root has the heavier outline.
-          dot = <div data-shape={hit.k} data-root={isRoot ? "1" : undefined} title={title} className={TILE + " relative"} style={{ width: 26, height: 26, background: forms[hit.k].length ? fill : THEME.edge, zIndex: 2, ...outlineMask(isRoot ? 3.5 : 2) }} />;
+          dot = <div data-shape={hit.k} data-root={isRoot ? "1" : undefined} title={title} className={TILE + " relative"} style={{ width: G.ladder, height: G.ladder, background: forms[hit.k].length ? fill : THEME.edge, zIndex: 2, ...outlineMask(isRoot ? 3.5 : 2) }} />;
         }
       }
       cells.push(
         <div key={f} data-fret={s === 0 ? f : undefined} className="relative flex items-center justify-center" style={{ gridRow: s + 2, gridColumn: f + 2, height: cellH, borderRight: f === 0 ? `5px solid ${THEME.nut}` : `2px solid ${THEME.fret}`, background: f === 0 ? THEME.track : undefined }}>
-          {inlayAt(tuning.strings, s, f) && <span className="inlay" style={{ width: 11, height: 11 }} />}
+          {inlayAt(tuning.strings, s, f) && <span className="inlay" style={{ width: G.inlay, height: G.inlay }} />}
           <div className="absolute left-0 right-0" style={{ top: "50%", transform: "translateY(-50%)", height: tuning.gauges[s], background: THEME.edge }} />
           {dot}
         </div>
@@ -228,6 +229,7 @@ export function ChordsPage({ tuning, cfg, update, ch, setCh, labelMode, setLabel
         <Grp cap="Inversion">
           <Track label="Inversion" cols={sev ? 4 : 3}>{["Root", "1st", "2nd", "3rd"].slice(0, sev ? 4 : 3).map((l, i) => <Seg key={i} active={iv === i} onClick={() => opt(sev ? (drop3 ? "inv3" : "inv7") : "inv", i)}>{l}</Seg>)}</Track>
         </Grp>
+        {tail}
       </Bar>
       <div className="boardwrap">
         <div className="sumrow">

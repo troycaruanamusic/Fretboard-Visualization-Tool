@@ -1,5 +1,5 @@
 // Fretboard Trainer · the Chord tab (Build A, E9 model; mock-up call 6): Show = Voicing | All positions | In key.
-//   Voicing: one voicing on the neck, the chord's voicing cards under it (v0.41's Atlas Chords, until Build C's list).
+//   Voicing: one voicing on the neck, the list of the chord's voicings under it (Build C).
 //   All positions: the chord's tones across the neck (v0.41's Neck, Show: Chord).
 //   In key: the seven chords of the key in one voicing (v0.41's Chords page).
 // Voicing and All positions share one Root and Quality (TC, 25 Nov); All positions keeps the In key degree row.
@@ -7,7 +7,7 @@ import { KEY_NAME } from "../../core/notes.js";
 import { uniAcc } from "../../core/spelling.js";
 import { QUAL_COMMON, QUAL_MORE, DIATONIC } from "../../core/chords.js";
 import { Seg, Track, Grp, Sel } from "../../core/ui.jsx";
-import { Board, KeyGroup } from "./neck.jsx";
+import { Board, KeyGroup, SizeGrp } from "./neck.jsx";
 import { ChordsPage } from "./chords.jsx";
 import { VoicingView } from "./atlaschords.jsx";
 import { CH_QUALS, chRootName } from "./chordshapes.js";
@@ -34,9 +34,10 @@ export function ChordPage({ tuning, cfg, update, globals, cshow, setCshow, ch, s
       <Track label="Show" cols={3}>{SHOWS.map(([k, l]) => <Seg key={k} active={cshow === k} onClick={() => setCshow(k)}>{l}</Seg>)}</Track>
     </Grp>
   );
-  if (cshow === "inkey") return <ChordsPage tuning={tuning} cfg={cfg} update={update} ch={ch} setCh={setCh} labelMode={globals.labelMode} setLabelMode={globals.setLabelMode} lead={<React.Fragment>{show}<KeyGroup cfg={cfg} update={update} names={KEY_NAME[keyMode].map((n, i) => [i, uniAcc(n)])} /></React.Fragment>} />;
+  // In key: Neck size applies; Frets does not (the ladders walk the whole neck; Build C).
+  if (cshow === "inkey") return <ChordsPage tuning={tuning} cfg={cfg} update={update} ch={ch} setCh={setCh} labelMode={globals.labelMode} setLabelMode={globals.setLabelMode} size={globals.neckSize} lead={<React.Fragment>{show}<KeyGroup cfg={cfg} update={update} names={KEY_NAME[keyMode].map((n, i) => [i, uniAcc(n)])} /></React.Fragment>} tail={<SizeGrp globals={globals} />} />;
   const clearLit = () => setAt((a) => ({ ...a, clit: null }));
-  if (cshow === "voicing") return <VoicingView tuning={tuning} cfg={cfg} at={at} setAt={setAt} labelMode={globals.labelMode} setLabelMode={globals.setLabelMode} onAll={onAll} lead={<React.Fragment>{show}<ChordGroups cfg={cfg} update={update} onChange={clearLit} /></React.Fragment>} />;
+  if (cshow === "voicing") return <VoicingView tuning={tuning} cfg={cfg} at={at} setAt={setAt} globals={globals} onAll={onAll} lead={<React.Fragment>{show}<ChordGroups cfg={cfg} update={update} onChange={clearLit} /></React.Fragment>} />;
 
   // All positions: the chord picked by Root and Quality (Any chord) or from the key's degrees (v0.41's Chord → In key, kept
   // here, TC 25 Nov).

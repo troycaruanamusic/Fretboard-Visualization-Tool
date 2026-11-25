@@ -8,7 +8,7 @@ import { DEG_LABEL, DEG_OVERRIDE, MODE_NAME, KEY_DEG, MODES, OTHER_SCALES, MODE_
 import { accs, spellAt, keySpelling, autoLetter, neckLetter } from "../../core/spelling.js";
 import { QUAL_NAME } from "../../core/chords.js";
 import { Seg, Track, Btn, Bar, Grp, Sel, Labels, Chip, ClearAll } from "../../core/ui.jsx";
-import { MARKERS, colPx, inlayAt } from "./guitar.js";
+import { MARKERS, inlayAt, neckOf, neckCols, FRET_RANGES, NECK_SIZES } from "./guitar.js";
 import { NEUTRAL_CT, NEUTRAL_OTHER, POS_COLOR, POS_TINT, HATCH, POS_MAJOR, POS_MINOR, CAGED_ANCHOR } from "./caged.js";
 import { TILE, ROOT } from "../../core/marker.js";
 import { keyPatch } from "./state.js";
@@ -28,6 +28,76 @@ export function KeyGroup({ cfg, update, view = cfg, names = null }) {
     </Grp>
   );
 }
+
+// Frets and Neck size (Build C, E9 model; mock-up of 25 Nov): two bar groups for every neck of the Scale and Chord tabs.
+// Frets is the part of the neck shown (the lists keep what fits inside it); Neck size scales the neck (kept per browser).
+export function FretsGrp({ globals }) {
+  return <Grp cap="Frets"><Sel label="Fret range" value={globals.range.key} options={FRET_RANGES} onChange={(v) => globals.setRange(v)} /></Grp>;
+}
+export function SizeGrp({ globals }) {
+  return (
+    <Grp cap="Neck size">
+      <Track label="Neck size" cols={3}>{NECK_SIZES.map(([k, l]) => <Seg key={k} active={globals.neckSize === k} onClick={() => globals.setNeckSize(k)} aria-label={l}>{k}</Seg>)}</Track>
+    </Grp>
+  );
+}
+// The lowest complete copy of window p with its gap fill as exact cells (the neck's gapCells rule), low to high: the window
+// row's notes for ‹ ›, its card and its columns. k = 12 (Build C, a fret range that leaves out the lowest copy): the copy 12
+// frets up as the neck draws it, each added note 12 frets above the lowest copy's, or, past the last fret, the nearest cell
+// outside the copy (the neck's rule for a copy that ends near fret 21).
+export function windowCells(tuning, root, set, p, fill, k = 0) {
+  if (k) {
+    const c0 = windowCells(tuning, root, set, p, fill);
+    const base = (((root - CAGED_ANCHOR + p.off) % 12) + 12) % 12 + k, top = base + p.w;
+    const out = c0.map((c) => {
+      if (!c.gap || c.f + k <= tuning.frets) return { ...c, f: c.f + k, m: c.m + k };
+      const m = c.m + k;
+      let best = null;
+      for (let s = 0; s < tuning.strings; s++) {
+        const f = m - tuning.openAbs[s];
+        if (f < 0 || f > tuning.frets || (f >= base && f <= top)) continue;
+        const d = f < base ? base - f : f - top;
+        if (!best || d < best.d || (d === best.d && f > top)) best = { s, f, d };
+      }
+      return best ? { s: best.s, f: best.f, m, iv: c.iv, gap: true } : null;
+    }).filter(Boolean);
+    const order = (c) => tuning.openAbs[c.s];
+    return out.sort((a, b) => a.m - b.m || order(a) - order(b));
+  }
+  const base = (((root - CAGED_ANCHOR + p.off) % 12) + 12) % 12, top = base + p.w;
+  const inSet = (m) => set.has((((m - root) % 12) + 12) % 12);
+  const cells = [], have = new Set();
+  for (let s = 0; s < tuning.strings; s++) for (let f = base; f <= top; f++) {
+    const m = tuning.openAbs[s] + f;
+    if (inSet(m)) { have.add(m); cells.push({ s, f, m, iv: (((m - root) % 12) + 12) % 12, gap: false }); }
+  }
+  if (fill && have.size) {
+    const lo = Math.min(...have), hi = Math.max(...have);
+    for (let m = lo + 1; m < hi; m++) {
+      if (!inSet(m) || have.has(m)) continue;
+      let best = null;
+      for (let s = 0; s < tuning.strings; s++) {
+        const f = m - tuning.openAbs[s];
+        if (f < 0 || f > tuning.frets || (f >= base && f <= top)) continue;
+        const d = f < base ? base - f : f - top;
+        if (!best || d < best.d || (d === best.d && f > top)) best = { s, f, d };
+      }
+      if (best) cells.push({ s: best.s, f: best.f, m, iv: (((m - root) % 12) + 12) % 12, gap: true });
+    }
+  }
+  const order = (c) => tuning.openAbs[c.s];
+  return cells.sort((a, b) => a.m - b.m || order(a) - order(b));
+}
+
+// A window's copies on the neck (its lowest, and the one 12 frets up where it ends by the last fret), each as exact cells with
+// its added notes: { k, cells }.
+export function windowCopies(tuning, root, set, p, fill) {
+  const base = (((root - CAGED_ANCHOR + p.off) % 12) + 12) % 12;
+  return [0, 12].filter((k) => base + k + p.w <= tuning.frets).map((k) => ({ k, cells: windowCells(tuning, root, set, p, fill, k) }));
+}
+// A window shows in the fret range when one of its copies, added notes included, lies wholly inside it (Build C). The Scale
+// list's window rows and the board's Position use this one rule.
+export const winFits = (tuning, root, set, p, fill, r) => windowCopies(tuning, root, set, p, fill).some((c) => c.cells.every((x) => x.f >= r.lo && x.f <= r.hi));
 
 // The layers that take the gap fill in a single position.
 export const FILL_LAYERS = ["scale", "arpeggio", "blues", "blended"];
@@ -101,7 +171,10 @@ function nutSubs(tuning, root, set, p, gaps) {
 // block so it stays with the neck on a phone.
 export function Board({ tuning, cfg, update, globals, lead = null, boardRef = null, children = null, posInBar = true, path = null, stepCell = null, onClearPath = null, foot = null }) {
   const { scope, arp, pos, focus, keyRoot, keyMode, arpMode, diaLabel, strGroup, mode } = cfg;
-  const { labelMode, isolate, ghost, dotColour, more, setLabelMode, setIsolate, setGhost, setDotColour, setMore } = globals;
+  const { labelMode, isolate, ghost, dotColour, more, setLabelMode, setIsolate, setGhost, setDotColour, setMore, range, neckSize } = globals;
+  // Frets and Neck size (Build C): the neck draws frets lo to hi at the chosen size.
+  const { lo, hi } = range;
+  const G = neckOf(neckSize);
   const caged = dotColour === "caged";
   // Only the Arpeggio layer reads the chord root and quality; every other layer uses the key (UX-10).
   const root = scope === "arpeggio" ? cfg.root : keyRoot;
@@ -123,12 +196,15 @@ export function Board({ tuning, cfg, update, globals, lead = null, boardRef = nu
   const subs = useMemo(() => (activePos ? nutSubs(tuning, root, scopeSet, activePos, gaps) : null), [tuning, activePos, root, scopeSet, gaps]);
   // Focus keeps only degrees that can be lit in the current position, strings and Isolate; one that leaves is dropped (UX-13). Interlock ignores focus (UX-14).
   const litSet = new Set();
-  for (let s = 0; s < tuning.strings; s++) for (let f = 0; f <= tuning.frets; f++) {
+  for (let s = 0; s < tuning.strings; s++) for (let f = lo; f <= hi; f++) {
     const iv = (((tuning.open[s] + f - root) % 12) + 12) % 12;
     if (scopeSet.has(iv) && (interlock || !isolate || ctSet.has(iv)) && (strGroup === null || (s >= strGroup && s <= strGroup + 2)) && (!(activePos || path) || inWin(s, f))) litSet.add(iv);
   }
   const activeFocus = interlock ? [] : focus.filter((iv) => litSet.has(iv));
   useEffect(() => { if (!interlock && activeFocus.length !== focus.length) update({ focus: activeFocus }); });
+  // A Position none of whose copies lies inside the fret range is dropped (Build C), as Focus drops a degree.
+  const posFits = (p) => range.full || winFits(tuning, root, scopeSet, p, FILL_LAYERS.includes(scope), range);
+  useEffect(() => { if (activePos && !posFits(activePos)) update({ pos: null }); });
   const focusSet = new Set(activeFocus);
   const anyFocus = activeFocus.length > 0;
   // Degree names follow the scale or chord formula (TH-05); note names follow the key signature (TH-01).
@@ -154,21 +230,22 @@ export function Board({ tuning, cfg, update, globals, lead = null, boardRef = nu
   function inWin(s, f) { if (path) return path.set.has(s * 100 + f); return inPos(f, activePos) || (gaps !== null && (gaps.has(s * 12 + (f % 12)) || gaps.cut.has(s * 100 + f))) || (subs !== null && subs.has(s * 100 + f)); }
   const phase = (f, p) => { const b = (((root - CAGED_ANCHOR + p.off) % 12) + 12) % 12; return ((((f - b) % 12) + 12) % 12); };
 
-  // One size: the neck fits the width when full-size dots fit, and scrolls below that (RS-01); the View control is gone.
-  const cellH = 46;
-  const dotBig = 30;
-  const dotBase = 24;
-  const fontPx = 11; // nothing under 11 px (BR-05)
-  const COLS = `30px ${colPx(tuning.frets).map((n) => `minmax(${n}px, ${n}fr)`).join(" ")}`;
+  // The neck fits the width when full-size dots fit, and scrolls below that (RS-01). Neck size (Build C) scales it; M is the
+  // one size v0.43 had.
+  const cellH = G.cellH;
+  const dotBig = G.tile;
+  const dotBase = G.small;
+  const fontPx = G.font; // nothing under 11 px (BR-05)
+  const COLS = neckCols(tuning, G, lo, hi);
 
   // Position ruler (DS-03): each window copy on the neck as a labelled span. In All, spans take two lanes so that
-  // overlapping windows never share one; a single position uses the first lane.
+  // overlapping windows never share one; a single position uses the first lane. Spans are cut at the fret range (Build C).
   const ruler = useMemo(() => {
     const spans = [];
     posList.forEach((p) => {
       const b = (((root - CAGED_ANCHOR + p.off) % 12) + 12) % 12;
-      for (let c = b - 12; c <= tuning.frets; c += 12) {
-        const a = Math.max(0, c), z = Math.min(tuning.frets, c + p.w);
+      for (let c = b - 12; c <= hi; c += 12) {
+        const a = Math.max(lo, c), z = Math.min(hi, c + p.w);
         if (z >= a) spans.push({ p, a, z, clipped: a !== c || z !== c + p.w });
       }
     });
@@ -180,7 +257,7 @@ export function Board({ tuning, cfg, update, globals, lead = null, boardRef = nu
       ends[l] = sp.z; sp.lane = l;
     });
     return { spans, lanes: Math.max(2, ends.length) };
-  }, [tuning, posList, root]);
+  }, [tuning, posList, root, lo, hi]);
 
   // Scroll to the chosen position when the neck scrolls (RS-03 part): the window's main copy, one fret either side, centred.
   const scrollRef = React.useRef(null);
@@ -188,15 +265,18 @@ export function Board({ tuning, cfg, update, globals, lead = null, boardRef = nu
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || !(activePos || path) || el.scrollWidth <= el.clientWidth) return;
-    const b = path ? path.lo : (((root - CAGED_ANCHOR + activePos.off) % 12) + 12) % 12, w = path ? path.hi - path.lo : activePos.w;
-    const lo = el.querySelector(`[data-fret="${Math.max(0, b - 1)}"]`), hi = el.querySelector(`[data-fret="${Math.min(tuning.frets, b + w + 1)}"]`);
-    if (!lo || !hi) return;
-    const box = el.getBoundingClientRect(), l = lo.getBoundingClientRect().left - box.left + el.scrollLeft, r = hi.getBoundingClientRect().right - box.left + el.scrollLeft;
+    // A window scrolls to its lowest copy inside the fret range (Build C).
+    const w = path ? path.hi - path.lo : activePos.w;
+    let b = path ? path.lo : (((root - CAGED_ANCHOR + activePos.off) % 12) + 12) % 12;
+    if (!path) while (b < lo && b + 12 + w <= hi) b += 12;
+    const a0 = el.querySelector(`[data-fret="${Math.max(lo, b - 1)}"]`), z0 = el.querySelector(`[data-fret="${Math.min(hi, b + w + 1)}"]`);
+    if (!a0 || !z0) return;
+    const box = el.getBoundingClientRect(), l = a0.getBoundingClientRect().left - box.left + el.scrollLeft, r = z0.getBoundingClientRect().right - box.left + el.scrollLeft;
     const smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     // A path wider than the view starts at its first fret, so its first notes are not cut off (Build B).
     const left = path && r - l > el.clientWidth ? l : (l + r) / 2 - el.clientWidth / 2;
     el.scrollTo({ left: Math.max(0, left), behavior: smooth ? "smooth" : "auto" });
-  }, [tuning, pos, root, tonality, path && path.id]);
+  }, [tuning, pos, root, tonality, path && path.id, lo, hi, neckSize]);
   const keyRel = scope === "arpeggio" && arpMode === "diatonic" && diaLabel === "key";
   const degLabel = (pc, iv) => {
     if (keyRel) {
@@ -213,7 +293,7 @@ export function Board({ tuning, cfg, update, globals, lead = null, boardRef = nu
 
   const renderRow = (s) => {
     const cells = [];
-    for (let f = 0; f <= tuning.frets; f++) {
+    for (let f = lo; f <= hi; f++) {
       const pc = (tuning.open[s] + f) % 12;
       const iv = ((pc - root) % 12 + 12) % 12;
       const inScope = scopeSet.has(iv);
@@ -264,8 +344,8 @@ export function Board({ tuning, cfg, update, globals, lead = null, boardRef = nu
       const tappable = inScope && !interlock;
       const title = `${noteName(pc)} · ${fdeg(iv)}`;
       cells.push(
-        <div key={f} data-fret={s === 0 ? f : undefined} onClick={tappable ? () => update({ focus: toggle(activeFocus, iv) }) : undefined} className="relative flex items-center justify-center" style={{ height: cellH, borderRight: f === 0 ? `5px solid ${THEME.nut}` : `2px solid ${THEME.fret}`, background: cellBg, cursor: tappable ? "pointer" : undefined }}>
-          {inlayAt(tuning.strings, s, f) && <span className="inlay" style={{ width: 11, height: 11 }} />}
+        <div key={f} data-fret={s === 0 ? f : undefined} onClick={tappable ? () => update({ focus: toggle(activeFocus, iv) }) : undefined} className="relative flex items-center justify-center" style={{ height: cellH, borderRight: f === 0 ? `5px solid ${THEME.nut}` : `2px solid ${THEME.fret}`, borderLeft: f === lo && lo > 0 ? `2px solid ${THEME.fret}` : undefined, background: cellBg, cursor: tappable ? "pointer" : undefined }}>
+          {inlayAt(tuning.strings, s, f) && <span className="inlay" style={{ width: G.inlay, height: G.inlay }} />}
           <div className="absolute left-0 right-0" style={{ top: "50%", transform: "translateY(-50%)", height: tuning.gauges[s], background: THEME.edge }} />
           {inScope && (isRoot && !dim ? (
             <button tabIndex={-1} disabled={interlock} data-root="1" data-step={stepOn ? "1" : undefined} className={"fdot " + ROOT + " relative flex items-center justify-center transition-all"} style={{ width: sz, height: sz, background: face.background, color: face.color, fontSize: fontPx, fontWeight: 800, zIndex: 5, cursor: interlock ? "default" : "pointer", ...ringStyle }} title={title}>{lab}</button>
@@ -318,10 +398,12 @@ export function Board({ tuning, cfg, update, globals, lead = null, boardRef = nu
               The number is 11 px, the floor (BR-05); the accessible name stays "1 C". */}
           <Track label="Position" cols={7}>
             <Seg active={pos === null} onClick={() => update({ pos: null })}>Off</Seg>
-            {posList.map((p) => <Seg key={p.num} active={pos === p.num} onClick={() => update({ pos: p.num })} pos={POS_COLOR[p.letter]} aria-label={`${p.num} ${p.letter}`}><span aria-hidden="true" style={{ fontSize: 11, fontWeight: 500, marginRight: 3 }}>{p.num}</span>{p.letter}</Seg>)}
+            {posList.map((p) => <Seg key={p.num} active={pos === p.num} disabled={!posFits(p)} onClick={() => update({ pos: p.num })} pos={POS_COLOR[p.letter]} aria-label={`${p.num} ${p.letter}`}><span aria-hidden="true" style={{ fontSize: 11, fontWeight: 500, marginRight: 3 }}>{p.num}</span>{p.letter}</Seg>)}
             <Seg active={interlock} onClick={() => update({ pos: "all" })}>All</Seg>
           </Track>
         </Grp>}
+        <FretsGrp globals={globals} />
+        <SizeGrp globals={globals} />
         <Grp cap="More">
           <Btn onClick={() => setMore((m) => !m)} aria-expanded={more} aria-controls="bar-more" aria-label="More: strings, notes, focus, other notes, dot colour">Strings · Notes · Focus{drop}</Btn>
         </Grp>
@@ -384,7 +466,7 @@ export function Board({ tuning, cfg, update, globals, lead = null, boardRef = nu
             {Array.from({ length: tuning.strings }, (_, s) => renderRow(s))}
             <div />
             {/* Fret numbers: muted; marker frets bold in text. The marker-dot row is gone (DS-07). */}
-            {Array.from({ length: tuning.frets + 1 }, (_, f) => (
+            {Array.from({ length: hi - lo + 1 }, (_, i) => lo + i).map((f) => (
               <div key={"n" + f} className="flex items-center justify-center text-xs" style={{ height: 24, color: MARKERS[f] ? THEME.text : THEME.muted, fontWeight: MARKERS[f] ? 700 : 400 }}>{f}</div>
             ))}
             {/* Position ruler (DS-03, A11y-W3): names each window span in text, always in two or more lanes so spans never
@@ -395,8 +477,8 @@ export function Board({ tuning, cfg, update, globals, lead = null, boardRef = nu
               const c = on ? POS_COLOR[sp.p.letter] : THEME.line, side = on ? 2 : 1;
               return (
                 <div key={`r${sp.p.num}-${sp.a}`} data-ruler={`${sp.p.num} ${sp.p.letter}`} data-on={on ? "1" : undefined} className={"flex items-end justify-center text-xs " + (on ? "font-semibold text-body" : "text-muted")}
-                  style={{ gridRow: tuning.strings + 2 + sp.lane, gridColumn: `${sp.a + 2} / ${sp.z + 3}`, height: 22, margin: "0 2px", paddingBottom: 3, whiteSpace: "nowrap", overflow: "hidden",
-                    borderBottom: `${on ? 3 : 1}px solid ${c}`, borderLeft: sp.clipped && sp.a === 0 ? "none" : `${side}px solid ${c}`, borderRight: sp.clipped && sp.z === tuning.frets ? "none" : `${side}px solid ${c}` }}>
+                  style={{ gridRow: tuning.strings + 2 + sp.lane, gridColumn: `${sp.a - lo + 2} / ${sp.z - lo + 3}`, height: 22, margin: "0 2px", paddingBottom: 3, whiteSpace: "nowrap", overflow: "hidden",
+                    borderBottom: `${on ? 3 : 1}px solid ${c}`, borderLeft: sp.clipped && sp.a === lo ? "none" : `${side}px solid ${c}`, borderRight: sp.clipped && sp.z === hi ? "none" : `${side}px solid ${c}` }}>
                   {sp.p.num} {sp.p.letter}
                 </div>
               );
