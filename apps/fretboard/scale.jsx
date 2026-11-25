@@ -1,9 +1,9 @@
-// Fretboard Trainer · the Scale tab (Build A, E9 model): Key, Scale and Mode in the bar, the neck, and the scale cards under it
-// (v0.41's Atlas Scales, until the path list of Build B).
+// Fretboard Trainer · the Scale tab (Build A and B, E9 model): Key, Scale and Mode in the bar, the neck, the panel under it
+// (what is on the neck, ▲ ▼, ‹ ›) and the list of paths and positions (Build B; it replaced the scale cards).
 import { MODES, MODE_Q } from "../../core/scales.js";
 import { Grp, Sel } from "../../core/ui.jsx";
 import { Board, KeyGroup } from "./neck.jsx";
-import { ScaleCards } from "./atlas.jsx";
+import { usePathRows, stepsOf, PathPanel, PathList } from "./pathlist.jsx";
 import { keyPatch } from "./state.js";
 
 // Scale (mock-up call 5): the layers and the two minor scales in one menu. "Scale" is the seven modes, chosen under Mode.
@@ -33,16 +33,35 @@ export function ScaleGroups({ cfg, update }) {
 
 export function ScalePage({ tuning, cfg, update, globals, at, setAt }) {
   const boardRef = React.useRef(null);
-  // A card tap shows its window on the neck; when the neck is off screen it comes into view.
+  // A row tap shows its path on the neck; when the neck is off screen it comes into view.
   const toBoard = () => {
     const el = boardRef.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
     if (r.top < 0 || r.top > window.innerHeight * 0.6) el.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   };
+  const data = usePathRows(tuning, cfg, at);
+  const { chosen, current } = data;
+  // A path in the link that this scale and key do not have (a hand-edited link) is dropped, as Focus drops a degree.
+  React.useEffect(() => { if (at.pid && !chosen) setAt((a) => ({ ...a, pid: null, pstep: 0 })); });
+  // A row: a window sets Position as the bar did (TC 25 Nov), All the five together; a path takes Position's place.
+  // Choosing a Position clears the path (main.jsx).
+  const pick = (r, scroll = false) => {
+    if (r.all) update({ pos: "all" });
+    else if (r.win) { update({ pos: r.win.num }); setAt((a) => ({ ...a, pid: null, pstep: 0 })); }
+    else { update({ pos: null }); setAt((a) => ({ ...a, pid: r.id, pstep: 0 })); }
+    if (scroll) toBoard();
+  };
+  const whole = () => { update({ pos: null }); setAt((a) => ({ ...a, pid: null, pstep: 0 })); };
+  const steps = stepsOf(current);
+  const stepCell = steps.length ? steps[Math.min(at.pstep, steps.length - 1)] : null;
+  const path = chosen ? { id: chosen.id, set: new Set(chosen.cells.map((c) => c.s * 100 + c.f)), wins: chosen.wins.map((w) => w.num), lo: chosen.lo, hi: chosen.hi,
+    chip: `${chosen.name}${chosen.nps ? " " + chosen.nps : ""} · ${chosen.fretsTxt}` } : null;
   return (
-    <Board tuning={tuning} cfg={cfg} update={update} globals={globals} lead={<ScaleGroups cfg={cfg} update={update} />} boardRef={boardRef}>
-      <ScaleCards tuning={tuning} cfg={cfg} update={update} at={at} setAt={setAt} labelMode={globals.labelMode} setIsolate={globals.setIsolate} toBoard={toBoard} />
+    <Board tuning={tuning} cfg={cfg} update={update} globals={globals} lead={<ScaleGroups cfg={cfg} update={update} />} boardRef={boardRef}
+      posInBar={false} path={path} stepCell={stepCell} onClearPath={whole}
+      foot={<PathPanel tuning={tuning} data={data} at={at} setAt={setAt} onPick={(r) => pick(r)} onWhole={whole} labelMode={globals.labelMode} />}>
+      <PathList tuning={tuning} cfg={cfg} data={data} at={at} setAt={setAt} onPick={(r) => pick(r, true)} labelMode={globals.labelMode} />
     </Board>
   );
 }

@@ -108,3 +108,46 @@
   .iover .atag{height:30px;gap:6px;font-size:13px}
   /* Inlays (Round 15): the fret markers between strings, under the dots. */
   .inlay{position:absolute;left:50%;top:100%;transform:translate(-50%,-50%);border-radius:50%;background:var(--inlay);z-index:1;pointer-events:none}
+  /* Scale tab, Build B (E9 model, mock-up calls 1, 3 and 4): the panel under the neck (what is on it, ▲ ▼, Whole neck, the
+     notes ‹ › steps through) and the list of runs and positions as rows (a table with sortable headings) or cards. */
+  .ppanel{display:flex;flex-direction:column;gap:6px;margin-top:4px}
+  .ppanel-top{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px}
+  .ppanel-t{flex:1;min-width:min(260px,100%);display:flex;flex-direction:column;gap:2px}
+  .ppanel-b{display:flex;gap:6px;flex:none}
+  .ppanel-b .btn{min-width:40px;justify-content:center}
+  .pstep-row{display:flex;align-items:center;gap:6px;min-width:0}
+  .pstep-row>.btn{flex:none;min-width:40px;justify-content:center}
+  .pstep-chips{display:flex;gap:4px;flex:1;min-width:0;overflow-x:auto;padding:2px}
+  .pchip{display:inline-flex;align-items:center;gap:5px;height:34px;padding:0 8px;border-radius:8px;background:var(--panel2);border:1px solid var(--line);font-size:12.5px;color:var(--text);white-space:nowrap;flex:none}
+  .pchip.on{background:var(--ctl-hover);border-color:transparent;box-shadow:0 0 0 1.5px var(--text)}
+  .pchip-sw{width:10px;height:10px;border-radius:27%;flex:none}
+  @media (pointer:coarse){.pchip{height:44px}}
+  .plist{margin-top:16px}
+  .plist-h{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-bottom:8px}
+  .plist .bar{margin:0 0 4px}
+  .ptable-w{overflow-x:auto;margin-top:8px;border-radius:8px;background:var(--panel)}
+  .ptable{width:100%;border-collapse:collapse;font-size:13px;color:var(--text)}
+  .ptable th{text-align:left;padding:0;white-space:nowrap;background:var(--panel)}
+  .ptable td{padding:5px 8px;border-top:1px solid var(--line);white-space:nowrap;vertical-align:middle;background:var(--panel)}
+  .ptable th:first-child,.ptable td:first-child{position:sticky;left:0;z-index:1}
+  .ptable tbody tr{cursor:pointer}
+  .ptable tbody tr:hover td{background:var(--panel2)}
+  .ptable tbody tr.on td{background:var(--ctl-hover)}
+  .ptable tbody tr.on td:first-child{box-shadow:inset 3px 0 0 var(--text)}
+  .psort{height:34px;padding:0 8px;font-size:12.5px;font-weight:600;color:var(--muted);white-space:nowrap}
+  .psort.on{color:var(--text)}
+  .prow{font:inherit;font-weight:600;color:var(--text);text-align:left;min-height:28px;white-space:nowrap}
+  @media (pointer:coarse){.ptable td{height:44px}.psort{height:44px}}
+  .ptags{display:inline-flex;gap:4px}
+  .ptag{color:var(--text);font-weight:600}
+  .atag.pyours,td.pyours{color:var(--text);font-weight:700}
+  .atag.pyours{background:var(--sel);color:var(--on-sel)}
+  .pcards{margin-top:8px}
+  /* Below 700 px the panel is two rows, so the sticky board keeps room for the list: the title with ▲ ▼ and Whole neck, then
+     the note chips. The detail line and the step line are kept for screen readers only. */
+  @media (max-width:699px){
+    .ppanel-top{flex-wrap:nowrap}.ppanel-t{min-width:0}
+    .ptitle{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ppanel-b .btn{padding:0 10px!important;min-width:36px}
+    .psub,.psteptxt{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+  }
