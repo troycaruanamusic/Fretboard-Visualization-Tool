@@ -6,6 +6,7 @@ import { spellAt, normSpell } from "../../core/spelling.js";
 import { QUAL_COMMON, QUAL_MORE, QUAL_T } from "../../core/chords.js";
 import { NOTE_IN, noteTok, oneOf, intIn, listIn } from "../../core/link.js";
 import { CH_QUALS, CH_TYPE_KEYS, CH_FRETS, chIvs, chTon } from "./chordshapes.js";
+import { FRET_RANGES, FULL_RANGE } from "./guitar.js";
 import { STANDARD } from "./tunings.js";
 import { emptyShape, shapeTok, shapeIn } from "./identify.js";
 import { PATH_DEFAULTS, pathStrOk } from "./pathlist.jsx";
@@ -37,6 +38,8 @@ const URL_FIELDS = [
   ["notes", "top", "isolate", false, () => "ct", (v) => (v === "ct" ? true : undefined)],
   ["other", "top", "ghost", false, () => "shown", (v) => (v === "shown" ? true : undefined)],
   ["dots", "top", "dotColour", "caged", String, oneOf("caged", "neutral")],
+  // Frets (Build C): the part of the neck the Scale and Chord tabs show (Neck size is per browser, not here).
+  ["range", "top", "range", FULL_RANGE, String, oneOf(...FRET_RANGES.map(([k]) => k))],
   ["deg", "ch", "deg", 0, (v) => String(v + 1), (v) => { const n = intIn(1, 7)(v); return n === undefined ? undefined : n - 1; }],
   ["set", "ch", "strSet", 0, (v) => STR_TOK[v], (v) => (STR_TOK.includes(v) ? STR_TOK.indexOf(v) : undefined)],
   ["inv", "ch", "inv", 0, String, intIn(0, 2)],
@@ -65,23 +68,29 @@ const URL_FIELDS = [
   ["astr", "lg", "str", null, (v) => STR_TOK[v], (v) => (STR_TOK.includes(v) ? STR_TOK.indexOf(v) : undefined)],
   ["copies", "lg", "up", false, () => "12", (v) => (v === "12" ? true : undefined)],
   ["tones", "lg", "ct", "larger", String, oneOf("larger", "same")],
-  ["size", "at", "size", "standard", String, oneOf("standard", "large")],
+  // Card size went with Build C's voicing list (Neck size took its place for the big neck): read, never written.
+  ["size", "lg", "size", "standard", String, oneOf("standard", "large")],
   ["map", "lg", "map", null, (v) => (v ? "on" : "off"), (v) => ({ on: true, off: false })[v]],
   ["lit", "lg", "lit", null, String, (v) => (/^[A-Za-z0-9]{1,12}$/.test(v) ? v : undefined)],
-  // Chord tab, Voicing (Round 14's Chords mode): Lay out by, voicing types (listed in their button order; all on is the
-  // default), the filters and the lit card (a shape id: kind, strings, inversion, u for its copy 12 up). The chord is the
-  // Chord tab's one Root and Quality (croot, q, cmode above); v0.41's own Atlas chord (achord, aq) is read only.
+  // Chord tab, Voicing: the list's filters (Type, Strings, Inversion), the voicing on the neck (a shape id: kind, strings,
+  // inversion, u for its copy 12 up), Rows or Cards and the sort (Build C). The chord is the Chord tab's one Root and
+  // Quality (croot, q, cmode above); v0.41's own Atlas chord (achord, aq) is read only. v0.43's card controls (Lay out by,
+  // voicing types, Frets, Open strings, Max span, Copies) are read, never written: one voicing type becomes Type.
   ["achord", "lg", "croot", 0, (v) => noteTok(v), NOTE_IN],
   ["aq", "lg", "cq", "major", String, oneOf(...CH_QUALS.map(([k]) => k))],
-  ["cby", "at", "cby", "family", String, oneOf("family", "inversion", "strings", "position")],
-  ["vt", "at", "vt", CH_TYPE_KEYS, (v) => (v.length ? v.join(".") : "none"), (v) => (v === "none" ? [] : ((a) => (a.every((t) => CH_TYPE_KEYS.includes(t)) && new Set(a).size === a.length ? CH_TYPE_KEYS.filter((t) => a.includes(t)) : undefined))(v.split(".")))],
+  ["cby", "lg", "cby", "family", String, oneOf("family", "inversion", "strings", "position")],
+  ["vt", "lg", "vt", null, (v) => (v.length ? v.join(".") : "none"), (v) => (v === "none" ? [] : ((a) => (a.every((t) => CH_TYPE_KEYS.includes(t)) && new Set(a).size === a.length ? CH_TYPE_KEYS.filter((t) => a.includes(t)) : undefined))(v.split(".")))],
+  ["ctype", "at", "ctype", "all", String, oneOf("all", ...CH_TYPE_KEYS)],
   ["ainv", "at", "cinv", null, (v) => ["root", "1", "2", "3"][v], (v) => { const i = ["root", "1", "2", "3"].indexOf(v); return i < 0 ? undefined : i; }],
-  ["frets", "at", "frets", "any", String, oneOf(...CH_FRETS.map(([k]) => k).filter((k) => k !== "any"))],
+  ["frets", "lg", "cfrets", "any", String, oneOf(...CH_FRETS.map(([k]) => k).filter((k) => k !== "any"))],
   ["aset", "at", "cset", null, String, (v) => (/^[1-6]{3,6}$/.test(v) && [...v].every((d, i) => !i || d > v[i - 1]) ? v : undefined)],
-  ["aopen", "at", "copen", "allow", String, oneOf("none")],
-  ["span", "at", "span", 4, String, intIn(3, 6)],
-  ["acopies", "at", "cup", false, () => "12", (v) => (v === "12" ? true : undefined)],
+  ["aopen", "lg", "copen", "allow", String, oneOf("none")],
+  ["span", "lg", "cspan", 4, String, intIn(3, 6)],
+  ["acopies", "lg", "cup", false, () => "12", (v) => (v === "12" ? true : undefined)],
   ["clit", "at", "clit", null, String, (v) => (/^[A-Za-z0-9]{1,12}$/.test(v) ? v : undefined)],
+  ["cview", "at", "cview", "cards", String, oneOf("rows", "cards")],
+  ["csort", "at", "csort", "lo", String, oneOf("kind", "name", "inv", "strs", "lo", "span", "form")],
+  ["cdesc", "at", "cdesc", false, () => "1", (v) => (v === "1" ? true : undefined)],
   // Identify (Round 16): its own shape (frets low string to high, x muted: x.3.2.0.1.0) and the chosen name (root and
   // quality: A.min7); with no name the shape's first name is chosen. Standard tuning: the app's only tuning (TC, 25 Nov).
   ["ishape", "at", "ishape", emptyShape(STANDARD), shapeTok, (v) => shapeIn(v, STANDARD)],
@@ -103,14 +112,15 @@ const URL_FIELDS = [
   ["view", "at", "pview", "rows", String, oneOf("rows", "cards")],
 ];
 const URL_DEFAULT = {
-  top: { page: "scale", cshow: "voicing", labelMode: "degree", isolate: false, ghost: false, dotColour: "caged", more: false },
+  top: { page: "scale", cshow: "voicing", labelMode: "degree", isolate: false, ghost: false, dotColour: "caged", more: false, range: FULL_RANGE },
   cfg: { root: 0, tonality: "major", scope: "pentatonic", arp: "triad", pos: null, focus: [], keyRoot: 0, keyMode: "major", arpMode: "diatonic", diaLabel: "key", strGroup: null, mode: "ionian", keySpell: null },
   ch: { deg: 0, strSet: 0, inv: 0, sev: false, strSet7: 0, inv7: 0, drop3: false, strSet3: 0, inv3: 0, harm: false },
   md: { parent: 0, view: "notes", hit: null, lkRoot: "", lkMode: "", open: [] },
-  at: { size: "standard", ...PATH_DEFAULTS,
-    cby: "family", vt: CH_TYPE_KEYS, cinv: null, frets: "any", cset: null, copen: "allow", span: 4, cup: false, clit: null,
+  at: { ...PATH_DEFAULTS,
+    ctype: "all", cinv: null, cset: null, clit: null, cview: "cards", csort: "lo", cdesc: false,
     ishape: emptyShape(STANDARD), iname: null },
-  lg: { behind: false, am: "scales", show: "scale", str: null, ct: "larger", map: null, croot: 0, cq: "major", by: "position", apos: 2, from: "root", up: false, lit: null },
+  lg: { behind: false, am: "scales", show: "scale", str: null, ct: "larger", map: null, croot: 0, cq: "major", by: "position", apos: 2, from: "root", up: false, lit: null,
+    size: "standard", cby: "family", vt: null, cfrets: "any", copen: "allow", cspan: 4, cup: false },
 };
 // The Chord tab's quality as one key: the triads by their 3rd, else the Any chord quality.
 export const chordQ = (c) => (c.arp === "triad" ? c.tonality : c.arp);
@@ -170,6 +180,8 @@ export function queryToState(search) {
   // keeps only the string counts its Octaves can have, as the control does.
   if (st.at.pid) st.cfg.pos = null;
   if (!pathStrOk(st.at.poct, st.at.pstr)) st.at.pstr = "all";
+  // v0.43's voicing types (Build C): a link with one type opens on that Type; several or none open on All.
+  if (!q.has("ctype") && st.lg.vt && st.lg.vt.length === 1) st.at.ctype = st.lg.vt[0];
   // A 3-note chord has no 3rd inversion; the control drops it, so a hand-edited link does too.
   if (st.at.cinv === 3 && chIvs(chordQ(st.cfg)).length === 3) st.at.cinv = null;
   return st;

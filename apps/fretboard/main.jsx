@@ -12,8 +12,9 @@ import { IdentifyPage } from "./atlasidentify.jsx";
 import { ModesPage } from "./modes.jsx";
 import { ThemeMenu } from "./head.jsx";
 import { STANDARD } from "./tunings.js";
+import { rangeOf, storedNeckSize, saveNeckSize } from "./guitar.js";
 import { stateToQuery, queryToState, URL_INIT, qualPatch } from "./url.js";
-import { CH_TYPE_KEYS, chTon } from "./chordshapes.js";
+import { chTon } from "./chordshapes.js";
 import { CH_FILTER_DEFAULT } from "./atlaschords.jsx";
 
 // The four tabs (Build A, E9 model, TC 25 Nov): one neck per working page with a list under it; Modes is the chart.
@@ -31,6 +32,11 @@ function FretboardTrainer() {
   const [ghost, setGhost] = useState(URL_INIT.top.ghost);
   const [dotColour, setDotColour] = useState(URL_INIT.top.dotColour);
   const [more, setMore] = useState(URL_INIT.top.more);
+  // Frets (Build C): the part of the neck shown on Scale and Chord, in the link. Neck size: per browser, as Theme.
+  const [rangeKey, setRange] = useState(URL_INIT.top.range);
+  const [neckSize, setNeckSizeRaw] = useState(storedNeckSize);
+  const setNeckSize = (v) => { saveNeckSize(v); setNeckSizeRaw(v); };
+  const range = rangeOf(tuning, rangeKey);
   const [help, setHelp] = useState(false);
   // Theme (Round 15): stored per browser, applied to <html>; the template already set it before first paint.
   const [theme, setThemeRaw] = useState(() => applyTheme(storedTheme(), false));
@@ -50,18 +56,18 @@ function FretboardTrainer() {
   const view = page + (page === "chord" ? ":" + cshow : "");
   const lastView = React.useRef(view);
   useEffect(() => {
-    const st = { top: { page, cshow, labelMode, isolate, ghost, dotColour, more }, cfg, ch, md, at };
+    const st = { top: { page, cshow, labelMode, isolate, ghost, dotColour, more, range: rangeKey }, cfg, ch, md, at };
     const url = location.pathname + stateToQuery(st) + location.hash;
     const push = lastView.current !== view;
     lastView.current = view;
     if (url === location.pathname + location.search + location.hash && !push) return;
     try { history[push ? "pushState" : "replaceState"](null, "", url); } catch (e) { /* a sandboxed frame: the URL stays */ }
-  }, [page, cshow, labelMode, isolate, ghost, dotColour, more, cfg, ch, md, at]);
+  }, [page, cshow, labelMode, isolate, ghost, dotColour, more, rangeKey, cfg, ch, md, at]);
   useEffect(() => {
     const onPop = () => {
       const st = queryToState(location.search);
       lastView.current = st.top.page + (st.top.page === "chord" ? ":" + st.top.cshow : "");
-      setPage(st.top.page); setCshow(st.top.cshow); setLabelMode(st.top.labelMode); setIsolate(st.top.isolate); setGhost(st.top.ghost); setDotColour(st.top.dotColour); setMore(st.top.more);
+      setPage(st.top.page); setCshow(st.top.cshow); setLabelMode(st.top.labelMode); setIsolate(st.top.isolate); setGhost(st.top.ghost); setDotColour(st.top.dotColour); setMore(st.top.more); setRange(st.top.range);
       setCfgRaw(st.cfg); setCh(st.ch); setMd(st.md); setAt(st.at); setHelp(false);
     };
     window.addEventListener("popstate", onPop);
@@ -85,7 +91,7 @@ function FretboardTrainer() {
     document.body.removeChild(ta);
     done(ok ? "Copied" : "Not copied");
   };
-  const globals = { labelMode, isolate, ghost, dotColour, more, setLabelMode, setIsolate, setGhost, setDotColour, setMore };
+  const globals = { labelMode, isolate, ghost, dotColour, more, setLabelMode, setIsolate, setGhost, setDotColour, setMore, range, setRange, neckSize, setNeckSize };
   // Key and Major / Minor (state.js keyPatch): a carried root letter goes with another key (Round 9); the Chord tab's chord
   // follows the key only when it is picked from the key (In key degrees).
   // Build B: a chosen path belongs to its key and scale, and takes Position's place, so a Key, Major / Minor, Scale or Mode
@@ -140,7 +146,7 @@ function FretboardTrainer() {
   // Identify's link to every voicing of its chord: Chord → Voicing on that chord, every type, the filters cleared.
   const toVoicings = (root, q) => {
     setCfg((c) => ({ ...c, arpMode: "quality", ...qualPatch(q, chTon(q)), root }));
-    setAt((a) => ({ ...a, vt: CH_TYPE_KEYS, ...CH_FILTER_DEFAULT, clit: null }));
+    setAt((a) => ({ ...a, ...CH_FILTER_DEFAULT, clit: null }));
     go("chord", "voicing");
   };
 
@@ -164,7 +170,7 @@ function FretboardTrainer() {
       {help ? <Help onExample={applyPreset} />
         : page === "scale" ? <ScalePage tuning={tuning} cfg={cfg} update={up} globals={globals} at={at} setAt={setAt} />
         : page === "chord" ? <ChordPage tuning={tuning} cfg={cfg} update={up} globals={globals} cshow={cshow} setCshow={setCshow} ch={ch} setCh={setCh} at={at} setAt={setAt} onAll={openChord} />
-        : page === "identify" ? <IdentifyPage tuning={tuning} at={at} setAt={setAt} labelMode={labelMode} setLabelMode={setLabelMode} onOpen={openChord} toVoicings={toVoicings} />
+        : page === "identify" ? <IdentifyPage tuning={tuning} at={at} setAt={setAt} labelMode={labelMode} setLabelMode={setLabelMode} onOpen={openChord} toVoicings={toVoicings} range={range} />
         : <ModesPage md={md} setMd={setMd} onNeck={showMode} />}
       </div>
     </div>

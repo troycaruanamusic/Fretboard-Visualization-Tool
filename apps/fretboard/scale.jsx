@@ -40,9 +40,10 @@ export function ScalePage({ tuning, cfg, update, globals, at, setAt }) {
     const r = el.getBoundingClientRect();
     if (r.top < 0 || r.top > window.innerHeight * 0.6) el.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   };
-  const data = usePathRows(tuning, cfg, at);
+  const data = usePathRows(tuning, cfg, at, globals.range);
   const { chosen, current } = data;
-  // A path in the link that this scale and key do not have (a hand-edited link) is dropped, as Focus drops a degree.
+  // A path in the link that this scale and key do not have (a hand-edited link), or one outside the fret range (Build C), is
+  // dropped, as Focus drops a degree.
   React.useEffect(() => { if (at.pid && !chosen) setAt((a) => ({ ...a, pid: null, pstep: 0 })); });
   // A row: a window sets Position as the bar did (TC 25 Nov), All the five together; a path takes Position's place.
   // Choosing a Position clears the path (main.jsx).
@@ -61,7 +62,7 @@ export function ScalePage({ tuning, cfg, update, globals, at, setAt }) {
     <Board tuning={tuning} cfg={cfg} update={update} globals={globals} lead={<ScaleGroups cfg={cfg} update={update} />} boardRef={boardRef}
       posInBar={false} path={path} stepCell={stepCell} onClearPath={whole}
       foot={<PathPanel tuning={tuning} data={data} at={at} setAt={setAt} onPick={(r) => pick(r)} onWhole={whole} labelMode={globals.labelMode} />}>
-      <PathList tuning={tuning} cfg={cfg} data={data} at={at} setAt={setAt} onPick={(r) => pick(r, true)} labelMode={globals.labelMode} />
+      <PathList tuning={tuning} cfg={cfg} data={data} at={at} setAt={setAt} onPick={(r) => pick(r, true)} labelMode={globals.labelMode} range={globals.range} />
     </Board>
   );
 }

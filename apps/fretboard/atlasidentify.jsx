@@ -8,15 +8,14 @@ import { CardGrid, AtlasCard } from "../../core/atlas.jsx";
 import { TILE, ROOT } from "../../core/marker.js";
 import { MARKERS, colPx, inlayAt } from "./guitar.js";
 import { POS_COLOR, NEUTRAL_CT, formName } from "./caged.js";
-import { CH_TYPES, CH_TYPE_KEYS, chAvail, chName, chordCards, chFilter, chSort, shapeCard } from "./chordshapes.js";
-import { ChordNeck, tonesOf, formLine, frame, CH_FILTER_DEFAULT } from "./atlaschords.jsx";
+import { CH_TYPES, CH_TYPE_KEYS, chAvail, chName, chordCards, chSort, shapeCard } from "./chordshapes.js";
+import { ChordNeck, tonesOf, formLine, frame, voicingRows } from "./atlaschords.jsx";
 import { PLAIN, shapeInfo, readings, oneOver } from "./identify.js";
 
 // Undo (mock-up frames): the shapes before each tap, for this visit to the app; not in the link.
 const HIST = [];
 const LOWEST = 5;
 const COARSE_Q = "(pointer:coarse)";
-const CH_DEFAULT_F = { inv: CH_FILTER_DEFAULT.cinv, frets: CH_FILTER_DEFAULT.frets, set: CH_FILTER_DEFAULT.cset, open: CH_FILTER_DEFAULT.copen, span: CH_FILTER_DEFAULT.span };
 
 // The tap board (mock-up call 1): the Neck's 21 frets and column widths; on touch every column is at least 44 px and the
 // board scrolls sideways. One note per string (call 2): a fret tap places the note, a second tap mutes the string; the button
@@ -98,8 +97,9 @@ function NameList({ list, chosen, onPick }) {
   );
 }
 
-export function IdentifyPage({ tuning, at, setAt, labelMode, setLabelMode, onOpen, toVoicings }) {
-  const { ishape: shape, iname, size } = at;
+// range (Build C): the fret range, so the count on the link to Chord is the Voicing list's.
+export function IdentifyPage({ tuning, at, setAt, labelMode, setLabelMode, onOpen, toVoicings, range }) {
+  const { ishape: shape, iname } = at;
   const phone = useMedia(PHONE_Q);
   const set = (p) => setAt((a) => ({ ...a, ...p }));
   // Every change of shape is one undo step and drops the chosen name, so the new shape opens on its first name.
@@ -126,7 +126,8 @@ export function IdentifyPage({ tuning, at, setAt, labelMode, setLabelMode, onOpe
     if (!chosen) return null;
     const { root, q, gen, ctx } = chosen, nm = ctx.rn + ctx.sfx;
     const all = chordCards(tuning, root, q, CH_TYPE_KEYS, false);
-    const total = chFilter(all, CH_DEFAULT_F).length;
+    // The Voicing list's count for the chord with its filters cleared (Build C: every copy inside the fret range).
+    const total = voicingRows(tuning, root, q, range).length;
     if (gen) {
       const fam = chordCards(tuning, root, q, [gen.kind], false);
       if (gen.k) fam.push(gen);
@@ -135,7 +136,7 @@ export function IdentifyPage({ tuning, at, setAt, labelMode, setLabelMode, onOpe
     const mine = shapeCard(tuning, root, q, info.cells);
     const lowest = [...all].sort(chSort).slice(0, LOWEST);
     return { head: `${nm} · your shape and the lowest ${lowest.length}`, note: chAvail(q).includes("caged") ? "" : `${nm} has no CAGED form; these come from its other voicing types.`, count: null, lit: mine.id, cards: [mine, ...lowest], total };
-  }, [tuning, chosen && chosen.id, shape.join(",")]);
+  }, [tuning, chosen && chosen.id, shape.join(","), range.key]);
 
   const toChords = () => toVoicings(chosen.root, chosen.q);
   const labels = <Labels value={labelMode} set={setLabelMode} />;
@@ -175,7 +176,7 @@ export function IdentifyPage({ tuning, at, setAt, labelMode, setLabelMode, onOpe
 
       {chosen && shapes && (
         <section aria-label="Shapes" data-ishapes style={{ marginTop: 4 }}>
-          <CardGrid id="atlas-cards-i" heading={[shapes.head, shapes.note]} count={shapes.count} large={size === "large"}>
+          <CardGrid id="atlas-cards-i" heading={[shapes.head, shapes.note]} count={shapes.count}>
             {shapes.cards.map((c0) => {
               const c = { ...c0, ...frame(tuning, c0.cells) }, on = c.id === shapes.lit;
               return (
@@ -183,7 +184,7 @@ export function IdentifyPage({ tuning, at, setAt, labelMode, setLabelMode, onOpe
                   mark={c.mark} markColour={c.kind === "caged" ? POS_COLOR[c.form] : c.kind === "shape" ? THEME.sel : null}
                   formTag={c.kind !== "caged" && c.forms.length ? { label: formName(c.forms), line: formLine(c.forms) } : null}
                   extraTag={on && c.kind !== "shape" ? { label: "Your shape", colour: THEME.sel } : null}>
-                  <ChordNeck tuning={tuning} card={c} labelMode={labelMode} lg={size === "large"} />
+                  <ChordNeck tuning={tuning} card={c} labelMode={labelMode} />
                 </AtlasCard>
               );
             })}
