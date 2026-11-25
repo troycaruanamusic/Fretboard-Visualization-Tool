@@ -1,13 +1,11 @@
-// Shared core · dot masks. The root marker (Round 15) is one filled element with a radial mask: a solid centre, a thin
-// see-through gap and an outer ring in the same fill, so the ring takes any fill (solid, a two-window split, the hatch).
-const feather = 0.5;
-export function ringMask(ring, gap) {
-  const a = ring + gap;
-  const m = `radial-gradient(closest-side, #000 calc(100% - ${a + feather}px), transparent calc(100% - ${a}px), transparent calc(100% - ${ring + feather}px), #000 calc(100% - ${ring}px))`;
-  return { WebkitMaskImage: m, maskImage: m };
-}
-// An outline of width w in the element's fill (outlined shapes on the Chords page).
+// Shared core · note markers (Build A, E9 model, TC 25 Nov). A note marker is a rounded square: the corner is 27 % of the side
+// (the .tile class). The root is the same tile with a 2 px ink frame inside its edge (the .froot class), so the frame takes any
+// fill: solid, a two-window split or the hatch. Inlays stay round.
+export const TILE = "tile";
+export const ROOT = "tile froot";
+// An outline of width w in the element's fill (outlined shapes on the Chord tab's In key ladder): the fill shows only in the
+// padding ring, so a split fill outlines in both colours.
 export function outlineMask(w) {
-  const m = `radial-gradient(closest-side, transparent calc(100% - ${w + feather}px), #000 calc(100% - ${w}px))`;
-  return { WebkitMaskImage: m, maskImage: m };
+  const m = "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)";
+  return { padding: w, WebkitMask: m, WebkitMaskComposite: "xor", mask: m, maskComposite: "exclude" };
 }

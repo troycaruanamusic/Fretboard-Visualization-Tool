@@ -1,6 +1,6 @@
-// Fretboard Trainer · the Modes page.
+// Fretboard Trainer · the Modes tab.
 import { MODES, MODE_REF, MODE_REF_OFF, MODE_ORD } from "../../core/scales.js";
-import { Seg, Track, Row, Card, Btn } from "../../core/ui.jsx";
+import { Btn, Bar, Grp, Sel, Labels } from "../../core/ui.jsx";
 
 // "1m<sup>7♭5</sup>" as text with a superscript, without innerHTML.
 const supText = (s) => s.split(/<sup>|<\/sup>/).map((t, i) => (i % 2 ? <sup key={i}>{t}</sup> : t));
@@ -26,25 +26,20 @@ export function ModesPage({ md, setMd, onNeck }) {
 
   return (
     <div>
-      <div className="mtop">
-        <Card title="Parent key">
-          {/* The 12 major keys as a 6 × 2 equal-cell grid in gold, as the Key card on Neck and Chords. */}
-          <Row>
-            <Track label="Parent key" cols={6}>{MODE_REF.order.map((k, i) => <Seg key={k} tone="gold" active={parent === i} onClick={() => set({ parent: i, hit: null, lkRoot: "", lkMode: "" })}>{k}</Seg>)}</Track>
-          </Row>
-          <Row label="View">
-            <Track label="View" cols={2}>{[["notes", "Notes"], ["numbers", "Numbers"]].map(([k, l]) => <Seg key={k} active={view === k} onClick={() => set({ view: k })}>{l}</Seg>)}</Track>
-          </Row>
-        </Card>
-        <Card title="Find a parent key">
-          <div className="lk">
-            <label>Root<select className="sel" value={lkRoot} onChange={(e) => lookup(e.target.value, lkMode)}><option value="" disabled>Root…</option>{MODE_REF.rootLabels.map((l, p) => <option key={p} value={p}>{l}</option>)}</select></label>
-            <label>Mode<select className="sel" value={lkMode} onChange={(e) => lookup(lkRoot, e.target.value)}><option value="" disabled>Mode…</option>{MODE_REF.modes.map((m, i) => <option key={i} value={i}>{m.name}</option>)}</select></label>
-            <div data-lookup className="lkres" aria-live="polite">{found
-              ? <span>Parent key: {key} major ({sc[hit]} {MODE_REF.modes[hit].name} is its {MODE_ORD[hit]} mode)</span>
-              : <span className="text-muted" style={{ fontWeight: 500 }}>Choose a root and a mode.</span>}</div>
-          </div>
-        </Card>
+      {/* The bar (Build A, E9 model): Parent key as a gold menu and Find a parent key; View is the shared Labels control, in the
+          same spot as on the other tabs (mock-up). */}
+      <Bar>
+        <Grp cap="Parent key"><Sel label="Parent key" gold value={parent} options={MODE_REF.order.map((k, i) => [i, k])} onChange={(v) => set({ parent: +v, hit: null, lkRoot: "", lkMode: "" })} /></Grp>
+        <Grp cap="Find a parent key">
+          <Sel label="Root" value={lkRoot} options={[["", "Root…"], ...MODE_REF.rootLabels.map((l, p) => [p, l])]} onChange={(v) => lookup(v, lkMode)} />
+          <Sel label="Mode" value={lkMode} options={[["", "Mode…"], ...MODE_REF.modes.map((m, i) => [i, m.name])]} onChange={(v) => lookup(lkRoot, v)} />
+        </Grp>
+      </Bar>
+      <div className="sumrow">
+        <span data-lookup className="text-sm font-semibold text-body" aria-live="polite">{found
+          ? `Parent key: ${key} major (${sc[hit]} ${MODE_REF.modes[hit].name} is its ${MODE_ORD[hit]} mode)`
+          : <span className="text-muted" style={{ fontWeight: 500 }}>Find a parent key: choose a root and a mode.</span>}</span>
+        <Labels value={view} set={(v) => set({ view: v })} opts={[["notes", "Notes"], ["numbers", "Numbers"]]} />
       </div>
 
       <section className="card" aria-labelledby="modes-title">
@@ -77,7 +72,7 @@ export function ModesPage({ md, setMd, onNeck }) {
                   <td role="cell" className="c-solo"><span className="mlab">Solo over</span><span data-solo>{supText(m.solo)}</span></td>
                   <td role="cell" className="c-act">
                     <div className="macts">
-                      <button data-neck={i} onClick={() => onNeck(rootPc, MODES[i][0], sc[i][0])} className="btn text-sm text-link underline" style={{ padding: "0 4px" }}>Show {name} on the neck</button>
+                      <button data-neck={i} onClick={() => onNeck(rootPc, MODES[i][0], sc[i][0])} className="btn text-sm text-link underline" style={{ padding: "0 4px" }}>Show {name} in Scale</button>
                       <Btn onClick={() => toggleOpen(i)} aria-expanded={isOpen} aria-controls={`mdet-${i}`} aria-label={`${m.name} details`} className="btn mtog flex items-center text-sm transition-colors"><span aria-hidden="true" style={{ display: "inline-block", transform: isOpen ? "rotate(90deg)" : "none" }}>▸</span></Btn>
                     </div>
                   </td>

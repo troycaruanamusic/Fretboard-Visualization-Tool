@@ -51,7 +51,37 @@ export function Btn({ onClick, children, disabled = false, ...rest }) {
   return <button onClick={onClick} disabled={disabled} className="btn text-sm transition-colors" {...rest} style={{ padding: "0 12px", borderRadius: 8, background: on ? THEME.ctlHover : THEME.ctl, border: `1px solid ${on ? "transparent" : THEME.edge}`, boxShadow: on ? `0 0 0 1.5px ${THEME.text}` : "none", color: THEME.text, fontWeight: on ? 700 : 500, whiteSpace: "nowrap", opacity: disabled ? 0.5 : 1, cursor: disabled ? "default" : "pointer" }}>{children}</button>;
 }
 
-// A media query as state, so the Atlas can swap its control cards for the phone chip bar and sheet.
+// The control bar (Build A, E9 model): captioned groups in one wrapping row at every width.
+export const Bar = ({ label = "Controls", children }) => <section className="bar" aria-label={label}>{children}</section>;
+// One captioned group of the bar. The caption labels a single control; a group of several names itself with role="group".
+export const Grp = ({ cap, children, ...rest }) => <div className="bgrp" role="group" aria-label={cap} {...rest}><p className="cap" aria-hidden="true">{cap}</p><div className="bctl">{children}</div></div>;
+// A native menu at the bar's height. options: [value, label] or { group, items: [[value, label]] } for an optgroup. Gold for the key.
+export function Sel({ label, value, onChange, options, gold = false, ...rest }) {
+  const opt = ([v, l]) => <option key={String(v)} value={String(v)}>{l}</option>;
+  return (
+    <select className={"sel" + (gold ? " gold" : "")} aria-label={label} value={String(value)} onChange={(e) => onChange(e.target.value)} {...rest}>
+      {options.map((o) => (Array.isArray(o) ? opt(o) : <optgroup key={o.group} label={o.group}>{o.items.map(opt)}</optgroup>))}
+    </select>
+  );
+}
+// Labels (Build A, streamline item 4): one control in the same spot on every board, the right end of the summary row.
+export function Labels({ value, set, opts = [["degree", "Degrees"], ["name", "Notes"], ["none", "None"]], cap = "Labels" }) {
+  return (
+    <span className="labs"><span className="text-xs text-muted">{cap}</span>
+      <Track label={cap} cols={opts.length}>{opts.map(([k, l]) => <Seg key={k} active={value === k} onClick={() => set(k)}>{l}</Seg>)}</Track>
+    </span>
+  );
+}
+// A filter chip with its ✕.
+export const Chip = ({ text, onClear }) => (
+  <button onClick={onClear} aria-label={`Remove ${text}`} className="chip flex items-center gap-1.5 px-2 rounded-lg text-xs transition-colors" style={{ background: THEME.ctl, border: `1px solid ${THEME.edge}`, color: THEME.text, fontWeight: 500, flex: "none" }}>
+    {text}<span aria-hidden="true" className="text-muted">✕</span>
+  </button>
+);
+// Clear all (streamline item 3): beside the chips, only when a filter is on.
+export const ClearAll = ({ onClick }) => <button data-clearall onClick={onClick} className="btn clearall">Clear all</button>;
+
+// A media query as state.
 export function useMedia(q) {
   const [m, setM] = useState(() => window.matchMedia(q).matches);
   useEffect(() => {

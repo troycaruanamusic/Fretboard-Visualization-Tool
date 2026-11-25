@@ -3,7 +3,7 @@
 // voicings, and shells. Closed, drop 2 and
 // drop 3 shapes are placed as the Chords page places its ladders (v0.34 rules: each tone the next one above the string
 // below, the inversion's tone in the bass); string sets, shell strings and the CAGED templates are six-string standard-tuning
-// constants, redesigned with the other tunings (plan step 8). The tuning gives the open pitches and the fret count.
+// constants (standard tuning only, TC 25 Nov). The tuning gives the open pitches and the fret count.
 import { DEG_LABEL, DEG_OVERRIDE, scopeIntervals } from "../../core/scales.js";
 import { KEY_NAME, LETTERS } from "../../core/notes.js";
 import { accs, spellAt } from "../../core/spelling.js";
@@ -77,7 +77,7 @@ export function chAvail(q) {
 // The list's rows of one chord, in file order, as cells (s, f). Standard tuning only.
 export const openRows = (tuning, root, q) => (tuning.id === "std" ? OPEN_ROWS.filter((o) => o.root === root && o.q === q) : []);
 
-// String sets, low string first, by string index (0 = string 1). Six-string guitar constants (plan step 8).
+// String sets, low string first, by string index (0 = string 1). Six-string standard-tuning constants.
 const TRIAD_SETS = [0, 1, 2, 3].map((g) => [g + 2, g + 1, g]);
 const DROP2_SETS = [0, 1, 2].map((g) => [g + 3, g + 2, g + 1, g]);
 const DROP3_SETS = [0, 1].map((g) => [g + 4, g + 2, g + 1, g]);

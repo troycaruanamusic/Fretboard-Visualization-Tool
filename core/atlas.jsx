@@ -36,7 +36,8 @@ export function CardGrid({ heading, count, large, children, id = "atlas-cards" }
 }
 // A chord card (Round 14) passes sub, its fret string (x 3 2 0 1 0), in place of the span, and no mark colour for the
 // neutral voicing types. Identify (Round 16) adds a tag after the form tag, underlined in its colour (Your shape, gold).
-export function AtlasCard({ card: c, on, onToggle, setHov, onOpen, mark, markColour, children, sub = null, formTag = null, extraTag = null }) {
+// onOpen (Build A): the footer link, named openLabel; none when the card's tap already does the job.
+export function AtlasCard({ card: c, on, onToggle, setHov, onOpen, mark, markColour, children, sub = null, formTag = null, extraTag = null, openLabel = "On the neck" }) {
   return (
     <div data-card={c.id} data-lit={on ? "1" : undefined} className={"acard" + (on ? " lit" : "")} onClick={onToggle}
       onPointerEnter={(e) => { if (e.pointerType === "mouse") setHov(c.id); }} onPointerLeave={() => setHov((h) => (h === c.id ? null : h))}>
@@ -51,7 +52,7 @@ export function AtlasCard({ card: c, on, onToggle, setHov, onOpen, mark, markCol
         {formTag && <span data-formtag className="atag" style={{ color: THEME.text, fontWeight: 600, backgroundImage: formTag.line, backgroundRepeat: "no-repeat", backgroundPosition: "bottom", backgroundSize: "100% 3px" }}>{formTag.label}</span>}
         {extraTag && <span data-extratag className="atag" style={{ boxShadow: `inset 0 -3px 0 ${extraTag.colour}`, color: THEME.text, fontWeight: 600 }}>{extraTag.label}</span>}
         {c.tags.map((t) => <span key={t} className="atag">{t}</span>)}
-        <button data-open={c.id} onClick={(e) => { e.stopPropagation(); onOpen(); }} aria-label={`${c.title} on the neck`} className="btn text-sm text-link underline" style={{ padding: "0 4px", marginLeft: "auto" }}>On the neck</button>
+        {onOpen && <button data-open={c.id} onClick={(e) => { e.stopPropagation(); onOpen(); }} aria-label={`${c.title}: ${openLabel}`} className="btn text-sm text-link underline" style={{ padding: "0 4px", marginLeft: "auto" }}>{openLabel}</button>}
       </div>
     </div>
   );

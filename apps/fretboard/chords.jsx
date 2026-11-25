@@ -1,16 +1,15 @@
-// Fretboard Trainer · the Chords page: triad and seventh ladders on string sets.
+// Fretboard Trainer · Chord → In key (v0.41's Chords page, moved unchanged in Build A): triad and seventh ladders on string sets.
 import { useMemo, useEffect } from "../../core/react.js";
 import { THEME } from "../../core/theme.js";
-import { NOTES_SHARP, KEY_NAME } from "../../core/notes.js";
-import { DEG_LABEL, DEG_OVERRIDE, KEY_DEG, MODE_IV, MODE_Q, KEY_DEG_HM } from "../../core/scales.js";
+import { KEY_NAME } from "../../core/notes.js";
+import { DEG_LABEL, DEG_OVERRIDE, KEY_DEG, MODE_IV, KEY_DEG_HM } from "../../core/scales.js";
 import { accs, keySpelling, uniAcc, hmSpelling } from "../../core/spelling.js";
 import { DIATONIC, INV_NAME, INV_NAME7, CH_Q, DIATONIC7, DROP2, DROP3 } from "../../core/chords.js";
-import { Seg, Track, Row, Card, Btn } from "../../core/ui.jsx";
+import { Seg, Track, Btn, Bar, Grp, Labels } from "../../core/ui.jsx";
 import { MARKERS, colPx, SET_NAME, inlayAt } from "./guitar.js";
 import { POS_COLOR, formFill, formName } from "./caged.js";
 import { chordForms } from "./chordshapes.js";
-import { ringMask, outlineMask } from "../../core/marker.js";
-import { keepChord } from "./state.js";
+import { TILE, ROOT, outlineMask } from "../../core/marker.js";
 
 const SET_NAME7 = ["1–4", "2–5", "3–6"];
 const SET_NAME3 = ["5 3 2 1", "6 4 3 2"];
@@ -109,9 +108,10 @@ function ChordStrip({ ladder, deg, setDeg, nameOf, forms }) {
 
 const formUnderline = (fs) => (fs.length > 1 ? `linear-gradient(90deg, ${POS_COLOR[fs[0]]} 0 50%, ${POS_COLOR[fs[1]]} 50% 100%)` : `linear-gradient(${POS_COLOR[fs[0]]}, ${POS_COLOR[fs[0]]})`);
 
-export function ChordsPage({ tuning, cfg, update, ch, setCh, labelMode, setLabelMode }) {
-  const { keyRoot, keyMode, arp, arpMode, mode } = cfg;
-  const { deg, strSet, inv, scaleBehind, sev, strSet7, inv7, drop3, strSet3, inv3, harm } = ch;
+// lead: the Chord tab's Show and the Key (Build A). Scale behind is cut (streamline cut 16, TC 25 Nov).
+export function ChordsPage({ tuning, cfg, update, ch, setCh, labelMode, setLabelMode, lead = null }) {
+  const { keyRoot, keyMode } = cfg;
+  const { deg, strSet, inv, sev, strSet7, inv7, drop3, strSet3, inv3, harm } = ch;
   // Triads, drop-2 and drop-3 sevenths each keep their own string set and inversion (Rounds 8 and 10).
   const d3 = sev && drop3, hm = sev && harm && keyMode === "minor";
   const g = sev ? (drop3 ? strSet3 : strSet7) : strSet, iv = sev ? (drop3 ? inv3 : inv7) : inv;
@@ -124,7 +124,7 @@ export function ChordsPage({ tuning, cfg, update, ch, setCh, labelMode, setLabel
   // Each shape's CAGED form (Round 15), from its own root.
   const forms = useMemo(() => ladder.map((c) => chordForms(c.root, MINOR_Q.has(c.q) ? "minor" : "major", c.q, c.cells)), [ladder]);
   const kDeg = hm ? KEY_DEG_HM : KEY_DEG[keyMode];
-  // Labels (Round 15, shared with the Neck and Atlas): Degrees from the chord's own root (R 3 5, ♭3, ♭5; ♯5 in maj7♯5,
+  // Labels (Round 15, shared with the other boards): Degrees from the chord's own root (R 3 5, ♭3, ♭5; ♯5 in maj7♯5,
   // 𝄫7 in dim7), note names, or none. The numerals above the neck carry the key function.
   const label = (pc, chordRoot, q) => {
     if (labelMode === "none") return "";
@@ -134,7 +134,6 @@ export function ChordsPage({ tuning, cfg, update, ch, setCh, labelMode, setLabel
   };
   const cell = {};
   ladder.forEach((c, k) => c.cells.forEach((x) => { cell[x.s * 100 + x.f] = { k, c }; }));
-  const inKey = (pc) => kDeg[(((pc - keyRoot) % 12) + 12) % 12] !== undefined;
   const setStrs = sev ? SET_STRS[d3 ? 3 : 2](g) : [g, g + 1, g + 2];
   const onSet = (s) => setStrs.includes(s);
 
@@ -177,19 +176,16 @@ export function ChordsPage({ tuning, cfg, update, ch, setCh, labelMode, setLabel
         const title = `${hit.c.rn} ${nameOf(hit.c)} · ${accs(keySp[pc].name)}`;
         const fill = formFill(forms[hit.k]);
         if (hit.k === deg) {
-          // The chosen shape: filled in its CAGED form colour with ink labels; its root has the ring (Round 15).
+          // The chosen shape: filled in its CAGED form colour with ink labels; its root has the ink frame (Build A).
           dot = isRoot ? (
-            <div data-shape={hit.k} data-chosen="1" data-root="1" title={title} className="fdot relative rounded-full flex items-center justify-center" style={{ width: 32, height: 32, background: fill, color: THEME.ink, fontSize: fontPx, fontWeight: 800, zIndex: 5, ...ringMask(2, 2) }}>{lab}</div>
+            <div data-shape={hit.k} data-chosen="1" data-root="1" title={title} className={"fdot " + ROOT + " relative flex items-center justify-center"} style={{ width: 30, height: 30, background: fill, color: THEME.ink, fontSize: fontPx, fontWeight: 800, zIndex: 5 }}>{lab}</div>
           ) : (
-            <div data-shape={hit.k} data-chosen="1" title={title} className="fdot relative rounded-full flex items-center justify-center" style={{ width: 30, height: 30, background: fill, color: THEME.ink, fontSize: fontPx, fontWeight: 800, zIndex: 3 }}>{lab}</div>
+            <div data-shape={hit.k} data-chosen="1" title={title} className={"fdot " + TILE + " relative flex items-center justify-center"} style={{ width: 30, height: 30, background: fill, color: THEME.ink, fontSize: fontPx, fontWeight: 800, zIndex: 3 }}>{lab}</div>
           );
         } else {
-          // The other six: outlined in their form colour, no labels; a root has the heavier outline.
-          dot = <div data-shape={hit.k} data-root={isRoot ? "1" : undefined} title={title} className="relative rounded-full" style={{ width: 26, height: 26, background: forms[hit.k].length ? fill : THEME.edge, zIndex: 2, ...outlineMask(isRoot ? 3.5 : 2) }} />;
+          // The other six: open squares outlined in their form colour, no labels; a root has the heavier outline.
+          dot = <div data-shape={hit.k} data-root={isRoot ? "1" : undefined} title={title} className={TILE + " relative"} style={{ width: 26, height: 26, background: forms[hit.k].length ? fill : THEME.edge, zIndex: 2, ...outlineMask(isRoot ? 3.5 : 2) }} />;
         }
-      } else if (scaleBehind && onSet(s) && inKey(pc)) {
-        // Scale behind: the key's other notes on the set as bare labels, like Other notes on the Neck page.
-        dot = <div data-behind="1" className="relative" style={{ color: THEME.muted, fontSize: 11, fontWeight: 600 }} title={accs(keySp[pc].name)}>{label(pc, cur.root, cur.q)}</div>;
       }
       cells.push(
         <div key={f} data-fret={s === 0 ? f : undefined} className="relative flex items-center justify-center" style={{ gridRow: s + 2, gridColumn: f + 2, height: cellH, borderRight: f === 0 ? `5px solid ${THEME.nut}` : `2px solid ${THEME.fret}`, background: f === 0 ? THEME.track : undefined }}>
@@ -209,14 +205,34 @@ export function ChordsPage({ tuning, cfg, update, ch, setCh, labelMode, setLabel
 
   const keyName = uniAcc(KEY_NAME[keyMode][keyRoot]);
   const summary = `${keyName} ${hm ? "harmonic minor" : keyMode} · ${cur.rn} · ${accs(keySp[cur.root].name)} ${CH_Q[cur.q][0]} · ${d3 ? "drop 3, " : ""}strings ${(sev ? (d3 ? SET_NAME3 : SET_NAME7) : SET_NAME)[g]}, ${(sev ? INV_NAME7 : INV_NAME)[iv]}`;
-  // Key and Major / Minor act exactly as on the Neck page, so both pages stay on one key.
   const opt = (k, v) => setCh((c) => ({ ...c, [k]: v }));
 
   return (
     <div>
+      {/* The bar (Build A): Show and Key (lead), then the ladder's own controls. */}
+      <Bar>
+        {lead}
+        <Grp cap="Chords">
+          <Track label="Chords" cols={2}>{[[false,"Triads"],[true,"Sevenths"]].map(([v,l]) => <Seg key={l} active={sev === v} onClick={() => opt("sev", v)}>{l}</Seg>)}</Track>
+        </Grp>
+        {/* Round 10: Voicing (Drop 2 / Drop 3) and, in a minor key, Minor scale (Natural / Harmonic) for Sevenths only. */}
+        {sev && <Grp cap="Voicing">
+          <Track label="Voicing" cols={2}>{[[false,"Drop 2"],[true,"Drop 3"]].map(([v,l]) => <Seg key={l} active={drop3 === v} onClick={() => opt("drop3", v)}>{l}</Seg>)}</Track>
+        </Grp>}
+        {sev && keyMode === "minor" && <Grp cap="Minor scale">
+          <Track label="Minor scale" cols={2}>{[[false,"Natural"],[true,"Harmonic"]].map(([v,l]) => <Seg key={l} active={harm === v} onClick={() => opt("harm", v)}>{l}</Seg>)}</Track>
+        </Grp>}
+        <Grp cap="Strings">
+          <Track label="Strings" cols={sev ? (drop3 ? 2 : 3) : 4}>{(sev ? (drop3 ? SET_NAME3 : SET_NAME7) : SET_NAME).map((l, j) => <Seg key={l} active={g === j} onClick={() => opt(sev ? (drop3 ? "strSet3" : "strSet7") : "strSet", j)}>{l}</Seg>)}</Track>
+        </Grp>
+        <Grp cap="Inversion">
+          <Track label="Inversion" cols={sev ? 4 : 3}>{["Root", "1st", "2nd", "3rd"].slice(0, sev ? 4 : 3).map((l, i) => <Seg key={i} active={iv === i} onClick={() => opt(sev ? (drop3 ? "inv3" : "inv7") : "inv", i)}>{l}</Seg>)}</Track>
+        </Grp>
+      </Bar>
       <div className="boardwrap">
         <div className="sumrow">
           <span data-summary aria-live="polite" className="text-sm font-semibold text-body">{summary}</span>
+          <Labels value={labelMode} set={setLabelMode} />
         </div>
         <div ref={scrollRef} className="overflow-x-auto pb-2 rounded-xl" style={{ background: THEME.panel2 }}>
           <div className="grid p-3" style={{ gridTemplateColumns: COLS, width: "100%", minWidth: "min-content" }}>
@@ -234,42 +250,6 @@ export function ChordsPage({ tuning, cfg, update, ch, setCh, labelMode, setLabel
         <ChordStrip ladder={ladder} deg={deg} setDeg={setDeg} nameOf={nameOf} forms={forms} />
       </div>
 
-      <div className="cgroups mt-3">
-        <Card title="Key">
-          <Row>
-            <Track label="Key" cols={6}>{NOTES_SHARP.map((n, i) => <Seg key={i} tone="gold" active={keyRoot === i} onClick={() => update({ root: i, keyRoot: i, ...keepChord(cfg, keyMode) })}>{uniAcc(KEY_NAME[keyMode][i])}</Seg>)}</Track>
-          </Row>
-          <Row>
-            <Track label="Major or minor" cols={2}>{[["major","Major"],["minor","Minor"]].map(([t,l]) => <Seg key={t} tone="gold" active={keyMode === t} onClick={() => update({ keyMode: t, root: keyRoot, ...keepChord(cfg, t), mode: keyMode === t && MODE_Q(mode) === t ? mode : t === "major" ? "ionian" : "aeolian" })}>{l}</Seg>)}</Track>
-          </Row>
-        </Card>
-        <Card title="Diatonic chords">
-          <div className="crows">
-            <Row label="Chords">
-              <Track label="Chords" cols={2}>{[[false,"Triads"],[true,"Sevenths"]].map(([v,l]) => <Seg key={l} active={sev === v} onClick={() => opt("sev", v)}>{l}</Seg>)}</Track>
-            </Row>
-            {/* Round 10: Voicing (Drop 2 / Drop 3) and, in a minor key, Minor scale (Natural / Harmonic) for Sevenths only. */}
-            {sev && <Row label="Voicing">
-              <Track label="Voicing" cols={2}>{[[false,"Drop 2"],[true,"Drop 3"]].map(([v,l]) => <Seg key={l} active={drop3 === v} onClick={() => opt("drop3", v)}>{l}</Seg>)}</Track>
-            </Row>}
-            {sev && keyMode === "minor" && <Row label="Minor scale">
-              <Track label="Minor scale" cols={2}>{[[false,"Natural"],[true,"Harmonic"]].map(([v,l]) => <Seg key={l} active={harm === v} onClick={() => opt("harm", v)}>{l}</Seg>)}</Track>
-            </Row>}
-            <Row label="Strings">
-              <Track label="Strings" cols={sev ? (drop3 ? 2 : 3) : 4}>{(sev ? (drop3 ? SET_NAME3 : SET_NAME7) : SET_NAME).map((l, j) => <Seg key={l} active={g === j} onClick={() => opt(sev ? (drop3 ? "strSet3" : "strSet7") : "strSet", j)}>{l}</Seg>)}</Track>
-            </Row>
-            <Row label="Inversion">
-              <Track label="Inversion" cols={sev ? 4 : 3}>{["Root", "1st", "2nd", "3rd"].slice(0, sev ? 4 : 3).map((l, i) => <Seg key={i} active={iv === i} onClick={() => opt(sev ? (drop3 ? "inv3" : "inv7") : "inv", i)}>{l}</Seg>)}</Track>
-            </Row>
-            <Row label="Labels">
-              <Track label="Labels" cols={3}>{[["degree", "Degrees"], ["name", "Notes"], ["none", "None"]].map(([k, l]) => <Seg key={k} active={labelMode === k} onClick={() => setLabelMode(k)}>{l}</Seg>)}</Track>
-            </Row>
-            <Row label="Scale behind">
-              <Track label="Scale behind" cols={2}>{[[false,"Hidden"],[true,"Shown"]].map(([v,l]) => <Seg key={l} active={scaleBehind === v} onClick={() => opt("scaleBehind", v)}>{l}</Seg>)}</Track>
-            </Row>
-          </div>
-        </Card>
-      </div>
     </div>
   );
 }
