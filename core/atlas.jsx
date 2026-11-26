@@ -1,7 +1,7 @@
 // Shared core · the Atlas: one scale as a card shows it, and the card grid.
 import { THEME } from "./theme.js";
 import { LETTERS } from "./notes.js";
-import { DEG_LABEL, DEG_OVERRIDE, MODE_NAME, MODE_IV, scopeIntervals } from "./scales.js";
+import { DEG_LABEL, DEG_OVERRIDE, MODE_NAME, MODE_IV, scaleCT, scopeIntervals } from "./scales.js";
 import { accs, spellAt, neckLetter, normSpell } from "./spelling.js";
 
 // The scale type alone: "major", "Dorian", "harmonic minor", "minor pentatonic", "major blues".
@@ -11,8 +11,8 @@ export const atType = (show, keyMode, mode) => (show === "scale" ? (mode === "io
 export function atScale(root, keyMode, show, mode, letter) {
   const ivs = scopeIntervals(keyMode, show, "triad", mode);
   const set = new Set(ivs);
-  const par = show === "scale" ? ivs : MODE_IV[keyMode === "major" ? "ionian" : "aeolian"];
-  const ct = new Set([par[0], par[2], par[4], par[6]].filter((iv) => set.has(iv)));
+  const par = MODE_IV[keyMode === "major" ? "ionian" : "aeolian"];
+  const ct = new Set((show === "scale" ? scaleCT(mode, ivs) : [par[0], par[2], par[4], par[6]]).filter((iv) => set.has(iv)));
   const li = neckLetter(normSpell({ keyRoot: root, keyMode, scope: show, mode, keySpell: letter || null }));
   const degKey = show === "scale" ? mode : show;
   const deg = (iv) => (DEG_OVERRIDE[degKey] && DEG_OVERRIDE[degKey][iv]) || DEG_LABEL[iv];

@@ -4,7 +4,7 @@ import { useMemo, useEffect } from "../../core/react.js";
 import { THEME } from "../../core/theme.js";
 import { toggle } from "../../core/util.js";
 import { NOTES_SHARP, NOTES_FLAT, LETTERS } from "../../core/notes.js";
-import { DEG_LABEL, DEG_OVERRIDE, MODE_NAME, KEY_DEG, MODES, OTHER_SCALES, MODE_IV, MODE_Q, scopeIntervals } from "../../core/scales.js";
+import { DEG_LABEL, DEG_OVERRIDE, MODE_NAME, KEY_DEG, MODE_IV, MODE_Q, scaleCT, scopeIntervals } from "../../core/scales.js";
 import { accs, spellAt, keySpelling, autoLetter, neckLetter } from "../../core/spelling.js";
 import { QUAL_NAME } from "../../core/chords.js";
 import { Seg, Track, Btn, Bar, Grp, Sel, Labels, Chip, ClearAll } from "../../core/ui.jsx";
@@ -181,11 +181,13 @@ export function Board({ tuning, cfg, update, globals, lead = null, boardRef = nu
   const root = scope === "arpeggio" ? cfg.root : keyRoot;
   const tonality = scope === "arpeggio" ? cfg.tonality : keyMode;
   const scopeSet = useMemo(() => new Set(scopeIntervals(tonality, scope, arp, mode)), [tonality, scope, arp, mode]);
-  // Chord tones: every tone of the chord; in a scale layer, its 1, 3, 5 and 7 (TH-04).
+  // Chord tones: every tone of the chord; in a scale layer, its 1, 3, 5 and 7 (TH-04), or for a Build D scale the chord it is
+  // played over (SCALE_CT); in the other layers, the 1, 3, 5 and 7 of the key's scale where present.
   const ctSet = useMemo(() => {
     if (scope === "arpeggio") return scopeSet;
-    const par = scope === "scale" ? scopeIntervals(tonality, scope, arp, mode) : MODE_IV[tonality === "major" ? "ionian" : "aeolian"];
-    return new Set([par[0], par[2], par[4], par[6]].filter((iv) => scopeSet.has(iv)));
+    const par = MODE_IV[tonality === "major" ? "ionian" : "aeolian"];
+    const ct = scope === "scale" ? scaleCT(mode, scopeIntervals(tonality, scope, arp, mode)) : [par[0], par[2], par[4], par[6]];
+    return new Set(ct.filter((iv) => scopeSet.has(iv)));
   }, [scope, scopeSet, tonality, arp, mode]);
   const posList = tonality === "major" ? POS_MAJOR : POS_MINOR;
   const interlock = pos === "all";
