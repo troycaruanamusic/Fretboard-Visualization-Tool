@@ -259,7 +259,7 @@ export function Board({ tuning, cfg, update, globals, lead = null, boardRef = nu
   const spellName = (pc) => {
     const iv = (((pc - root) % 12) + 12) % 12;
     if (!scopeSet.has(iv) && keySp[pc]) return keySp[pc].name;
-    const d = /(\d)$/.exec(scopeSet.has(iv) ? fdeg(iv) : DEG_LABEL[iv]);
+    const d = /(\d+)$/.exec(scopeSet.has(iv) ? fdeg(iv) : DEG_LABEL[iv]);
     return spellAt(rootLetter + (d ? +d[1] : 1) - 1, pc);
   };
   const noteName = (pc) => accs(spellName(pc));
@@ -392,7 +392,9 @@ export function Board({ tuning, cfg, update, globals, lead = null, boardRef = nu
     );
   };
 
-  const degrees = [...scopeSet].sort((a,b) => a-b);
+  // Focus chips: a chord's tones in formula order (Round E: Cadd9 R 3 5 9), which is low to high for every chord but the
+  // add9 and add11 chords; a scale's degrees low to high.
+  const degrees = scope === "arpeggio" ? [...scopeSet] : [...scopeSet].sort((a,b) => a-b);
   // One plain summary line (UX-07): "G7", "B diminished", "A minor pentatonic".
   const rootName = noteName(root, root);
   const summary = scope === "arpeggio"
@@ -408,7 +410,7 @@ export function Board({ tuning, cfg, update, globals, lead = null, boardRef = nu
     interlock ? ["All positions", () => update({ pos: null })] : activePos && [`Position ${activePos.num} ${activePos.letter}`, () => update({ pos: null })],
     strGroup !== null && [`Strings ${["1–3","2–4","3–5","4–6"][strGroup]}`, () => update({ strGroup: null })],
     isolate && !interlock && ["Chord tones", () => setIsolate(false)],
-    anyFocus && [`Focus ${activeFocus.slice().sort((a,b) => a-b).map((iv) => degLabel((root + iv) % 12, iv)).join(" ")}`, () => update({ focus: [] })],
+    anyFocus && [`Focus ${activeFocus.slice().sort((a,b) => degrees.indexOf(a) - degrees.indexOf(b)).map((iv) => degLabel((root + iv) % 12, iv)).join(" ")}`, () => update({ focus: [] })],
   ].filter(Boolean);
   const clearAll = () => { update({ pos: null, strGroup: null, focus: [] }); setIsolate(false); if (path && onClearPath) onClearPath(); };
   const drop = <span aria-hidden="true" className="text-muted" style={{ marginLeft: 6, display: "inline-block", transform: more ? "rotate(180deg)" : "none" }}>▾</span>;

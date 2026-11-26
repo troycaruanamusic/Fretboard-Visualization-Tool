@@ -16,7 +16,7 @@ export function atScale(root, keyMode, show, mode, letter) {
   const li = neckLetter(normSpell({ keyRoot: root, keyMode, scope: show, mode, keySpell: letter || null }));
   const degKey = show === "scale" ? mode : show;
   const deg = (iv) => (DEG_OVERRIDE[degKey] && DEG_OVERRIDE[degKey][iv]) || DEG_LABEL[iv];
-  const name = (pc) => { const d = /(\d)$/.exec(deg((((pc - root) % 12) + 12) % 12)); return accs(spellAt(li + (d ? +d[1] : 1) - 1, pc)); };
+  const name = (pc) => { const d = /(\d+)$/.exec(deg((((pc - root) % 12) + 12) % 12)); return accs(spellAt(li + (d ? +d[1] : 1) - 1, pc)); };
   return { root, keyMode, show, mode, set, ct, letter: LETTERS[((li % 7) + 7) % 7], rootName: accs(spellAt(li, root)), deg, name };
 }
 
