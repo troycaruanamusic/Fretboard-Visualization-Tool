@@ -1,15 +1,16 @@
 // Fretboard Trainer · the Scale tab (Build A and B, E9 model): Key, Scale and Mode in the bar, the neck, the panel under it
 // (what is on the neck, ▲ ▼, ‹ ›) and the list of paths and positions (Build B; it replaced the scale cards).
-import { MODES, MODE_Q } from "../../core/scales.js";
+import { MODES, OTHER_SCALES, MODE_Q } from "../../core/scales.js";
 import { Grp, Sel } from "../../core/ui.jsx";
 import { Board, KeyGroup } from "./neck.jsx";
 import { usePathRows, stepsOf, PathPanel, PathList } from "./pathlist.jsx";
 import { keyPatch } from "./state.js";
 
-// Scale (mock-up call 5): the layers and the two minor scales in one menu. "Scale" is the seven modes, chosen under Mode.
-const SCALES = [["scale", "Scale"], ["pentatonic", "Pentatonic"], ["blues", "Blues"], ["blended", "Major and minor"], ["harmonic", "Harmonic minor"], ["melodic", "Melodic minor"]];
-const MINOR_SCALES = ["harmonic", "melodic"];
-export const scaleValue = (cfg) => (cfg.scope === "scale" && MINOR_SCALES.includes(cfg.mode) ? cfg.mode : cfg.scope);
+// Scale (mock-up call 5): the layers and the other scales in one menu. "Scale" is the seven modes, chosen under Mode. The
+// other scales: the two minor scales, then Build D's six (core OTHER_SCALES), each with its own state as the minor scales have.
+const SCALES = [["scale", "Scale"], ["pentatonic", "Pentatonic"], ["blues", "Blues"], ["blended", "Major and minor"], ...OTHER_SCALES];
+const OTHER_KEYS = OTHER_SCALES.map(([k]) => k);
+export const scaleValue = (cfg) => (cfg.scope === "scale" && OTHER_KEYS.includes(cfg.mode) ? cfg.mode : cfg.scope);
 
 // A mode or minor scale with the other 3rd switches Major / Minor (Round 4b).
 const modePatch = (cfg, k) => { const q = MODE_Q(k); return q === cfg.keyMode ? { ...cfg, mode: k } : keyPatch({ ...cfg, mode: k }, { keyMode: q }, q); };
@@ -17,8 +18,8 @@ const modePatch = (cfg, k) => { const q = MODE_Q(k); return q === cfg.keyMode ? 
 export function ScaleGroups({ cfg, update }) {
   const { scope, mode, keyMode } = cfg;
   const pick = (v) => {
-    if (MINOR_SCALES.includes(v)) update(modePatch({ ...cfg, scope: "scale" }, v));
-    else if (v === "scale") update({ scope: "scale", mode: scope === "scale" && !MINOR_SCALES.includes(mode) ? mode : keyMode === "major" ? "ionian" : "aeolian" });
+    if (OTHER_KEYS.includes(v)) update(modePatch({ ...cfg, scope: "scale" }, v));
+    else if (v === "scale") update({ scope: "scale", mode: scope === "scale" && !OTHER_KEYS.includes(mode) ? mode : keyMode === "major" ? "ionian" : "aeolian" });
     else update({ scope: v });
   };
   return (
@@ -26,7 +27,7 @@ export function ScaleGroups({ cfg, update }) {
       <KeyGroup cfg={cfg} update={update} />
       <Grp cap="Scale"><Sel label="Scale" value={scaleValue(cfg)} options={SCALES} onChange={pick} /></Grp>
       {/* Mode: only for the seven-note scale of the modes (mock-up call 5). */}
-      {scope === "scale" && !MINOR_SCALES.includes(mode) && <Grp cap="Mode"><Sel label="Mode" value={mode} options={MODES} onChange={(v) => update(modePatch(cfg, v))} /></Grp>}
+      {scope === "scale" && !OTHER_KEYS.includes(mode) && <Grp cap="Mode"><Sel label="Mode" value={mode} options={MODES} onChange={(v) => update(modePatch(cfg, v))} /></Grp>}
     </React.Fragment>
   );
 }

@@ -1,6 +1,6 @@
 // Shared core · note spelling: key signatures, root letters, ♭ / ♯ and doubles.
 import { KEY_NAME, LETTERS, LETTER_PC } from "./notes.js";
-import { MODE_IV } from "./scales.js";
+import { MODE_IV, DEG_LABEL, DEG_OVERRIDE } from "./scales.js";
 
 // Neck spelling with ♭ / ♯, and 𝄫 / 𝄪 for doubles (Round 6b, Round 4b item 6). Spelling logic stays in b / #.
 export const accs = (s) => s.replace(/bb/g, "𝄫").replace(/##/g, "𝄪").replace(/b/g, "♭").replace(/#/g, "♯");
@@ -28,8 +28,12 @@ export function keySpelling(keyRoot, keyMode, letter = LETTERS.indexOf(KEY_NAME[
 // other scale in a Scale layer, otherwise the key (Ionian or Aeolian). A tie keeps the standard key name (KEY_NAME).
 // A Modes row link may carry its own letter (keySpell) for a tie, G♭ Ionian, A♭ Dorian, C♭ Lydian; it never costs more.
 const accCount = (s) => (s.match(/[#b]/g) || []).length;
-const spellIvs = (c) => (c.scope === "scale" ? MODE_IV[c.mode] : MODE_IV[c.keyMode === "major" ? "ionian" : "aeolian"]);
-const spellCost = (li, pc, ivs) => ivs.reduce((n, iv, k) => n + accCount(spellAt(li + k, (pc + iv) % 12)), 0);
+// Each note of the scale shown as [interval, letter step from the root]. The step is the digit of the note's degree label
+// (Build D): the k-th note for the modes and the two minor scales, as before; the six- and eight-note scales skip or repeat a
+// letter as their labels do (whole tone C D E F♯ G♯ B♭, half-whole diminished C D♭ D♯ E F♯ G A B♭).
+const degStep = (key, iv) => { const d = /(\d)$/.exec((DEG_OVERRIDE[key] && DEG_OVERRIDE[key][iv]) || DEG_LABEL[iv]); return d ? +d[1] - 1 : 0; };
+const spellIvs = (c) => (c.scope === "scale" ? MODE_IV[c.mode].map((iv) => [iv, degStep(c.mode, iv)]) : MODE_IV[c.keyMode === "major" ? "ionian" : "aeolian"].map((iv, k) => [iv, k]));
+const spellCost = (li, pc, ivs) => ivs.reduce((n, [iv, k]) => n + accCount(spellAt(li + k, (pc + iv) % 12)), 0);
 const okLetter = (li, pc) => accCount(spellAt(li, pc)) <= 1;
 export function autoLetter(pc, c) {
   const ivs = spellIvs(c), std = LETTERS.indexOf(KEY_NAME[c.keyMode][pc][0]);
