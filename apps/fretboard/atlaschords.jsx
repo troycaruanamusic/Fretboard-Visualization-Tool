@@ -5,7 +5,7 @@
 // (TC 25 Nov: as mocked). Shapes come from chordshapes.js; the tuning is an input.
 import { useState, useMemo, useEffect } from "../../core/react.js";
 import { THEME } from "../../core/theme.js";
-import { Seg, Track, Btn, Bar, Grp, Labels, ClearAll, useMedia, PHONE_Q } from "../../core/ui.jsx";
+import { Seg, Track, Btn, Bar, Grp, Labels, ClearAll, useMedia, PHONE_Q, CHORD_LABELS } from "../../core/ui.jsx";
 import { MARKERS, inlayAt, neckOf, neckCols, inRange, FULL_RANGE } from "./guitar.js";
 import { POS_COLOR, formFill, formName } from "./caged.js";
 import { TILE, ROOT } from "../../core/marker.js";
@@ -281,7 +281,7 @@ export function VoicingView({ tuning, cfg, at, setAt, globals, onAll, lead }) {
       <div ref={boardRef} className="boardwrap">
         <div className="sumrow">
           <span data-summary className="text-sm font-semibold text-body">{onNeck ? nm : `${nm} · no voicing matches`}</span>
-          <Labels value={labelMode} set={setLabelMode} />
+          <Labels value={labelMode} set={setLabelMode} opts={CHORD_LABELS} />
         </div>
         {onNeck && <VoicingNeck tuning={tuning} card={onNeck} labelMode={labelMode} range={range} size={neckSize} />}
         {onNeck && <VoicingPanel card={onNeck} rows={rows} onPick={(c) => pick(c)} onAll={onAll} />}

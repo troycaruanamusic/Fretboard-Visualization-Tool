@@ -6,7 +6,7 @@
 import { KEY_NAME } from "../../core/notes.js";
 import { uniAcc } from "../../core/spelling.js";
 import { QUAL_COMMON, QUAL_MORE, DIATONIC } from "../../core/chords.js";
-import { Seg, Track, Grp, Sel } from "../../core/ui.jsx";
+import { Seg, Track, Grp, Sel, CHORD_LABELS } from "../../core/ui.jsx";
 import { Board, KeyGroup, SizeGrp } from "./neck.jsx";
 import { ChordsPage } from "./chords.jsx";
 import { VoicingView } from "./atlaschords.jsx";
@@ -69,5 +69,5 @@ export function ChordPage({ tuning, cfg, update, globals, cshow, setCshow, ch, s
       )}
     </React.Fragment>
   );
-  return <Board tuning={tuning} cfg={{ ...cfg, scope: "arpeggio" }} update={update} globals={globals} lead={lead} />;
+  return <Board tuning={tuning} cfg={{ ...cfg, scope: "arpeggio" }} update={update} globals={globals} lead={lead} labelOpts={CHORD_LABELS} />;
 }

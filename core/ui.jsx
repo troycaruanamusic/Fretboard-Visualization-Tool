@@ -64,6 +64,9 @@ export function Sel({ label, value, onChange, options, gold = false, ...rest }) 
     </select>
   );
 }
+// Labels on the Chord tab (labels round, TC 26 Nov): the same values, with Degrees named Intervals, as the labels there
+// are the chord's intervals (R 3 5 ♭7), as E9's "Chord intervals".
+export const CHORD_LABELS = [["degree", "Intervals"], ["name", "Notes"], ["none", "None"]];
 // Labels (Build A, streamline item 4): one control in the same spot on every board, the right end of the summary row.
 export function Labels({ value, set, opts = [["degree", "Degrees"], ["name", "Notes"], ["none", "None"]], cap = "Labels" }) {
   return (
