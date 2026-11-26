@@ -9,7 +9,7 @@ import { atScale } from "../../core/atlas.jsx";
 import { Seg, Track, Btn, Bar, Grp, ClearAll } from "../../core/ui.jsx";
 import { TILE, ROOT } from "../../core/marker.js";
 import { MARKERS, inlayAt, inRange } from "./guitar.js";
-import { POS_COLOR, POS_MAJOR, POS_MINOR, CAGED_ANCHOR } from "./caged.js";
+import { POS_COLOR, POS_MAJOR, POS_MINOR, CAGED_ANCHOR, winsAt, coverWins } from "./caged.js";
 import { FILL_LAYERS, windowCopies } from "./neck.jsx";
 import { pathScale, scalePaths, scale3nps } from "./paths.js";
 
@@ -20,23 +20,8 @@ export const pathStrOk = (oct, v) => STR_OPTS[oct].some(([k]) => k === v);
 const PAGE = { rows: 120, cards: 24 };
 const COUNT = ["", "One string", "Two strings", "Three strings"];
 
-const phaseOf = (root, f, p) => ((((f - ((((root - CAGED_ANCHOR + p.off) % 12) + 12) % 12)) % 12) + 12) % 12);
-// The windows that hold a fret, the lower one first (the neck's split order).
-const winsAt = (root, posList, f) => posList.filter((p) => phaseOf(root, f, p) <= p.w).sort((a, b) => phaseOf(root, f, b) - phaseOf(root, f, a));
 // A cell's fill: its window colour, split half and half where two windows hold it (mock-up call 3).
 export const winFill = (ws) => (ws.length > 1 ? `linear-gradient(135deg, ${POS_COLOR[ws[0].letter]} 0 50%, ${POS_COLOR[ws[1].letter]} 50% 100%)` : ws.length ? POS_COLOR[ws[0].letter] : THEME.ctl);
-// The Position column: the fewest windows that hold every note, chosen greedily (most notes first, the lower number on a tie).
-function coverWins(root, posList, cells) {
-  const left = cells.map((c) => winsAt(root, posList, c.f));
-  const out = [];
-  while (left.some((ws) => ws.length)) {
-    let best = null, n = 0;
-    posList.forEach((p) => { const k = left.filter((ws) => ws.includes(p)).length; if (k > n) { best = p; n = k; } });
-    out.push(best);
-    left.forEach((ws, i) => { if (ws.includes(best)) left[i] = []; });
-  }
-  return out.sort((a, b) => a.num - b.num);
-}
 
 // The scale the list and the panel read: names and degrees as the neck spells them.
 export function listScale(cfg) {

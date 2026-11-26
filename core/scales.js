@@ -4,8 +4,11 @@ export const DEG_LABEL = {0:"R",1:"♭2",2:"2",3:"♭3",4:"3",5:"4",6:"♭5",7:"
 // Build D (TC 26 Nov): Lydian dominant ♯4; altered as a dominant scale, R ♭2 ♯2 3 ♭5 ♯5 ♭7; diminished half-whole
 // R ♭2 ♯2 3 ♯4 5 6 ♭7; whole tone R 2 3 ♯4 ♯5 ♭7. Phrygian dominant and diminished whole-half (R 2 ♭3 4 ♭5 ♭6 6 7) take the
 // defaults. Note names follow these labels (the neck spells each note on its label's letter).
+// Round E (TC 26 Nov): the added notes of add9, add11, m(add9) and m(add11) read 9 and 11, the chord's own intervals (Cadd9:
+// R 3 5 9); sus2 and sus4 keep 2 and 4, which name the chord, and scales keep 2 and 4. A label's number may have two digits.
 export const DEG_OVERRIDE = { lydian: {6:"♯4"}, aug: {8:"♯5"}, aug7: {8:"♯5"}, dim7: {9:"𝄫7"}, maj7s5: {8:"♯5"},
-  lyddom: {6:"♯4"}, altered: {3:"♯2", 8:"♯5"}, dimhw: {3:"♯2", 6:"♯4"}, whole: {6:"♯4", 8:"♯5"} };
+  lyddom: {6:"♯4"}, altered: {3:"♯2", 8:"♯5"}, dimhw: {3:"♯2", 6:"♯4"}, whole: {6:"♯4", 8:"♯5"},
+  add9: {2:"9"}, madd9: {2:"9"}, add11: {5:"11"}, madd11: {5:"11"} };
 export const MODE_NAME = { ionian:"Ionian", dorian:"Dorian", phrygian:"Phrygian", lydian:"Lydian", mixolydian:"Mixolydian", aeolian:"Aeolian", locrian:"Locrian", harmonic:"harmonic minor", melodic:"melodic minor",
   lyddom:"Lydian dominant", altered:"altered", phrdom:"Phrygian dominant", dimhw:"diminished (half-whole)", dimwh:"diminished (whole-half)", whole:"whole tone" };
 

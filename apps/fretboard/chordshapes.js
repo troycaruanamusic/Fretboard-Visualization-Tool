@@ -110,7 +110,7 @@ export function chordCtx(root, q) {
   const rn = chRootName(root, q), li = LETTERS.indexOf(rn[0]), sfx = chSuffix(q);
   const degKey = q === "major" || q === "minor" ? "triad" : q;
   const deg = (iv) => (DEG_OVERRIDE[degKey] && DEG_OVERRIDE[degKey][iv]) || DEG_LABEL[iv];
-  const name = (pc) => { const d = /(\d)$/.exec(deg((((pc - root) % 12) + 12) % 12)); return accs(spellAt(li + (d ? +d[1] : 1) - 1, pc)); };
+  const name = (pc) => { const d = /(\d+)$/.exec(deg((((pc - root) % 12) + 12) % 12)); return accs(spellAt(li + (d ? +d[1] : 1) - 1, pc)); };
   return { root, q, ivs, ton, winOf, rn, li, sfx, deg, name };
 }
 // One card from a shape's cells (s, f), as chordCards makes it. r: { kind, form } (kind "shape" for a tapped shape); k: 0, or

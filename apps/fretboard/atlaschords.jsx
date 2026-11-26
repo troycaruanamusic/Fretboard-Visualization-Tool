@@ -7,11 +7,11 @@ import { useState, useMemo, useEffect } from "../../core/react.js";
 import { THEME } from "../../core/theme.js";
 import { Seg, Track, Btn, Bar, Grp, Labels, ClearAll, useMedia, PHONE_Q, CHORD_LABELS } from "../../core/ui.jsx";
 import { MARKERS, inlayAt, neckOf, neckCols, inRange, FULL_RANGE } from "./guitar.js";
-import { POS_COLOR, formFill, formName } from "./caged.js";
+import { POS_COLOR, POS_MAJOR, POS_MINOR, formFill, formName, voicingWins } from "./caged.js";
 import { TILE, ROOT } from "../../core/marker.js";
 import { chordQ } from "./url.js";
-import { FretsGrp, SizeGrp } from "./neck.jsx";
-import { CH_TYPES, CH_TYPE_KEYS, INV_LABEL, chAvail, chIvs, chName, chordCards, strLabel, openRows } from "./chordshapes.js";
+import { FretsGrp, SizeGrp, rulerSpans, rulerCells } from "./neck.jsx";
+import { CH_TYPES, CH_TYPE_KEYS, INV_LABEL, chAvail, chIvs, chName, chTon, chordCards, strLabel, openRows } from "./chordshapes.js";
 
 // The list's filters and their defaults, so Clear all and Identify's link agree. Type: All or one voicing type.
 export const CH_FILTER_DEFAULT = { ctype: "all", cinv: null, cset: null };
@@ -109,9 +109,14 @@ export const sortVoicings = (rows, key, desc) => { const k = SORTS[key] || SORTS
 // The voicing on the big neck (Build A, TC 25 Nov): its notes filled in its CAGED form colour, the root framed, the chord's
 // other tones across the neck as open squares, and × at the nut on each string the shape leaves out (mock-up call 6); with
 // the nut outside the fret range (Build C), the × sits by the string's name. The neck scrolls to the shape when it is wider
-// than the screen. Frets and Neck size (Build C) as on the other necks.
+// than the screen. Frets and Neck size (Build C) as on the other necks. The window ruler (Round E, the E9-model mock-up; TC
+// 26 Nov) runs under the fret numbers as on Scale and All positions, the chord's windows by its Major / Minor, with the
+// window(s) the voicing sits in lit on every copy (voicingWins).
 function VoicingNeck({ tuning, card, labelMode, range, size }) {
   const G = neckOf(size), { lo, hi } = range;
+  const ton = chTon(card.q), posList = ton === "minor" ? POS_MINOR : POS_MAJOR;
+  const ruler = useMemo(() => rulerSpans(posList, card.root, lo, hi), [posList, card.root, lo, hi]);
+  const lit = useMemo(() => voicingWins(card.root, ton, card.cells), [card.id, card.root, card.q]);
   const cellH = G.cellH, fontPx = G.font;
   const COLS = neckCols(tuning, G, lo, hi);
   const fill = formFill(card.forms), ivs = new Set(chIvs(card.q));
@@ -160,6 +165,7 @@ function VoicingNeck({ tuning, card, labelMode, range, size }) {
         {Array.from({ length: hi - lo + 1 }, (_, i) => lo + i).map((f) => (
           <div key={"n" + f} className="flex items-center justify-center text-xs" style={{ height: 24, color: MARKERS[f] ? THEME.text : THEME.muted, fontWeight: MARKERS[f] ? 700 : 400 }}>{f}</div>
         ))}
+        {rulerCells(tuning, ruler, lo, hi, (sp) => lit.includes(sp.p.num))}
       </div>
     </div>
   );

@@ -164,6 +164,46 @@ function nutSubs(tuning, root, set, p, gaps) {
   return out;
 }
 
+// Position ruler (DS-03): each window copy on the neck as a labelled span. In All, spans take two lanes so that overlapping
+// windows never share one; a single position uses the first lane. Spans are cut at the fret range (Build C). Shared by the
+// board and, since Round E, the Voicing neck.
+export function rulerSpans(posList, root, lo, hi) {
+  const spans = [];
+  posList.forEach((p) => {
+    const b = (((root - CAGED_ANCHOR + p.off) % 12) + 12) % 12;
+    for (let c = b - 12; c <= hi; c += 12) {
+      const a = Math.max(lo, c), z = Math.min(hi, c + p.w);
+      if (z >= a) spans.push({ p, a, z, clipped: a !== c || z !== c + p.w });
+    }
+  });
+  spans.sort((x, y) => x.a - y.a || x.z - y.z);
+  const ends = [];
+  spans.forEach((sp) => {
+    let l = ends.findIndex((e) => e < sp.a);
+    if (l < 0) { l = ends.length; ends.push(-1); }
+    ends[l] = sp.z; sp.lane = l;
+  });
+  return { spans, lanes: Math.max(2, ends.length) };
+}
+// The ruler's grid cells under a neck's fret numbers: names each window span in text, always in two or more lanes so spans
+// never overlap (A11y-W3). on(span): lit in its window colour, else low-key grey.
+export function rulerCells(tuning, ruler, lo, hi, on) {
+  return [
+    ...Array.from({ length: ruler.lanes }, (_, l) => <div key={"rl" + l} style={{ gridRow: tuning.strings + 2 + l, gridColumn: 1, height: 22 }} />),
+    ...ruler.spans.map((sp) => {
+      const lit = on(sp);
+      const c = lit ? POS_COLOR[sp.p.letter] : THEME.line, side = lit ? 2 : 1;
+      return (
+        <div key={`r${sp.p.num}-${sp.a}`} data-ruler={`${sp.p.num} ${sp.p.letter}`} data-on={lit ? "1" : undefined} className={"flex items-end justify-center text-xs " + (lit ? "font-semibold text-body" : "text-muted")}
+          style={{ gridRow: tuning.strings + 2 + sp.lane, gridColumn: `${sp.a - lo + 2} / ${sp.z - lo + 3}`, height: 22, margin: "0 2px", paddingBottom: 3, whiteSpace: "nowrap", overflow: "hidden",
+            borderBottom: `${lit ? 3 : 1}px solid ${c}`, borderLeft: sp.clipped && sp.a === lo ? "none" : `${side}px solid ${c}`, borderRight: sp.clipped && sp.z === hi ? "none" : `${side}px solid ${c}` }}>
+          {sp.p.num} {sp.p.letter}
+        </div>
+      );
+    }),
+  ];
+}
+
 // lead: the tab's own bar groups (Key, Scale, Mode; or Chord's Show and chord). The board adds Position (Chord tab; the Scale
 // tab lists its windows under the neck since Build B: posInBar false) and More, the summary row (filter chips, Clear all,
 // Labels) and the neck. Build B (Scale tab): path, a chosen path on the neck ({ set of s * 100 + fret, wins, lo, hi, chip });
@@ -219,7 +259,7 @@ export function Board({ tuning, cfg, update, globals, lead = null, boardRef = nu
   const spellName = (pc) => {
     const iv = (((pc - root) % 12) + 12) % 12;
     if (!scopeSet.has(iv) && keySp[pc]) return keySp[pc].name;
-    const d = /(\d)$/.exec(scopeSet.has(iv) ? fdeg(iv) : DEG_LABEL[iv]);
+    const d = /(\d+)$/.exec(scopeSet.has(iv) ? fdeg(iv) : DEG_LABEL[iv]);
     return spellAt(rootLetter + (d ? +d[1] : 1) - 1, pc);
   };
   const noteName = (pc) => accs(spellName(pc));
@@ -241,26 +281,8 @@ export function Board({ tuning, cfg, update, globals, lead = null, boardRef = nu
   const fontPx = G.font; // nothing under 11 px (BR-05)
   const COLS = neckCols(tuning, G, lo, hi);
 
-  // Position ruler (DS-03): each window copy on the neck as a labelled span. In All, spans take two lanes so that
-  // overlapping windows never share one; a single position uses the first lane. Spans are cut at the fret range (Build C).
-  const ruler = useMemo(() => {
-    const spans = [];
-    posList.forEach((p) => {
-      const b = (((root - CAGED_ANCHOR + p.off) % 12) + 12) % 12;
-      for (let c = b - 12; c <= hi; c += 12) {
-        const a = Math.max(lo, c), z = Math.min(hi, c + p.w);
-        if (z >= a) spans.push({ p, a, z, clipped: a !== c || z !== c + p.w });
-      }
-    });
-    spans.sort((x, y) => x.a - y.a || x.z - y.z);
-    const ends = [];
-    spans.forEach((sp) => {
-      let l = ends.findIndex((e) => e < sp.a);
-      if (l < 0) { l = ends.length; ends.push(-1); }
-      ends[l] = sp.z; sp.lane = l;
-    });
-    return { spans, lanes: Math.max(2, ends.length) };
-  }, [tuning, posList, root, lo, hi]);
+  // Position ruler (DS-03): each window copy on the neck as a labelled span (rulerSpans).
+  const ruler = useMemo(() => rulerSpans(posList, root, lo, hi), [tuning, posList, root, lo, hi]);
 
   // Scroll to the chosen position when the neck scrolls (RS-03 part): the window's main copy, one fret either side, centred.
   const scrollRef = React.useRef(null);
@@ -370,7 +392,9 @@ export function Board({ tuning, cfg, update, globals, lead = null, boardRef = nu
     );
   };
 
-  const degrees = [...scopeSet].sort((a,b) => a-b);
+  // Focus chips: a chord's tones in formula order (Round E: Cadd9 R 3 5 9), which is low to high for every chord but the
+  // add9 and add11 chords; a scale's degrees low to high.
+  const degrees = scope === "arpeggio" ? [...scopeSet] : [...scopeSet].sort((a,b) => a-b);
   // One plain summary line (UX-07): "G7", "B diminished", "A minor pentatonic".
   const rootName = noteName(root, root);
   const summary = scope === "arpeggio"
@@ -386,7 +410,7 @@ export function Board({ tuning, cfg, update, globals, lead = null, boardRef = nu
     interlock ? ["All positions", () => update({ pos: null })] : activePos && [`Position ${activePos.num} ${activePos.letter}`, () => update({ pos: null })],
     strGroup !== null && [`Strings ${["1–3","2–4","3–5","4–6"][strGroup]}`, () => update({ strGroup: null })],
     isolate && !interlock && ["Chord tones", () => setIsolate(false)],
-    anyFocus && [`Focus ${activeFocus.slice().sort((a,b) => a-b).map((iv) => degLabel((root + iv) % 12, iv)).join(" ")}`, () => update({ focus: [] })],
+    anyFocus && [`Focus ${activeFocus.slice().sort((a,b) => degrees.indexOf(a) - degrees.indexOf(b)).map((iv) => degLabel((root + iv) % 12, iv)).join(" ")}`, () => update({ focus: [] })],
   ].filter(Boolean);
   const clearAll = () => { update({ pos: null, strGroup: null, focus: [] }); setIsolate(false); if (path && onClearPath) onClearPath(); };
   const drop = <span aria-hidden="true" className="text-muted" style={{ marginLeft: 6, display: "inline-block", transform: more ? "rotate(180deg)" : "none" }}>▾</span>;
@@ -472,20 +496,9 @@ export function Board({ tuning, cfg, update, globals, lead = null, boardRef = nu
             {Array.from({ length: hi - lo + 1 }, (_, i) => lo + i).map((f) => (
               <div key={"n" + f} className="flex items-center justify-center text-xs" style={{ height: 24, color: MARKERS[f] ? THEME.text : THEME.muted, fontWeight: MARKERS[f] ? 700 : 400 }}>{f}</div>
             ))}
-            {/* Position ruler (DS-03, A11y-W3): names each window span in text, always in two or more lanes so spans never
-                overlap. Low-key grey where a position is not chosen; colour for the chosen position and in All (Round 6b). */}
-            {Array.from({ length: ruler.lanes }, (_, l) => <div key={"rl" + l} style={{ gridRow: tuning.strings + 2 + l, gridColumn: 1, height: 22 }} />)}
-            {ruler.spans.map((sp) => {
-              const on = interlock || (activePos !== null && sp.p.num === activePos.num) || (path !== null && path.wins.includes(sp.p.num));
-              const c = on ? POS_COLOR[sp.p.letter] : THEME.line, side = on ? 2 : 1;
-              return (
-                <div key={`r${sp.p.num}-${sp.a}`} data-ruler={`${sp.p.num} ${sp.p.letter}`} data-on={on ? "1" : undefined} className={"flex items-end justify-center text-xs " + (on ? "font-semibold text-body" : "text-muted")}
-                  style={{ gridRow: tuning.strings + 2 + sp.lane, gridColumn: `${sp.a - lo + 2} / ${sp.z - lo + 3}`, height: 22, margin: "0 2px", paddingBottom: 3, whiteSpace: "nowrap", overflow: "hidden",
-                    borderBottom: `${on ? 3 : 1}px solid ${c}`, borderLeft: sp.clipped && sp.a === lo ? "none" : `${side}px solid ${c}`, borderRight: sp.clipped && sp.z === hi ? "none" : `${side}px solid ${c}` }}>
-                  {sp.p.num} {sp.p.letter}
-                </div>
-              );
-            })}
+            {/* Position ruler (DS-03, A11y-W3): low-key grey where a position is not chosen; colour for the chosen position and
+                in All (Round 6b), and for a chosen path's windows (Build B). */}
+            {rulerCells(tuning, ruler, lo, hi, (sp) => interlock || (activePos !== null && sp.p.num === activePos.num) || (path !== null && path.wins.includes(sp.p.num)))}
           </div>
         </div>
         {foot}

@@ -31,7 +31,7 @@ const accCount = (s) => (s.match(/[#b]/g) || []).length;
 // Each note of the scale shown as [interval, letter step from the root]. The step is the digit of the note's degree label
 // (Build D): the k-th note for the modes and the two minor scales, as before; the six- and eight-note scales skip or repeat a
 // letter as their labels do (whole tone C D E F♯ G♯ B♭, half-whole diminished C D♭ D♯ E F♯ G A B♭).
-const degStep = (key, iv) => { const d = /(\d)$/.exec((DEG_OVERRIDE[key] && DEG_OVERRIDE[key][iv]) || DEG_LABEL[iv]); return d ? +d[1] - 1 : 0; };
+const degStep = (key, iv) => { const d = /(\d+)$/.exec((DEG_OVERRIDE[key] && DEG_OVERRIDE[key][iv]) || DEG_LABEL[iv]); return d ? +d[1] - 1 : 0; };
 const spellIvs = (c) => (c.scope === "scale" ? MODE_IV[c.mode].map((iv) => [iv, degStep(c.mode, iv)]) : MODE_IV[c.keyMode === "major" ? "ionian" : "aeolian"].map((iv, k) => [iv, k]));
 const spellCost = (li, pc, ivs) => ivs.reduce((n, [iv, k]) => n + accCount(spellAt(li + k, (pc + iv) % 12)), 0);
 const okLetter = (li, pc) => accCount(spellAt(li, pc)) <= 1;
