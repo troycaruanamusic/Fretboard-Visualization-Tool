@@ -34,7 +34,7 @@ const URL_FIELDS = [
   ["pos", "cfg", "pos", null, String, (v) => (v === "all" ? "all" : intIn(1, 5)(v))],
   ["str", "cfg", "strGroup", null, (v) => STR_TOK[v], (v) => (STR_TOK.includes(v) ? STR_TOK.indexOf(v) : undefined)],
   ["focus", "cfg", "focus", [], (v) => v.join("."), listIn(0, 11)],
-  ["labels", "top", "labelMode", "degree", String, oneOf("degree", "name", "none")],
+  ["labels", "top", "labelMode", "degree", String, oneOf("degree", "name", "nns", "none")],
   ["notes", "top", "isolate", false, () => "ct", (v) => (v === "ct" ? true : undefined)],
   ["other", "top", "ghost", false, () => "shown", (v) => (v === "shown" ? true : undefined)],
   ["dots", "top", "dotColour", "caged", String, oneOf("caged", "neutral")],
