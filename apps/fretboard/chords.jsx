@@ -5,7 +5,7 @@ import { KEY_NAME } from "../../core/notes.js";
 import { DEG_LABEL, DEG_OVERRIDE, KEY_DEG, MODE_IV, KEY_DEG_HM } from "../../core/scales.js";
 import { accs, keySpelling, uniAcc, hmSpelling } from "../../core/spelling.js";
 import { DIATONIC, INV_NAME, INV_NAME7, CH_Q, DIATONIC7, DROP2, DROP3 } from "../../core/chords.js";
-import { Seg, Track, Btn, Bar, Grp, Labels } from "../../core/ui.jsx";
+import { Seg, Track, Btn, Bar, Grp, Labels, INKEY_LABELS } from "../../core/ui.jsx";
 import { MARKERS, SET_NAME, inlayAt, neckOf, neckCols } from "./guitar.js";
 import { POS_COLOR, formFill, formName } from "./caged.js";
 import { chordForms } from "./chordshapes.js";
@@ -127,9 +127,21 @@ export function ChordsPage({ tuning, cfg, update, ch, setCh, labelMode, setLabel
   const kDeg = hm ? KEY_DEG_HM : KEY_DEG[keyMode];
   // Labels (Round 15, shared with the other boards): Degrees from the chord's own root (R 3 5, ♭3, ♭5; ♯5 in maj7♯5,
   // 𝄫7 in dim7), note names, or none. The numerals above the neck carry the key function.
+  // NNS (TC, 26 Nov): the note's Nashville number in the key, its number from the letters and its ♭ / ♯ against the major
+  // scale. Minor keys number from the relative major (6 is the tonic), as ChordCharts does.
+  const nnsT = keyMode === "major" ? keyRoot : (keyRoot + 3) % 12;
+  const nns = (pc) => {
+    const n = keySp[pc], t = keySp[nnsT];
+    if (!n || !t) return "";
+    const k = (((n.letter - t.letter) % 7) + 7) % 7;
+    let d = (((pc - nnsT - MODE_IV.ionian[k]) % 12) + 12) % 12;
+    if (d > 6) d -= 12;
+    return accs((d > 0 ? "#".repeat(d) : "b".repeat(-d)) + (k + 1));
+  };
   const label = (pc, chordRoot, q) => {
     if (labelMode === "none") return "";
     if (labelMode === "name") return accs(keySp[pc].name);
+    if (labelMode === "nns") return nns(pc);
     const d = (((pc - chordRoot) % 12) + 12) % 12;
     return (DEG_OVERRIDE[q] && DEG_OVERRIDE[q][d]) || DEG_LABEL[d];
   };
@@ -173,7 +185,7 @@ export function ChordsPage({ tuning, cfg, update, ch, setCh, labelMode, setLabel
       let dot = null;
       if (hit) {
         const isRoot = pc === hit.c.root;
-        const lab = hit.k === deg ? label(pc, hit.c.root, hit.c.q) : "";
+        const lab = label(pc, hit.c.root, hit.c.q);
         const title = `${hit.c.rn} ${nameOf(hit.c)} · ${accs(keySp[pc].name)}`;
         const fill = formFill(forms[hit.k]);
         if (hit.k === deg) {
@@ -184,8 +196,15 @@ export function ChordsPage({ tuning, cfg, update, ch, setCh, labelMode, setLabel
             <div data-shape={hit.k} data-chosen="1" title={title} className={"fdot " + TILE + " relative flex items-center justify-center"} style={{ width: G.tile, height: G.tile, background: fill, color: THEME.ink, fontSize: fontPx, fontWeight: 800, zIndex: 3 }}>{lab}</div>
           );
         } else {
-          // The other six: open squares outlined in their form colour, no labels; a root has the heavier outline.
-          dot = <div data-shape={hit.k} data-root={isRoot ? "1" : undefined} title={title} className={TILE + " relative"} style={{ width: G.ladder, height: G.ladder, background: forms[hit.k].length ? fill : THEME.edge, zIndex: 2, ...outlineMask(isRoot ? 3.5 : 2) }} />;
+          // The other six: open squares outlined in their form colour; a root has the heavier outline. Since the labels round
+          // (TC 26 Nov, option A) each carries its label in the muted colour, its own chord's interval (or the note), laid over
+          // the outline (the outline is a mask, so the label cannot sit inside it).
+          dot = (
+            <React.Fragment>
+              <div data-shape={hit.k} data-root={isRoot ? "1" : undefined} title={title} className={TILE + " relative"} style={{ width: G.ladder, height: G.ladder, background: forms[hit.k].length ? fill : THEME.edge, zIndex: 2, ...outlineMask(isRoot ? 3.5 : 2) }} />
+              {lab && <span data-ladlab={hit.k} aria-hidden="true" className="absolute flex items-center justify-center" style={{ inset: 0, color: THEME.muted, fontSize: fontPx, fontWeight: isRoot ? 700 : 500, zIndex: 3, pointerEvents: "none" }}>{lab}</span>}
+            </React.Fragment>
+          );
         }
       }
       cells.push(
@@ -234,7 +253,7 @@ export function ChordsPage({ tuning, cfg, update, ch, setCh, labelMode, setLabel
       <div className="boardwrap">
         <div className="sumrow">
           <span data-summary aria-live="polite" className="text-sm font-semibold text-body">{summary}</span>
-          <Labels value={labelMode} set={setLabelMode} />
+          <Labels value={labelMode} set={setLabelMode} opts={INKEY_LABELS} />
         </div>
         <div ref={scrollRef} className="overflow-x-auto pb-2 rounded-xl" style={{ background: THEME.panel2 }}>
           <div className="grid p-3" style={{ gridTemplateColumns: COLS, width: "100%", minWidth: "min-content" }}>

@@ -169,7 +169,8 @@ function nutSubs(tuning, root, set, p, gaps) {
 // Labels) and the neck. Build B (Scale tab): path, a chosen path on the neck ({ set of s * 100 + fret, wins, lo, hi, chip });
 // stepCell, the note ‹ › stands on (ringed); onClearPath, its chip's ✕; foot, the panel under the neck, inside the board's
 // block so it stays with the neck on a phone.
-export function Board({ tuning, cfg, update, globals, lead = null, boardRef = null, children = null, posInBar = true, path = null, stepCell = null, onClearPath = null, foot = null }) {
+// labelOpts: the Labels control's options (the Chord tab names Degrees Intervals).
+export function Board({ tuning, cfg, update, globals, lead = null, boardRef = null, children = null, posInBar = true, path = null, stepCell = null, onClearPath = null, foot = null, labelOpts }) {
   const { scope, arp, pos, focus, keyRoot, keyMode, arpMode, diaLabel, strGroup, mode } = cfg;
   const { labelMode, isolate, ghost, dotColour, more, setLabelMode, setIsolate, setGhost, setDotColour, setMore, range, neckSize } = globals;
   // Frets and Neck size (Build C): the neck draws frets lo to hi at the chosen size.
@@ -325,13 +326,13 @@ export function Board({ tuning, cfg, update, globals, lead = null, boardRef = nu
       const face = dim
         ? { background: "transparent", border: ring(isRoot ? 3 : 1.5), color: THEME.muted }
         : { background: isSub ? hatch(fill) : fill, color: THEME.ink };
-      // Build B: notes off the chosen path are open squares with no label (mock-up call 3); the step ‹ › stands on has an
-      // outer ring in the text colour, a gap of the board's colour between (call 4). The tile keeps its own inset edge or frame.
-      const offPath = path !== null && !path.set.has(s * 100 + f);
+      // Build B: notes off the chosen path are open squares (mock-up call 3); since the labels round (TC 26 Nov, option A) they
+      // keep their label in the muted colour, as every filtered-out note does. The step ‹ › stands on has an outer ring in the
+      // text colour, a gap of the board's colour between (call 4). The tile keeps its own inset edge or frame.
       const stepOn = stepCell !== null && stepCell.s === s && stepCell.f === f;
       const stepRing = `0 0 0 2px ${THEME.panel2}, 0 0 0 4px ${THEME.text}`;
       const ringStyle = stepOn ? { boxShadow: dim ? stepRing : `${isRoot ? `inset 0 0 0 2px ${THEME.ink}` : `inset 0 0 0 1px ${THEME.dotEdge}`}, ${stepRing}` } : null;
-      const lab = offPath ? "" : labelOf(pc, iv);
+      const lab = labelOf(pc, iv);
       // All with Neutral dots: a faint tint of each window behind its frets, split where two windows meet (decision 6 = b).
       // With CAGED dots the dots carry the colour, so there is no tint (Round 6b). The ruler names the windows.
       let tint;
@@ -459,7 +460,7 @@ export function Board({ tuning, cfg, update, globals, lead = null, boardRef = nu
           <span data-summary className="text-sm font-semibold text-body">{summary}</span>
           {chips.map(([t, clear]) => <Chip key={t} text={t} onClear={clear} />)}
           {chips.length > 0 && <ClearAll onClick={clearAll} />}
-          <Labels value={labelMode} set={setLabelMode} />
+          <Labels value={labelMode} set={setLabelMode} opts={labelOpts} />
         </div>
         <div ref={scrollRef} className="overflow-x-auto pb-2 rounded-xl" style={{ background: THEME.panel2 }}>
           <div className="grid p-3" style={{ gridTemplateColumns: COLS, width: "100%", minWidth: "min-content" }}>

@@ -91,7 +91,10 @@ function FretboardTrainer() {
     document.body.removeChild(ta);
     done(ok ? "Copied" : "Not copied");
   };
-  const globals = { labelMode, isolate, ghost, dotColour, more, setLabelMode, setIsolate, setGhost, setDotColour, setMore, range, setRange, neckSize, setNeckSize };
+  // NNS labels (TC, 26 Nov) exist on Chord → In key only; every other neck reads a stored NNS as Degrees / Intervals, and the
+  // setting comes back when In key is opened again.
+  const lm = labelMode === "nns" && !(page === "chord" && cshow === "inkey") ? "degree" : labelMode;
+  const globals = { labelMode: lm, isolate, ghost, dotColour, more, setLabelMode, setIsolate, setGhost, setDotColour, setMore, range, setRange, neckSize, setNeckSize };
   // Key and Major / Minor (state.js keyPatch): a carried root letter goes with another key (Round 9); the Chord tab's chord
   // follows the key only when it is picked from the key (In key degrees).
   // Build B: a chosen path belongs to its key and scale, and takes Position's place, so a Key, Major / Minor, Scale or Mode
@@ -170,7 +173,7 @@ function FretboardTrainer() {
       {help ? <Help onExample={applyPreset} />
         : page === "scale" ? <ScalePage tuning={tuning} cfg={cfg} update={up} globals={globals} at={at} setAt={setAt} />
         : page === "chord" ? <ChordPage tuning={tuning} cfg={cfg} update={up} globals={globals} cshow={cshow} setCshow={setCshow} ch={ch} setCh={setCh} at={at} setAt={setAt} onAll={openChord} />
-        : page === "identify" ? <IdentifyPage tuning={tuning} at={at} setAt={setAt} labelMode={labelMode} setLabelMode={setLabelMode} onOpen={openChord} toVoicings={toVoicings} range={range} />
+        : page === "identify" ? <IdentifyPage tuning={tuning} at={at} setAt={setAt} labelMode={lm} setLabelMode={setLabelMode} onOpen={openChord} toVoicings={toVoicings} range={range} />
         : <ModesPage md={md} setMd={setMd} onNeck={showMode} />}
       </div>
     </div>
